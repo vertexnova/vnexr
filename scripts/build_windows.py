@@ -119,7 +119,7 @@ def interactive_mode(config: BuildConfig):
     print("\n=== Configuration Summary ===")
     print(
         f"Platform: {config.platform}\nBuild Type: {config.build_type}\n"
-        f"Action: {config.action}\nTests: {config.with_tests}\nSamples: {config.with_examples}\n"
+        f"Action: {config.action}\nTests: {config.with_tests}\nExamples: {config.with_examples}\n"
         f"Clean: {config.clean_build}\nJobs: {config.jobs}"
     )
     if input("Proceed? (Y/n): ").strip().lower() == "n":
@@ -248,9 +248,9 @@ def main():
     parser.add_argument("-l", "--lib-type", choices=["shared", "static"], default="shared")
     parser.add_argument("--dev", action="store_true", help="Enable tests + examples (VNE_XR_DEV=ON)")
     parser.add_argument("--with-tests", action="store_true", help="Build vnexr_tests")
-    parser.add_argument("--with-examples", "--with-examples", action="store_true", help="Build example programs")
+    parser.add_argument("--with-examples", "--with-samples", action="store_true", help="Build example programs")
     parser.add_argument("--no-tests", action="store_true", help="Omit tests")
-    parser.add_argument("--no-examples", "--no-examples", action="store_true", help="Omit examples")
+    parser.add_argument("--no-examples", "--no-samples", action="store_true", help="Omit examples")
     parser.add_argument("-j", "--jobs", type=int, default=10)
     parser.add_argument("--clean", action="store_true")
     parser.add_argument("--interactive", action="store_true")
@@ -268,15 +268,15 @@ def main():
     config.interactive = args.interactive
 
     no_tests = args.no_tests
-    no_samples = args.no_samples
+    no_examples = args.no_examples
     if no_tests:
         config.with_tests = False
-    if no_samples:
+    if no_examples:
         config.with_examples = False
     if config.with_dev:
         if not no_tests:
             config.with_tests = True
-        if not no_samples:
+        if not no_examples:
             config.with_examples = True
 
     if config.interactive:
