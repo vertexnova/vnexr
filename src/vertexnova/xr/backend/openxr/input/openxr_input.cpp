@@ -33,10 +33,7 @@ OpenXrInput::~OpenXrInput() {
     destroy();
 }
 
-Result OpenXrInput::createAction(XrActionSet action_set,
-                                 const char* name,
-                                 XrActionType type,
-                                 XrAction& out_action) {
+Result OpenXrInput::createAction(XrActionSet action_set, const char* name, XrActionType type, XrAction& out_action) {
     XrActionCreateInfo info{XR_TYPE_ACTION_CREATE_INFO};
     info.actionType = type;
     std::strncpy(info.actionName, name, XR_MAX_ACTION_NAME_SIZE - 1);
@@ -206,8 +203,7 @@ Result OpenXrInput::applyHaptic(std::uint32_t hand_index, float strength, XrDura
     vibration.amplitude = strength;
     vibration.duration = duration;
     vibration.frequency = XR_FREQUENCY_UNSPECIFIED;
-    OPENXR_CHECK(xrApplyHapticFeedback(session_, &haptic_info,
-                                       reinterpret_cast<XrHapticBaseHeader*>(&vibration)));
+    OPENXR_CHECK(xrApplyHapticFeedback(session_, &haptic_info, reinterpret_cast<XrHapticBaseHeader*>(&vibration)));
     return Result::eSuccess;
 }
 

@@ -18,13 +18,13 @@
 namespace vne::xr {
 
 void OpenXrCompositionLayer::buildProjectionLayer(XrSpace space,
-                                                const OpenXrSwapchainBridge& bridge,
-                                                std::uint32_t view_count,
-                                                XrCompositionLayerProjection& out_layer,
-                                                std::array<XrCompositionLayerProjectionView, 2>& out_views) const {
+                                                  const OpenXrSwapchainBridge& bridge,
+                                                  std::uint32_t view_count,
+                                                  XrCompositionLayerProjection& out_layer,
+                                                  std::array<XrCompositionLayerProjectionView, 2>& out_views) const {
     out_layer = {XR_TYPE_COMPOSITION_LAYER_PROJECTION};
-    out_layer.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT |
-                           XR_COMPOSITION_LAYER_CORRECT_CHROMATIC_ABERRATION_BIT;
+    out_layer.layerFlags =
+        XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT | XR_COMPOSITION_LAYER_CORRECT_CHROMATIC_ABERRATION_BIT;
     out_layer.space = space;
 
     const std::uint32_t count = std::min(view_count, static_cast<std::uint32_t>(out_views.size()));
@@ -35,9 +35,8 @@ void OpenXrCompositionLayer::buildProjectionLayer(XrSpace space,
         out_views[i].fov = cached[i].fov;
         out_views[i].subImage.swapchain = bridge.getColorSwapchain(i);
         out_views[i].subImage.imageRect.offset = {0, 0};
-        out_views[i].subImage.imageRect.extent = {
-            static_cast<int32_t>(bridge.getWidth(i)),
-            static_cast<int32_t>(bridge.getHeight(i))};
+        out_views[i].subImage.imageRect.extent = {static_cast<int32_t>(bridge.getWidth(i)),
+                                                  static_cast<int32_t>(bridge.getHeight(i))};
         out_views[i].subImage.imageArrayIndex = 0;
     }
     out_layer.viewCount = count;

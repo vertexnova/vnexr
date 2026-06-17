@@ -143,8 +143,7 @@ namespace vne::xr::OpenXrUtil {
 }
 
 [[nodiscard]] inline std::vector<const char*> filterEnabledExtensions(
-    const std::vector<std::string>& requested,
-    const std::vector<XrExtensionProperties>& available) {
+    const std::vector<std::string>& requested, const std::vector<XrExtensionProperties>& available) {
     std::vector<const char*> enabled;
     enabled.reserve(requested.size());
     for (const auto& name : requested) {
@@ -159,22 +158,22 @@ namespace vne::xr::OpenXrUtil {
 
 }  // namespace vne::xr::OpenXrUtil
 
-#define OPENXR_CHECK(expr)                                                                 \
-    do {                                                                                   \
-        const XrResult _openxr_result = (expr);                                            \
-        if (XR_FAILED(_openxr_result)) {                                                   \
-            VNE_LOG_ERROR << "OpenXR call failed: " << ::vne::xr::OpenXrUtil::xrResultToString(_openxr_result) \
-                          << " (" << static_cast<int>(_openxr_result) << ")";              \
-            return ::vne::xr::Result::eErrorOpenXrFailed;                                  \
-        }                                                                                  \
+#define OPENXR_CHECK(expr)                                                                                             \
+    do {                                                                                                               \
+        const XrResult _openxr_result = (expr);                                                                        \
+        if (XR_FAILED(_openxr_result)) {                                                                               \
+            VNE_LOG_ERROR << "OpenXR call failed: " << ::vne::xr::OpenXrUtil::xrResultToString(_openxr_result) << " (" \
+                          << static_cast<int>(_openxr_result) << ")";                                                  \
+            return ::vne::xr::Result::eErrorOpenXrFailed;                                                              \
+        }                                                                                                              \
     } while (0)
 
-#define OPENXR_CHECK_BOOL(expr)                                                            \
-    do {                                                                                   \
-        const XrResult _openxr_result = (expr);                                            \
-        if (XR_FAILED(_openxr_result)) {                                                   \
-            VNE_LOG_ERROR << "OpenXR call failed: " << ::vne::xr::OpenXrUtil::xrResultToString(_openxr_result) \
-                          << " (" << static_cast<int>(_openxr_result) << ")";              \
-            return false;                                                                  \
-        }                                                                                  \
+#define OPENXR_CHECK_BOOL(expr)                                                                                        \
+    do {                                                                                                               \
+        const XrResult _openxr_result = (expr);                                                                        \
+        if (XR_FAILED(_openxr_result)) {                                                                               \
+            VNE_LOG_ERROR << "OpenXR call failed: " << ::vne::xr::OpenXrUtil::xrResultToString(_openxr_result) << " (" \
+                          << static_cast<int>(_openxr_result) << ")";                                                  \
+            return false;                                                                                              \
+        }                                                                                                              \
     } while (0)

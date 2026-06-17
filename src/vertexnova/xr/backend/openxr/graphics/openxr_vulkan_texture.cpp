@@ -21,8 +21,8 @@ OpenXrVulkanTexture::OpenXrVulkanTexture(void* vk_image, std::uint32_t width, st
     descriptor_.format = is_depth ? vne::rhi::TextureFormat::eDepth32Float : vne::rhi::TextureFormat::eRgba8;
     descriptor_.width = width;
     descriptor_.height = height;
-    descriptor_.usage = is_depth ? vne::rhi::TextureUsage::eDepthStencilAttachment
-                                 : vne::rhi::TextureUsage::eColorAttachment;
+    descriptor_.usage =
+        is_depth ? vne::rhi::TextureUsage::eDepthStencilAttachment : vne::rhi::TextureUsage::eColorAttachment;
 }
 
 bool OpenXrVulkanTexture::initialize(const vne::rhi::TextureDescriptor& desc) {

@@ -19,9 +19,9 @@
 namespace vne::xr {
 
 Result OpenXrVulkanBinding::createVulkanInstance(XrInstance instance,
-                                               XrSystemId system_id,
-                                               PFN_xrGetInstanceProcAddr get_proc,
-                                               bool use_enable2) {
+                                                 XrSystemId system_id,
+                                                 PFN_xrGetInstanceProcAddr get_proc,
+                                                 bool use_enable2) {
 #if !defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
     (void)instance;
     (void)system_id;
@@ -30,10 +30,10 @@ Result OpenXrVulkanBinding::createVulkanInstance(XrInstance instance,
     return Result::eErrorNotSupported;
 #else
     (void)use_enable2;
-    auto pfn_create_instance = reinterpret_cast<PFN_xrCreateVulkanInstanceKHR>(
-        get_proc(instance, "xrCreateVulkanInstanceKHR"));
-    auto pfn_create_device = reinterpret_cast<PFN_xrCreateVulkanDeviceKHR>(
-        get_proc(instance, "xrCreateVulkanDeviceKHR"));
+    auto pfn_create_instance =
+        reinterpret_cast<PFN_xrCreateVulkanInstanceKHR>(get_proc(instance, "xrCreateVulkanInstanceKHR"));
+    auto pfn_create_device =
+        reinterpret_cast<PFN_xrCreateVulkanDeviceKHR>(get_proc(instance, "xrCreateVulkanDeviceKHR"));
     if (pfn_create_instance == nullptr || pfn_create_device == nullptr) {
         return Result::eErrorNotSupported;
     }

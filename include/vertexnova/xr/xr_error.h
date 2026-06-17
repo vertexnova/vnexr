@@ -75,18 +75,18 @@ enum class Result : std::int32_t {
 
 }  // namespace vne::xr
 
-#define VNE_XR_CHECK(expr)                          \
-    do {                                            \
-        ::vne::xr::Result _vne_xr_result = (expr);  \
-        if (::vne::xr::isError(_vne_xr_result)) {   \
-            return _vne_xr_result;                  \
-        }                                           \
+#define VNE_XR_CHECK(expr)                         \
+    do {                                           \
+        ::vne::xr::Result _vne_xr_result = (expr); \
+        if (::vne::xr::isError(_vne_xr_result)) {  \
+            return _vne_xr_result;                 \
+        }                                          \
     } while (0)
 
-#define VNE_XR_CHECK_BOOL(expr)                     \
-    do {                                            \
-        ::vne::xr::Result _vne_xr_result = (expr);  \
-        if (::vne::xr::isError(_vne_xr_result)) {   \
-            return false;                           \
-        }                                           \
+#define VNE_XR_CHECK_BOOL(expr)                    \
+    do {                                           \
+        ::vne::xr::Result _vne_xr_result = (expr); \
+        if (::vne::xr::isError(_vne_xr_result)) {  \
+            return false;                          \
+        }                                          \
     } while (0)

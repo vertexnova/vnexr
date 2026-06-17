@@ -68,8 +68,8 @@ OpenXrSession::OpenXrSession(SessionConfig config)
     : config_(std::move(config)) {
 #if defined(__ANDROID__)
     if (config_.platform.application_vm != nullptr && config_.platform.application_context != nullptr) {
-        if (isError(initializeOpenXrLoaderAndroid(config_.platform.application_vm,
-                                                  config_.platform.application_context))) {
+        if (isError(
+                initializeOpenXrLoaderAndroid(config_.platform.application_vm, config_.platform.application_context))) {
             state_ = SessionState::eExiting;
             running_ = false;
         }
@@ -153,20 +153,16 @@ bool OpenXrSession::initOpenXr() {
                                                     view_configs_types.data()));
 
     view_configuration_ = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
-    if (std::find(view_configs_types.begin(), view_configs_types.end(), view_configuration_) ==
-        view_configs_types.end()) {
+    if (std::find(view_configs_types.begin(), view_configs_types.end(), view_configuration_)
+        == view_configs_types.end()) {
         if (!view_configs_types.empty()) {
             view_configuration_ = view_configs_types.front();
         }
     }
 
     std::uint32_t view_count = 0;
-    OPENXR_CHECK_BOOL(xrEnumerateViewConfigurationViews(instance_,
-                                                        system_id_,
-                                                        view_configuration_,
-                                                        0,
-                                                        &view_count,
-                                                        nullptr));
+    OPENXR_CHECK_BOOL(
+        xrEnumerateViewConfigurationViews(instance_, system_id_, view_configuration_, 0, &view_count, nullptr));
     view_configs_.resize(view_count, {XR_TYPE_VIEW_CONFIGURATION_VIEW});
     OPENXR_CHECK_BOOL(xrEnumerateViewConfigurationViews(instance_,
                                                         system_id_,
@@ -176,12 +172,8 @@ bool OpenXrSession::initOpenXr() {
                                                         view_configs_.data()));
 
     std::uint32_t blend_count = 0;
-    OPENXR_CHECK_BOOL(xrEnumerateEnvironmentBlendModes(instance_,
-                                                       system_id_,
-                                                       view_configuration_,
-                                                       0,
-                                                       &blend_count,
-                                                       nullptr));
+    OPENXR_CHECK_BOOL(
+        xrEnumerateEnvironmentBlendModes(instance_, system_id_, view_configuration_, 0, &blend_count, nullptr));
     std::vector<XrEnvironmentBlendMode> blend_modes(blend_count);
     OPENXR_CHECK_BOOL(xrEnumerateEnvironmentBlendModes(instance_,
                                                        system_id_,
@@ -229,8 +221,8 @@ bool OpenXrSession::initOpenXr() {
         color_format_ = formats.front();
 #if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
         for (const auto format : formats) {
-            if (format == static_cast<int64_t>(VK_FORMAT_D32_SFLOAT) ||
-                format == static_cast<int64_t>(VK_FORMAT_D16_UNORM)) {
+            if (format == static_cast<int64_t>(VK_FORMAT_D32_SFLOAT)
+                || format == static_cast<int64_t>(VK_FORMAT_D16_UNORM)) {
                 depth_format_ = format;
                 break;
             }
@@ -406,12 +398,7 @@ bool OpenXrSession::beginFrame(Frame& out_frame) {
     constexpr std::uint32_t kCapacity = 2;
     std::array<XrView, kCapacity> xr_views{};
     std::uint32_t view_count = kCapacity;
-    if (XR_SUCCEEDED(xrLocateViews(session_,
-                                   &locate_info,
-                                   &view_state,
-                                   view_count,
-                                   &view_count,
-                                   xr_views.data()))) {
+    if (XR_SUCCEEDED(xrLocateViews(session_, &locate_info, &view_state, view_count, &view_count, xr_views.data()))) {
         out_frame.view_count = view_count;
         out_frame.surfaces.view_count = view_count;
         swapchain_bridge_.setCachedViews(xr_views.data(), view_count);
@@ -465,8 +452,7 @@ void OpenXrSession::endFrame(const Frame& frame, const LayerParams& layers) {
                                                 frame.view_count,
                                                 layer,
                                                 projection_views);
-        const XrCompositionLayerBaseHeader* layer_hdr =
-            reinterpret_cast<const XrCompositionLayerBaseHeader*>(&layer);
+        const XrCompositionLayerBaseHeader* layer_hdr = reinterpret_cast<const XrCompositionLayerBaseHeader*>(&layer);
         end_info.layerCount = 1;
         end_info.layers = &layer_hdr;
     } else {

@@ -40,17 +40,16 @@ XrBool32 XRAPI_PTR debugCallback(XrDebugUtilsMessageSeverityFlagsEXT severity,
 
 bool OpenXrDebugMessenger::create(XrInstance instance, PFN_xrGetInstanceProcAddr get_proc) {
     destroy(instance);
-    auto pfn_create = reinterpret_cast<PFN_xrCreateDebugUtilsMessengerEXT>(
-        get_proc(instance, "xrCreateDebugUtilsMessengerEXT"));
+    auto pfn_create =
+        reinterpret_cast<PFN_xrCreateDebugUtilsMessengerEXT>(get_proc(instance, "xrCreateDebugUtilsMessengerEXT"));
     if (pfn_create == nullptr) {
         return false;
     }
     XrDebugUtilsMessengerCreateInfoEXT info{XR_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT};
-    info.messageSeverities = XR_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-                             XR_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-    info.messageTypes = XR_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-                        XR_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-                        XR_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+    info.messageSeverities =
+        XR_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | XR_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+    info.messageTypes = XR_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | XR_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT
+                        | XR_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
     info.userCallback = debugCallback;
     return XR_SUCCEEDED(pfn_create(instance, &info, &messenger_));
 }

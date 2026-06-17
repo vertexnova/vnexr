@@ -35,9 +35,10 @@ Result initializeOpenXrLoaderAndroid(void* application_vm, void* application_con
     loader_info.applicationContext = application_context;
 
     PFN_xrInitializeLoaderKHR pfn_init = nullptr;
-    if (XR_FAILED(xrGetInstanceProcAddr(XR_NULL_HANDLE, "xrInitializeLoaderKHR",
-                                      reinterpret_cast<PFN_xrVoidFunction*>(&pfn_init))) ||
-        pfn_init == nullptr) {
+    if (XR_FAILED(xrGetInstanceProcAddr(XR_NULL_HANDLE,
+                                        "xrInitializeLoaderKHR",
+                                        reinterpret_cast<PFN_xrVoidFunction*>(&pfn_init)))
+        || pfn_init == nullptr) {
         VNE_LOG_ERROR << "xrInitializeLoaderKHR not available";
         return Result::eErrorOpenXrFailed;
     }

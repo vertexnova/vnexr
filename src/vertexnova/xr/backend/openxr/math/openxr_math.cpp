@@ -29,10 +29,7 @@ void storeMat4(const glm::mat4& m, float out[16]) {
 }  // namespace
 
 void poseToMatrix(const Pose& pose, float out_matrix[16]) {
-    const glm::quat rotation(pose.orientation[3],
-                             pose.orientation[0],
-                             pose.orientation[1],
-                             pose.orientation[2]);
+    const glm::quat rotation(pose.orientation[3], pose.orientation[0], pose.orientation[1], pose.orientation[2]);
     glm::mat4 m = glm::translate(glm::mat4(1.f), glm::vec3(pose.position[0], pose.position[1], pose.position[2]));
     m = m * glm::mat4_cast(rotation);
     storeMat4(m, out_matrix);
