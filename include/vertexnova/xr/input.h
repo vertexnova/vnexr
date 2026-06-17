@@ -27,6 +27,9 @@ struct InputState {
     Pose controller_poses[kMaxControllers]{};
     bool select_pressed[kMaxControllers]{};
     bool squeeze_pressed[kMaxControllers]{};
+    float select_value[kMaxControllers]{};
+    bool change_color_pressed[kMaxControllers]{};
+    bool pose_valid[kMaxControllers]{};
 };
 
 }  // namespace vne::xr

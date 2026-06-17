@@ -1,20 +1,28 @@
 /* ---------------------------------------------------------------------
  * Copyright (c) 2026 Ajeet Singh Yadav. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License")
- * ---------------------------------------------------------------------- */
+ *
+ * Author:    Ajeet Singh Yadav
+ * Created:   June 2026
+ *
+ * Autodoc:   yes
+ * ----------------------------------------------------------------------
+ */
 
-#include "vertexnova/xr/backend/openxr/openxr_vulkan_texture.h"
+#include "vertexnova/xr/backend/openxr/graphics/openxr_vulkan_texture.h"
 
 namespace vne::xr {
 
-OpenXrVulkanTexture::OpenXrVulkanTexture(void* vk_image, std::uint32_t width, std::uint32_t height) {
-    vk_image_ = vk_image;
-    descriptor_.name = "openxr_swapchain";
+OpenXrVulkanTexture::OpenXrVulkanTexture(void* vk_image, std::uint32_t width, std::uint32_t height, bool is_depth)
+    : vk_image_(vk_image)
+    , is_depth_(is_depth) {
+    descriptor_.name = is_depth ? "openxr_depth" : "openxr_color";
     descriptor_.type = vne::rhi::TextureType::eTexture2d;
-    descriptor_.format = vne::rhi::TextureFormat::eRgba8;
+    descriptor_.format = is_depth ? vne::rhi::TextureFormat::eDepth32Float : vne::rhi::TextureFormat::eRgba8;
     descriptor_.width = width;
     descriptor_.height = height;
-    descriptor_.usage = vne::rhi::TextureUsage::eColorAttachment;
+    descriptor_.usage = is_depth ? vne::rhi::TextureUsage::eDepthStencilAttachment
+                                 : vne::rhi::TextureUsage::eColorAttachment;
 }
 
 bool OpenXrVulkanTexture::initialize(const vne::rhi::TextureDescriptor& desc) {
@@ -70,8 +78,11 @@ void* OpenXrVulkanTexture::nativeHandle() const {
     return vk_image_;
 }
 
-std::shared_ptr<vne::rhi::ITexture> makeOpenXrVulkanTexture(void* vk_image, std::uint32_t width, std::uint32_t height) {
-    return std::make_shared<OpenXrVulkanTexture>(vk_image, width, height);
+std::shared_ptr<vne::rhi::ITexture> makeOpenXrVulkanTexture(void* vk_image,
+                                                            std::uint32_t width,
+                                                            std::uint32_t height,
+                                                            bool is_depth) {
+    return std::make_shared<OpenXrVulkanTexture>(vk_image, width, height, is_depth);
 }
 
 }  // namespace vne::xr

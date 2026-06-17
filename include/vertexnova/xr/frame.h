@@ -16,6 +16,7 @@
 
 #include "vertexnova/xr/swapchain_image.h"
 #include "vertexnova/xr/view.h"
+#include "vertexnova/xr/input.h"
 
 #include <cstdint>
 
@@ -35,6 +36,7 @@ struct Frame {
 /** @brief Host → app frame parameters (ShellParams pattern from IGL). */
 struct FrameParams {
     Frame frame{};
+    InputState input{};
 };
 
 /** @brief App → host layer hints (AppParams pattern from IGL). */

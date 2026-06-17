@@ -6,7 +6,11 @@ if(NOT VNE_XR_WITH_OPENXR)
     return()
 endif()
 
-add_executable(example_03_hello_openxr main.cpp stereo_cube_renderer.cpp)
+add_executable(example_03_hello_openxr
+    main.cpp
+    stereo_cube_renderer.cpp
+    stereo_cube_scene.cpp
+)
 
 target_link_libraries(example_03_hello_openxr PRIVATE vne::xr vne::logging)
 
@@ -21,5 +25,5 @@ set_target_properties(example_03_hello_openxr PROPERTIES
 )
 
 if(ANDROID)
-    target_link_libraries(example_03_hello_openxr PRIVATE android log)
+    target_link_libraries(example_03_hello_openxr PRIVATE android log native_app_glue)
 endif()

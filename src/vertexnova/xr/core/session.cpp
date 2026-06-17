@@ -1,7 +1,13 @@
 /* ---------------------------------------------------------------------
  * Copyright (c) 2026 Ajeet Singh Yadav. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License")
- * ---------------------------------------------------------------------- */
+ *
+ * Author:    Ajeet Singh Yadav
+ * Created:   June 2026
+ *
+ * Autodoc:   yes
+ * ----------------------------------------------------------------------
+ */
 
 #include "vertexnova/xr/session.h"
 
@@ -21,11 +27,14 @@ void ISession::run(IRenderSession& app_session) {
     app_session.onSessionReady();
     Frame frame{};
     LayerParams layers{};
+    InputState input{};
     while (pollEvents()) {
         if (!beginFrame(frame)) {
             continue;
         }
+        pollInput(input);
         FrameParams params{frame};
+        params.input = input;
         app_session.update(params, layers);
         endFrame(frame, layers);
         if (layers.request_exit) {

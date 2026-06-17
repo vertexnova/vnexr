@@ -24,9 +24,22 @@
 
 namespace vne::xr {
 
+/** @brief Optional platform handles for OpenXR instance creation. */
+struct SessionPlatformHandle {
+#if defined(_WIN32)
+    void* hwnd = nullptr;
+    void* hinstance = nullptr;
+#endif
+#if defined(__ANDROID__)
+    void* application_vm = nullptr;
+    void* application_context = nullptr;
+#endif
+};
+
 struct SessionConfig {
     BackendType backend = BackendType::eNull;
     std::string application_name = "VneXR";
+    SessionPlatformHandle platform{};
 };
 
 /**
@@ -55,6 +68,12 @@ class VNE_XR_API ISession {
 
     /** @brief Run loop with app render session until pollEvents returns false. */
     virtual void run(IRenderSession& app_session);
+
+    /** @brief True when session can render frames (synchronized/visible/focused). */
+    [[nodiscard]] virtual bool isSessionRunning() const {
+        const auto s = state();
+        return s == SessionState::eSynchronized || s == SessionState::eVisible || s == SessionState::eFocused;
+    }
 };
 
 /** @brief Create session for @p config (factory dispatches by backend). */

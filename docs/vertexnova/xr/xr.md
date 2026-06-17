@@ -121,6 +121,7 @@ Android build:
 
 ## Further reading
 
+- [OpenXR backend design](openxr_design.md)
 - [Coordinate conventions](conventions.md)
 - [Diagrams](diagrams/README.md)
 - Root [README.md](../../../README.md)

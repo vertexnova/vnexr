@@ -5,6 +5,7 @@
 
 set(SOURCE_FILES
     vertexnova/xr/xr.cpp
+    vertexnova/xr/xr_factory.cpp
     vertexnova/xr/core/session.cpp
     vertexnova/xr/core/null_session.cpp
 )
@@ -12,6 +13,8 @@ set(SOURCE_FILES
 set(HEADER_FILES
     ${VNE_INCLUDE_DIR}/vertexnova/xr/export.h
     ${VNE_INCLUDE_DIR}/vertexnova/xr/xr.h
+    ${VNE_INCLUDE_DIR}/vertexnova/xr/xr_error.h
+    ${VNE_INCLUDE_DIR}/vertexnova/xr/xr_factory.h
     ${VNE_INCLUDE_DIR}/vertexnova/xr/types.h
     ${VNE_INCLUDE_DIR}/vertexnova/xr/view.h
     ${VNE_INCLUDE_DIR}/vertexnova/xr/frame.h
@@ -21,19 +24,6 @@ set(HEADER_FILES
     ${VNE_INCLUDE_DIR}/vertexnova/xr/session.h
     ${VNE_SRC_DIR}/vertexnova/xr/core/null_session.h
 )
-
-if(VNE_XR_WITH_OPENXR)
-    list(APPEND SOURCE_FILES
-        vertexnova/xr/backend/openxr/openxr_session.cpp
-        vertexnova/xr/backend/openxr/openxr_swapchain_bridge.cpp
-        vertexnova/xr/backend/openxr/openxr_vulkan_texture.cpp
-    )
-    list(APPEND HEADER_FILES
-        ${VNE_SRC_DIR}/vertexnova/xr/backend/openxr/openxr_session.h
-        ${VNE_SRC_DIR}/vertexnova/xr/backend/openxr/openxr_swapchain_bridge.h
-        ${VNE_SRC_DIR}/vertexnova/xr/backend/openxr/openxr_vulkan_texture.h
-    )
-endif()
 
 if(VNE_XR_WITH_VISIONOS)
     list(APPEND SOURCE_FILES vertexnova/xr/backend/visionos/visionos_session.cpp)
@@ -83,6 +73,7 @@ if(VNE_XR_WITH_OPENXR)
     if(VNE_XR_BACKEND_OPENXR_GRAPHICS STREQUAL "vulkan" AND TARGET Vulkan::Headers)
         target_link_libraries(vnexr PRIVATE Vulkan::Headers)
     endif()
+    add_subdirectory(vertexnova/xr/backend/openxr)
 endif()
 
 if(VNE_XR_WITH_VISIONOS)
@@ -111,6 +102,8 @@ source_group(TREE ${VNE_SRC_DIR} PREFIX "Sources" FILES ${SOURCE_FILES})
 set(_xr_public_headers
     ${VNE_INCLUDE_DIR}/vertexnova/xr/export.h
     ${VNE_INCLUDE_DIR}/vertexnova/xr/xr.h
+    ${VNE_INCLUDE_DIR}/vertexnova/xr/xr_error.h
+    ${VNE_INCLUDE_DIR}/vertexnova/xr/xr_factory.h
     ${VNE_INCLUDE_DIR}/vertexnova/xr/types.h
     ${VNE_INCLUDE_DIR}/vertexnova/xr/view.h
     ${VNE_INCLUDE_DIR}/vertexnova/xr/frame.h

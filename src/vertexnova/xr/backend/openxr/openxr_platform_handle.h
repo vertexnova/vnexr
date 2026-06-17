@@ -10,15 +10,20 @@
  * ----------------------------------------------------------------------
  */
 
-#import <Foundation/Foundation.h>
+#include <cstdint>
 
-#ifdef __cplusplus
-extern "C" {
+namespace vne::xr {
+
+/** @brief Platform-specific handles for OpenXR instance/session creation. */
+struct OpenXrPlatformHandle {
+#if defined(_WIN32)
+    void* hwnd = nullptr;
+    void* hinstance = nullptr;
 #endif
-
-/** @brief Start portable VisionOsSession loop from Swift/ObjC shell. */
-void vnexr_visionos_run_immersive_session(void);
-
-#ifdef __cplusplus
-}
+#if defined(__ANDROID__)
+    void* application_vm = nullptr;
+    void* application_context = nullptr;
 #endif
+};
+
+}  // namespace vne::xr

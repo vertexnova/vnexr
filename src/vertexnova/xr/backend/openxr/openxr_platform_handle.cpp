@@ -9,16 +9,10 @@
  * ----------------------------------------------------------------------
  */
 
-#include "common/logging_guard.h"
-#include "vertexnova/xr/xr.h"
+#include "vertexnova/xr/backend/openxr/openxr_platform_handle.h"
 
-int main() {
-    vne::xr::examples::LoggingGuard logging_guard;
+namespace vne::xr {
 
-    using namespace vne::xr;
+// Platform handle is a plain POD struct; helpers may be added per platform later.
 
-    VNE_LOG_INFO << hello();
-    VNE_LOG_INFO << "Version: " << getVersion();
-
-    return 0;
-}
+}  // namespace vne::xr

@@ -2,7 +2,13 @@
 /* ---------------------------------------------------------------------
  * Copyright (c) 2026 Ajeet Singh Yadav. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License")
- * ---------------------------------------------------------------------- */
+ *
+ * Author:    Ajeet Singh Yadav
+ * Created:   June 2026
+ *
+ * Autodoc:   yes
+ * ----------------------------------------------------------------------
+ */
 
 #include "vertexnova/rhi/texture.h"
 
@@ -14,13 +20,10 @@ namespace vne::xr {
 
 /**
  * @brief Non-owning vne::rhi::ITexture view over an OpenXR Vulkan swapchain image.
- *
- * Compositor-owned VkImage lifetime; vnexr only wraps the handle for render hooks.
- * Requires vnerhi (OpenXR backend always links vne::rhi).
  */
 class OpenXrVulkanTexture final : public vne::rhi::ITexture {
    public:
-    OpenXrVulkanTexture(void* vk_image, std::uint32_t width, std::uint32_t height);
+    OpenXrVulkanTexture(void* vk_image, std::uint32_t width, std::uint32_t height, bool is_depth);
 
     [[nodiscard]] bool initialize(const vne::rhi::TextureDescriptor& desc) override;
     [[nodiscard]] const vne::rhi::TextureDescriptor& descriptor() const override;
@@ -38,11 +41,13 @@ class OpenXrVulkanTexture final : public vne::rhi::ITexture {
 
    private:
     void* vk_image_ = nullptr;
+    bool is_depth_ = false;
     vne::rhi::TextureDescriptor descriptor_{};
 };
 
 [[nodiscard]] std::shared_ptr<vne::rhi::ITexture> makeOpenXrVulkanTexture(void* vk_image,
                                                                           std::uint32_t width,
-                                                                          std::uint32_t height);
+                                                                          std::uint32_t height,
+                                                                          bool is_depth = false);
 
 }  // namespace vne::xr
