@@ -82,6 +82,8 @@ build_cmake_command() {
     -DVNE_XR_DEV="$VNE_XR_DEV_VAL" \
     -DVNE_XR_TESTS="$TESTS_FLAG" \
     -DVNE_XR_EXAMPLES="$EXAMPLES_FLAG" \
+    -DVNE_XR_WITH_OPENXR=ON \
+    -DVNE_XR_BACKEND_VULKAN=ON \
     "$PROJECT_ROOT"
 }
 

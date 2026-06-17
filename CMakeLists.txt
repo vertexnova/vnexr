@@ -8,7 +8,7 @@
 # Autodoc:   yes
 #==============================================================================
 
-cmake_minimum_required(VERSION 3.19)
+cmake_minimum_required(VERSION 3.26)
 
 # Single source of truth for version (updated by release-please on release)
 set(VERSION_FILE "${CMAKE_CURRENT_LIST_DIR}/VERSION")
@@ -36,7 +36,7 @@ set(VNECMAKE_MODULES "${PROJECT_SOURCE_DIR}/cmake/vnecmake/modules")
 if(NOT EXISTS "${VNECMAKE_MODULES}/VneUseDep.cmake")
     message(FATAL_ERROR "vnecmake not found at cmake/vnecmake. Run: git submodule update --init --recursive")
 endif()
-list(APPEND CMAKE_MODULE_PATH "${VNECMAKE_MODULES}")
+list(APPEND CMAKE_MODULE_PATH "${VNECMAKE_MODULES}" "${PROJECT_SOURCE_DIR}/cmake")
 
 include(ProjectSetup)
 
@@ -182,6 +182,55 @@ option(ENABLE_DOXYGEN "Enable Doxygen documentation builds" OFF)
 option(ENABLE_COVERAGE "Enable code coverage reporting" OFF)
 option(ENABLE_ASAN "Enable AddressSanitizer + UndefinedBehaviorSanitizer (Clang/GCC, Linux/macOS only)" OFF)
 option(WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
+
+#==============================================================================
+# XR framework options
+#==============================================================================
+option(VNE_XR_WITH_RHI "Link vnerhi/vnemath for GPU-backed XR sessions" ON)
+option(VNE_XR_WITH_EVENTS "Link vneevents for XR input routing" OFF)
+option(VNE_XR_WITH_OPENXR "Build OpenXR backend (Android/Windows; not Apple)" OFF)
+option(VNE_XR_WITH_VISIONOS "Build CompositorServices backend (visionOS)" OFF)
+option(VNE_XR_WITH_GFX_SAMPLE "Build optional vnegfx integration example" OFF)
+set(VNE_XR_BACKEND_OPENXR_GRAPHICS "vulkan" CACHE STRING "OpenXR graphics binding: vulkan or d3d12")
+set_property(CACHE VNE_XR_BACKEND_OPENXR_GRAPHICS PROPERTY STRINGS "vulkan" "d3d12")
+
+if(VNE_XR_WITH_OPENXR AND VNE_XR_WITH_VISIONOS)
+    message(FATAL_ERROR "VNE_XR_WITH_OPENXR and VNE_XR_WITH_VISIONOS are mutually exclusive.")
+endif()
+
+if(VNE_XR_WITH_OPENXR AND APPLE)
+    message(FATAL_ERROR "OpenXR is not supported on Apple platforms. Use VNE_XR_WITH_VISIONOS.")
+endif()
+
+if(VNE_TARGET_PLATFORM STREQUAL "Android" AND VNE_XR_CI)
+    set(VNE_XR_WITH_OPENXR ON CACHE BOOL "" FORCE)
+endif()
+if(VNE_TARGET_PLATFORM STREQUAL "visionOS")
+    set(VNE_XR_WITH_VISIONOS ON CACHE BOOL "" FORCE)
+endif()
+if(VNE_TARGET_PLATFORM STREQUAL "Windows" AND VNE_XR_DEV AND NOT VNE_XR_CI)
+    option(VNE_XR_WITH_OPENXR "Build OpenXR backend" ON)
+endif()
+
+if(VNE_XR_WITH_RHI)
+    include(VneXrDeps)
+    xr_configure_rhi_deps()
+endif()
+
+if(VNE_XR_WITH_OPENXR)
+    include(VneXrOpenXR)
+    xr_configure_openxr()
+endif()
+
+if(VNE_XR_WITH_VISIONOS)
+    include(VneXrVisionOS)
+    xr_configure_visionos()
+endif()
+
+if(VNE_XR_WITH_GFX_SAMPLE)
+    include(VneXrDeps)
+    xr_configure_vnegfx_dep()
+endif()
 
 #==============================================================================
 # Incompatible options: coverage and ASan/UBSan must not both be enabled

@@ -72,6 +72,8 @@ CMAKE_ARGS=(
   "-DVNE_XR_TESTS=$( [ "$WITH_TESTS" = true ] && echo ON || echo OFF )"
   "-DVNE_XR_EXAMPLES=$( [ "$WITH_EXAMPLES" = true ] && echo ON || echo OFF )"
   "-DVNE_TARGET_PLATFORM=Android"
+  "-DVNE_XR_WITH_OPENXR=ON"
+  "-DVNE_XR_BACKEND_VULKAN=ON"
 )
 
 run_configure() {

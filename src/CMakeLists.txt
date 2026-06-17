@@ -1,22 +1,44 @@
 #==============================================================================
 # Copyright (c) 2026 Ajeet Singh Yadav. All rights reserved.
 # Licensed under the Apache License, Version 2.0 (the "License")
-#
-# Author:    Ajeet Singh Yadav
-# Created:   February 2026
-#
-# Autodoc:   yes
 #==============================================================================
 
 set(SOURCE_FILES
     vertexnova/xr/xr.cpp
+    vertexnova/xr/core/session.cpp
+    vertexnova/xr/core/null_session.cpp
 )
 
 set(HEADER_FILES
     ${VNE_INCLUDE_DIR}/vertexnova/xr/xr.h
+    ${VNE_INCLUDE_DIR}/vertexnova/xr/types.h
+    ${VNE_INCLUDE_DIR}/vertexnova/xr/view.h
+    ${VNE_INCLUDE_DIR}/vertexnova/xr/frame.h
+    ${VNE_INCLUDE_DIR}/vertexnova/xr/swapchain_image.h
+    ${VNE_INCLUDE_DIR}/vertexnova/xr/input.h
+    ${VNE_INCLUDE_DIR}/vertexnova/xr/render_session.h
+    ${VNE_INCLUDE_DIR}/vertexnova/xr/session.h
+    ${VNE_SRC_DIR}/vertexnova/xr/core/null_session.h
 )
 
-# One library per build: static or shared, always named vnexr (alias vne::xr).
+if(VNE_XR_WITH_OPENXR)
+    list(APPEND SOURCE_FILES
+        vertexnova/xr/backend/openxr/openxr_session.cpp
+        vertexnova/xr/backend/openxr/openxr_swapchain_bridge.cpp
+        vertexnova/xr/backend/openxr/openxr_vulkan_texture.cpp
+    )
+    list(APPEND HEADER_FILES
+        ${VNE_SRC_DIR}/vertexnova/xr/backend/openxr/openxr_session.h
+        ${VNE_SRC_DIR}/vertexnova/xr/backend/openxr/openxr_swapchain_bridge.h
+        ${VNE_SRC_DIR}/vertexnova/xr/backend/openxr/openxr_vulkan_texture.h
+    )
+endif()
+
+if(VNE_XR_WITH_VISIONOS)
+    list(APPEND SOURCE_FILES vertexnova/xr/backend/visionos/visionos_session.cpp)
+    list(APPEND HEADER_FILES ${VNE_SRC_DIR}/vertexnova/xr/backend/visionos/visionos_session.h)
+endif()
+
 if(VNE_XR_LIB_TYPE STREQUAL "shared")
     set(_lib_type SHARED)
 else()
@@ -45,10 +67,35 @@ if(TARGET vne::logging)
     target_link_libraries(vnexr PUBLIC vne::logging)
 endif()
 
+if(VNE_XR_WITH_RHI)
+    target_compile_definitions(vnexr PUBLIC VNE_XR_WITH_RHI=1)
+    target_link_libraries(vnexr PUBLIC vne::rhi vne::math)
+endif()
+
+if(VNE_XR_WITH_OPENXR)
+    target_compile_definitions(vnexr PUBLIC VNE_XR_WITH_OPENXR=1)
+    if(VNE_XR_BACKEND_OPENXR_GRAPHICS STREQUAL "vulkan")
+        target_compile_definitions(vnexr PUBLIC VNE_XR_OPENXR_GRAPHICS_VULKAN=1)
+    endif()
+    target_link_libraries(vnexr PRIVATE OpenXR::openxr_loader)
+    if(VNE_XR_BACKEND_OPENXR_GRAPHICS STREQUAL "vulkan" AND TARGET Vulkan::Headers)
+        target_link_libraries(vnexr PRIVATE Vulkan::Headers)
+    endif()
+endif()
+
+if(VNE_XR_WITH_VISIONOS)
+    target_compile_definitions(vnexr PUBLIC VNE_XR_WITH_VISIONOS=1)
+    if(VNE_XR_COMPOSITOR_SERVICES_FRAMEWORK)
+        target_link_libraries(vnexr PRIVATE "${VNE_XR_COMPOSITOR_SERVICES_FRAMEWORK}")
+    endif()
+endif()
+
+if(VNE_XR_WITH_EVENTS AND TARGET vne::events)
+    target_link_libraries(vnexr PUBLIC vne::events)
+endif()
+
 target_compile_features(vnexr PUBLIC cxx_std_20)
 
-# Set export/import defines for shared builds. The header uses them only on Windows
-# (VNE_XR_API becomes __declspec(dllexport)/dllimport); on other platforms they are no-ops.
 if(_lib_type STREQUAL "SHARED")
     target_compile_definitions(vnexr
         PRIVATE VNE_XR_BUILDING_DLL
@@ -58,5 +105,15 @@ endif()
 
 add_library(vne::xr ALIAS vnexr)
 
-source_group("Sources" FILES ${SOURCE_FILES})
-source_group(TREE ${VNE_INCLUDE_DIR} PREFIX "Headers" FILES ${HEADER_FILES})
+source_group(TREE ${VNE_SRC_DIR} PREFIX "Sources" FILES ${SOURCE_FILES})
+set(_xr_public_headers
+    ${VNE_INCLUDE_DIR}/vertexnova/xr/xr.h
+    ${VNE_INCLUDE_DIR}/vertexnova/xr/types.h
+    ${VNE_INCLUDE_DIR}/vertexnova/xr/view.h
+    ${VNE_INCLUDE_DIR}/vertexnova/xr/frame.h
+    ${VNE_INCLUDE_DIR}/vertexnova/xr/swapchain_image.h
+    ${VNE_INCLUDE_DIR}/vertexnova/xr/input.h
+    ${VNE_INCLUDE_DIR}/vertexnova/xr/render_session.h
+    ${VNE_INCLUDE_DIR}/vertexnova/xr/session.h
+)
+source_group(TREE ${VNE_INCLUDE_DIR} PREFIX "Headers" FILES ${_xr_public_headers})

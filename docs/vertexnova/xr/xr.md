@@ -1,77 +1,126 @@
-# VertexNova Template
+# VneXR — XR session and compositor framework
 
 ## Overview
 
-VneXR is a minimal C++ project template for the VertexNova ecosystem. It provides a standard layout (include, src, tests, examples), CMake setup with vnecmake, optional internal deps (vnecommon, vnelogging), and a tiny API so you can build and run out of the box. Use it as a starting point for new libraries or applications.
+VneXR is the VertexNova **XR session/compositor framework**. It sits above **vnerhi** for GPU work and optionally consumes **vnegfx** for scene content — it does not duplicate gfx or RHI responsibilities.
+
+| Platform | Compositor API | GPU (vnerhi) | App shell |
+|----------|----------------|--------------|-----------|
+| Android (Quest, Samsung Galaxy XR) | OpenXR + `XR_KHR_vulkan_enable` | Vulkan | NativeActivity / JNI |
+| Windows (PC VR, simulators) | OpenXR | Vulkan or D3D12 | Win32 loop |
+| visionOS | CompositorServices | Metal | SwiftUI + ObjC++ bridge |
+| CI / headless | Null session | vnerhi Null | No runtime |
 
 ![System Context](diagrams/context.png)
 
-**Figure 1: Context Diagram**
+## Stack position
 
-| Element | Description |
-|---------|-------------|
-| C++ Application | Developer/user code (tests, examples, or your app) that uses the template API |
-| VneXR | Template library; provides `get_version()`, `hello()`, and the project scaffold |
+```
+Application (shell + XR content)
+    └── vnexr (ISession, IFrame, IView, IRenderSession)
+            ├── backend/openxr (Android, Windows)
+            ├── backend/visionos (CompositorServices)
+            ├── vnerhi (required) — swapchain → ITexture
+            ├── vnemath (required) — poses, projections
+            └── vnegfx (optional peer) — ECS scene content in XR views
+```
 
-## Project layout and build
+## Core API (`vne::xr_ns`)
 
-The template follows a standard directory layout and builds one library per build (static or shared), plus tests and optional examples. The library target is always `vnexr` with alias `vne::xr`.
+| Type | Role |
+|------|------|
+| `ISession` | Lifecycle: poll events, begin/end frame |
+| `IFrame` / `Frame` | Per-frame timing, views, surface textures |
+| `IView` / `View` | Per-eye pose, FOV, view/projection matrices |
+| `IRenderSession` | App callback: `update(FrameParams, LayerParams)` |
+| `create_session(SessionConfig)` | Factory: Null, OpenXR, visionOS backends |
 
-![Project layout](diagrams/architecture.png)
-
-**Figure 2: Project layout and build**
-
-| Element | Description |
-|---------|-------------|
-| include/vertexnova/xr/ | Public API headers (e.g. `xr.h`) |
-| src/vertexnova/xr/ | Implementation |
-| tests/ | Unit tests (Google Test) |
-| examples/ | Example apps (e.g. `01_hello_xr`) |
-| cmake/vnecmake/ | CMake modules submodule |
-| deps/internal/, deps/external/ | Internal (vnecommon, vnelogging) and external (googletest) deps |
-| CMake configure + build | Produces one lib: `libvnexr.a` or `libvnexr.so` (or `.dylib`/`.dll`), plus tests and examples |
-
-See the root [README.md](../../../README.md) for prerequisites, dependencies, and build commands.
-
-## API usage
-
-The public API lives in namespace `vne::xr_ns` and exposes two functions:
-
-![API flow](diagrams/api.png)
-
-**Figure 3: API usage**
-
-| Step | Function | Description |
-|------|----------|-------------|
-| 1 | `get_version()` | Returns the project version string (e.g. from `VERSION` file). |
-| 2 | `hello()` | Returns a greeting string (minimal placeholder). |
-
-Example:
+Portable render loop:
 
 ```cpp
-#include <vertexnova/xr/xr.h>
+#include "vertexnova/xr/session.h"
 
-const char* ver = vne::xr_ns::get_version();  // e.g. "1.0.0"
-const char* msg = vne::xr_ns::hello();        // e.g. "Hello from VneXR"
+class MyApp : public vne::xr_ns::IRenderSession {
+  void update(const vne::xr_ns::FrameParams& params,
+              vne::xr_ns::LayerParams& out) override {
+    // render into params.frame.surfaces per eye
+  }
+};
+
+vne::xr_ns::SessionConfig cfg;
+cfg.backend = vne::xr_ns::BackendType::eOpenXr;
+auto session = vne::xr_ns::create_session(cfg);
+MyApp app;
+session->run(app);
+```
+
+## Module layout
+
+```
+include/vertexnova/xr/     Public headers
+src/vertexnova/xr/
+  core/                    Session state machine, Null backend
+  backend/openxr/          OpenXR + Vulkan swapchain bridge
+  backend/visionos/        CompositorServices C++ wrapper
+cmake/                     VneXrDeps, VneXrOpenXR, VneXrVisionOS
+examples/                  Platform samples (see examples/README.md)
+```
+
+## Dependency tiers
+
+| Tier | Libraries | When |
+|------|-----------|------|
+| 0 | vnecmake, vnecommon, vnelogging, googletest | Always |
+| 1 | **vnerhi**, **vnemath** | `VNE_XR_WITH_RHI=ON` (default) |
+| 2 | Khronos OpenXR-SDK loader | `VNE_XR_WITH_OPENXR=ON` |
+| 3 | CompositorServices, SwiftUI (visionOS SDK) | `VNE_XR_WITH_VISIONOS=ON` |
+| 4 | vnegfx, entt (samples only) | `VNE_XR_WITH_GFX_SAMPLE=ON` |
+
+**Do not vendor into vnexr core:** entt, imgui, Dawn/SPIRV toolchain, Assimp, vnescene sample libs.
+
+Initialize deps:
+
+```bash
+export VNE_VNERHI_PATH=../vnerhi   # local private checkout
+./scripts/init_submodules.sh full
 ```
 
 ## CMake options
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `VNE_XR_TESTS` | ON | Build unit tests. |
-| `VNE_XR_EXAMPLES` | ON (dev/top-level) / OFF (submodule) | Build examples (on by default in dev builds, off when used as a submodule). |
-| `VNE_XR_LIB_TYPE` | shared | Library type: `static` or `shared`. One library per build; target is always `vnexr` (alias `vne::xr`). |
-| `WARNINGS_AS_ERRORS` | OFF | Treat compiler warnings as errors. |
-| `ENABLE_DOXYGEN` | OFF | Generate Doxygen documentation. |
+| `VNE_XR_WITH_RHI` | ON | Link vnerhi + vnemath |
+| `VNE_XR_WITH_OPENXR` | OFF (ON Android CI / Windows dev) | OpenXR backend |
+| `VNE_XR_WITH_VISIONOS` | OFF (ON visionOS) | CompositorServices backend |
+| `VNE_XR_WITH_GFX_SAMPLE` | OFF | Build vnegfx integration example |
+| `VNE_XR_BACKEND_OPENXR_GRAPHICS` | vulkan | OpenXR graphics binding |
+| `VNE_XR_TESTS` | ON (dev) | Unit tests |
+| `VNE_XR_EXAMPLES` | ON (dev) | Example programs |
+| `VNE_XR_LIB_TYPE` | shared | static or shared |
 
-## Static vs shared for deployment
+`VNE_XR_WITH_OPENXR` and `VNE_XR_WITH_VISIONOS` are mutually exclusive. OpenXR is blocked on Apple platforms.
 
-- **Static** (`-DVNE_XR_LIB_TYPE=static`): Single executable, no runtime lib to ship. Best for one-binary deploy.
-- **Shared** (`-DVNE_XR_LIB_TYPE=shared`, default): For plugins, many apps sharing one lib, or ABI versioning. Preferred for **cross-platform GL / multibackend** libs (one `libvnexr.so` plus backend plugins).
+CMake minimum: **3.26** (vnerhi requirement).
 
-## Documentation
+## Examples
 
-- **This document:** `docs/vertexnova/xr/xr.md`
-- **Diagrams:** `docs/vertexnova/xr/diagrams/` (Draw.io sources; export to PNG as described in [diagrams/README.md](diagrams/README.md))
-- **API reference:** Generated by Doxygen when `-DENABLE_DOXYGEN=ON` (see root README)
+| Example | Backend | Platform |
+|---------|---------|----------|
+| `01_hello_xr` | — | All |
+| `02_null_session` | Null + vnerhi Null | CI / desktop |
+| `03_hello_openxr` | OpenXR stereo cube | Android, Windows |
+| `04_openxr_windows` | OpenXR + Win32 pump | Windows |
+| `05_visionos_immersive` | CompositorServices | visionOS |
+| `06_gfx_xr_scene` | Null + vnegfx | Optional sample |
+
+Android build:
+
+```bash
+./scripts/build_android.sh --dev --with-examples
+```
+
+## Further reading
+
+- [Coordinate conventions](conventions.md)
+- [Diagrams](diagrams/README.md)
+- Root [README.md](../../../README.md)
