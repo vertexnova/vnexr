@@ -6,8 +6,9 @@ VneXR is the VertexNova **XR session/compositor framework**. It sits above **vne
 
 | Platform | Compositor API | GPU (vnerhi) | App shell |
 |----------|----------------|--------------|-----------|
-| Android (Quest, Samsung Galaxy XR) | OpenXR + `XR_KHR_vulkan_enable` | Vulkan | NativeActivity / JNI |
-| Windows (PC VR, simulators) | OpenXR | Vulkan or D3D12 | Win32 loop |
+| Android (Quest, Samsung Galaxy XR) | OpenXR + Vulkan | Vulkan | NativeActivity / JNI |
+| Windows (PC VR, simulators) | OpenXR | Vulkan | Win32 loop |
+| Linux (Monado, PC VR dev) | OpenXR | Vulkan | `main` / desktop loop |
 | visionOS | CompositorServices | Metal | SwiftUI + ObjC++ bridge |
 | CI / headless | Null session | vnerhi Null | No runtime |
 
@@ -18,7 +19,7 @@ VneXR is the VertexNova **XR session/compositor framework**. It sits above **vne
 ```
 Application (shell + XR content)
     └── vnexr (ISession, IFrame, IView, IRenderSession)
-            ├── backend/openxr (Android, Windows)
+            ├── backend/openxr (Android, Windows, Linux)
             ├── backend/visionos (CompositorServices)
             ├── vnerhi (required) — swapchain → ITexture
             ├── vnemath (required) — poses, projections
@@ -90,7 +91,7 @@ export VNE_VNERHI_PATH=../vnerhi   # local private checkout
 | Option | Default | Description |
 |--------|---------|-------------|
 | `VNE_XR_WITH_RHI` | ON | Link vnerhi + vnemath |
-| `VNE_XR_WITH_OPENXR` | OFF (ON Android CI / Windows dev) | OpenXR backend |
+| `VNE_XR_WITH_OPENXR` | OFF (ON Android CI / Windows+Linux dev) | OpenXR backend |
 | `VNE_XR_WITH_VISIONOS` | OFF (ON visionOS) | CompositorServices backend |
 | `VNE_XR_WITH_GFX_SAMPLE` | OFF | Build vnegfx integration example |
 | `VNE_XR_BACKEND_OPENXR_GRAPHICS` | vulkan | OpenXR graphics binding |
@@ -108,7 +109,7 @@ CMake minimum: **3.26** (vnerhi requirement).
 |---------|---------|----------|
 | `01_hello_xr` | — | All |
 | `02_null_session` | Null + vnerhi Null | CI / desktop |
-| `03_hello_openxr` | OpenXR stereo cube | Android, Windows |
+| `03_hello_openxr` | OpenXR stereo cube | Android, Windows, **Linux** |
 | `04_openxr_windows` | OpenXR + Win32 pump | Windows |
 | `05_visionos_immersive` | CompositorServices | visionOS |
 | `06_gfx_xr_scene` | Null + vnegfx | Optional sample |
@@ -121,6 +122,7 @@ Android build:
 
 ## Further reading
 
+- [Linux OpenXR setup](linux_setup.md)
 - [OpenXR backend design](openxr_design.md)
 - [Coordinate conventions](conventions.md)
 - [Diagrams](diagrams/README.md)

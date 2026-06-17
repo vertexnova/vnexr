@@ -50,7 +50,7 @@ PLATFORM="Linux"
 COMPILER="gcc"
 
 usage() {
-  echo "Usage: $0 [-t <build_type>] [-a <action>] [-c <compiler>] [-l <lib_type>] [-clean] [-interactive] [-j <jobs>] [--dev] [--with-tests] [--with-examples]"
+  echo "Usage: $0 [-t <build_type>] [-a <action>] [-c <compiler>] [-l <lib_type>] [-clean] [-interactive] [-j <jobs>] [--dev] [--with-openxr] [--with-tests] [--with-examples]"
   echo "Options:"
   echo "  -t <build_type>    Debug, Release, RelWithDebInfo, MinSizeRel"
   echo "  -a <action>        configure|build|configure_and_build|test"
@@ -60,14 +60,21 @@ usage() {
   echo "  -interactive       Run in interactive mode to choose options"
   echo "  -j <jobs>          Number of parallel jobs (default: 10)"
   echo "  --dev              Enable tests + examples (VNE_XR_DEV/TESTS/EXAMPLES=ON)"
+  echo "  --with-openxr      Build OpenXR backend + Vulkan (Monado / PC VR on Linux)"
   echo "  --with-tests       Build vnexr_tests"
-  echo "  --with-examples    Build example apps (01_hello_xr); alias: --with-samples"
+  echo "  --with-examples    Build example apps (03_hello_openxr when --with-openxr)"
   echo "  --no-tests         Omit tests"
-  echo "  --no-examples      Omit examples; alias: --no-samples"
+  echo "  --no-examples      Omit examples"
+  echo ""
+  echo "OpenXR on Linux (first time):"
+  echo "  ./scripts/install_linux_openxr_deps.sh"
+  echo "  export VNE_VNERHI_PATH=/path/to/vnerhi   # optional local vnerhi"
+  echo "  ./scripts/init_submodules.sh full"
   echo ""
   echo "Examples:"
   echo "  $0 -t Debug -a configure_and_build --dev"
-  echo "  $0 -c clang -l static -j 32 --with-examples"
+  echo "  $0 -t Debug -a configure_and_build --with-openxr --with-examples"
+  echo "  $0 -c clang -l static -j 32 --with-openxr --dev"
   echo "  $0 -interactive"
   exit 1
 }
@@ -134,6 +141,10 @@ interactive_mode() {
   [[ $examples_choice =~ ^[Nn]$ ]] && WITH_EXAMPLES=false || WITH_EXAMPLES=true
 
   echo ""
+  read -p "Build OpenXR backend (Vulkan + 03_hello_openxr)? (y/N): " openxr_choice
+  [[ $openxr_choice =~ ^[Yy]$ ]] && WITH_OPENXR=true
+
+  echo ""
   read -p "Proceed with this configuration? (Y/n): " proceed
   [[ $proceed =~ ^[Nn]$ ]] && { echo "Build cancelled."; exit 0; }
 }
@@ -148,6 +159,7 @@ WITH_EXAMPLES=true
 WITH_DEV=false
 NO_TESTS=false
 NO_EXAMPLES=false
+WITH_OPENXR=false
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -158,6 +170,7 @@ while [[ $# -gt 0 ]]; do
     -clean|--clean) CLEAN_BUILD=true; shift ;;
     -interactive|--interactive) INTERACTIVE_MODE=true; shift ;;
     --dev) WITH_DEV=true; shift ;;
+    --with-openxr) WITH_OPENXR=true; shift ;;
     --with-tests) WITH_TESTS=true; shift ;;
     --with-examples|--with-samples) WITH_EXAMPLES=true; shift ;;
     --no-tests) NO_TESTS=true; WITH_TESTS=false; shift ;;
@@ -171,6 +184,7 @@ if [ "$WITH_DEV" = true ]; then
   WITH_TESTS=true
   WITH_EXAMPLES=true
 fi
+[ "$WITH_OPENXR" = true ] && WITH_EXAMPLES=true
 [ "$NO_TESTS" = true ] && WITH_TESTS=false
 [ "$NO_EXAMPLES" = true ] && WITH_EXAMPLES=false
 [ "$INTERACTIVE_MODE" = true ] && interactive_mode
@@ -197,8 +211,16 @@ VNE_XR_DEV_VAL=OFF
 TESTS_FLAG=$( [ "$WITH_TESTS" = true ] && echo ON || echo OFF )
 EXAMPLES_FLAG=$( [ "$WITH_EXAMPLES" = true ] && echo ON || echo OFF )
 
+OPENXR_FLAGS=""
+if [ "$WITH_OPENXR" = true ]; then
+  if ! pkg-config --exists vulkan 2>/dev/null && ! command -v vulkaninfo >/dev/null 2>&1; then
+    echo "WARNING: Vulkan dev packages may be missing. Run: ./scripts/install_linux_openxr_deps.sh"
+  fi
+  OPENXR_FLAGS="-DVNE_XR_WITH_OPENXR=ON -DVNE_XR_WITH_RHI=ON -DVNE_XR_BACKEND_VULKAN=ON"
+fi
+
 build_cmake_command() {
-  local cxx_flags="-DCMAKE_BUILD_TYPE=$BUILD_TYPE -DVNE_XR_LIB_TYPE=$LIB_TYPE -DVNE_XR_DEV=$VNE_XR_DEV_VAL -DVNE_XR_TESTS=$TESTS_FLAG -DVNE_XR_EXAMPLES=$EXAMPLES_FLAG $IPO_FLAGS"
+  local cxx_flags="-DCMAKE_BUILD_TYPE=$BUILD_TYPE -DVNE_XR_LIB_TYPE=$LIB_TYPE -DVNE_XR_DEV=$VNE_XR_DEV_VAL -DVNE_XR_TESTS=$TESTS_FLAG -DVNE_XR_EXAMPLES=$EXAMPLES_FLAG $OPENXR_FLAGS $IPO_FLAGS"
   if [ "$COMPILER" = "gcc" ]; then
     echo "cmake $cxx_flags -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ $PROJECT_ROOT"
   else
@@ -239,4 +261,4 @@ esac
 echo ""
 echo "=== Build completed successfully ==="
 echo "Build directory: $BUILD_DIR"
-echo "Tests enabled: $WITH_TESTS | Examples enabled: $WITH_EXAMPLES"
+echo "Tests enabled: $WITH_TESTS | Examples enabled: $WITH_EXAMPLES | OpenXR: $WITH_OPENXR"

@@ -14,13 +14,20 @@ chmod +x scripts/*.sh
 ### Linux (`build_linux.sh`)
 
 ```bash
+# Core + tests
 ./scripts/build_linux.sh -t Debug -a configure_and_build --dev
-./scripts/build_linux.sh -c clang -j 20 -t Release --with-examples
+
+# OpenXR + Vulkan (PC VR / Monado)
+./scripts/install_linux_openxr_deps.sh
+./scripts/build_linux.sh -t Debug -a configure_and_build --with-openxr --with-examples
+
+./scripts/build_linux.sh -c clang -j 20 -t Release --with-openxr --dev
 ./scripts/build_linux.sh -interactive
-./scripts/build_linux.sh -clean -t Debug
 ```
 
-**Options:** `-t` build type, `-c` compiler (gcc|clang), `-a` action (configure|build|configure_and_build|test), `-l` lib type, `-j` jobs, `-clean`, `-interactive`, `--dev`, `--with-tests`, `--with-examples`, `--no-tests`, `--no-examples`, `-h`
+**Options:** `-t` build type, `-c` compiler (gcc|clang), `-a` action, `-l` lib type, `-j` jobs, `-clean`, `-interactive`, `--dev`, `--with-openxr`, `--with-tests`, `--with-examples`, `--no-tests`, `--no-examples`, `-h`
+
+See [docs/vertexnova/xr/linux_setup.md](../docs/vertexnova/xr/linux_setup.md) for OpenXR runtime notes.
 
 ### macOS (`build_macos.sh`)
 

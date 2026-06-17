@@ -266,6 +266,43 @@ jobs:
       lib_type:           static
     secrets: inherit
 
+  build-linux-openxr:
+    name: "Build / Linux OpenXR + Vulkan"
+    needs: [detect-release, pre-checks-gate]
+    if: needs.pre-checks-gate.result == 'success' && needs.detect-release.outputs.is_release != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Use HTTPS for GitHub (CI runners have no SSH key)
+        run: git config --global url."https://github.com/".insteadOf "git@github.com:"
+
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install OpenXR + Vulkan build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y \
+            build-essential cmake ninja-build pkg-config \
+            libvulkan-dev vulkan-tools \
+            libx11-dev libxrandr-dev libxxf86vm-dev libgl1-mesa-dev
+
+      - name: Configure CMake (OpenXR)
+        run: |
+          cmake -B build/shared -S . \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DVNE_XR_CI=ON \
+            -DVNE_XR_LIB_TYPE=shared \
+            -DVNE_XR_WITH_RHI=ON \
+            -DVNE_XR_WITH_OPENXR=ON \
+            -DVNE_XR_BACKEND_VULKAN=ON \
+            -DVNE_XR_EXAMPLES=ON \
+            -DVNE_XR_TESTS=OFF \
+            -DWARNINGS_AS_ERRORS=ON
+
+      - name: Build
+        run: cmake --build build/shared --parallel
+
   build-web:
     name: "Build / Web (Emscripten)"
     needs: [detect-release, pre-checks-gate]
@@ -451,6 +488,7 @@ jobs:
       - build-linux-gcc
       - build-linux-clang
       - build-linux-clang-static
+      - build-linux-openxr
       - build-linux-asan
       - build-macos
       - build-windows
@@ -467,6 +505,7 @@ jobs:
             "build-linux-gcc=${{ needs.build-linux-gcc.result }}"
             "build-linux-clang=${{ needs.build-linux-clang.result }}"
             "build-linux-clang-static=${{ needs.build-linux-clang-static.result }}"
+            "build-linux-openxr=${{ needs.build-linux-openxr.result }}"
             "build-linux-asan=${{ needs.build-linux-asan.result }}"
             "build-macos=${{ needs.build-macos.result }}"
             "build-windows=${{ needs.build-windows.result }}"
@@ -500,6 +539,7 @@ jobs:
           echo "| build-linux-gcc   | ${{ needs.build-linux-gcc.result }}   |" >> "$GITHUB_STEP_SUMMARY"
           echo "| build-linux-clang | ${{ needs.build-linux-clang.result }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| build-linux-clang-static | ${{ needs.build-linux-clang-static.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| build-linux-openxr | ${{ needs.build-linux-openxr.result }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| build-linux-asan  | ${{ needs.build-linux-asan.result }}  |" >> "$GITHUB_STEP_SUMMARY"
           echo "| build-macos       | ${{ needs.build-macos.result }}       |" >> "$GITHUB_STEP_SUMMARY"
           echo "| build-windows     | ${{ needs.build-windows.result }}     |" >> "$GITHUB_STEP_SUMMARY"

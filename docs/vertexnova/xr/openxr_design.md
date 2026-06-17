@@ -1,12 +1,12 @@
 # OpenXR backend design (vnexr)
 
-Canonical architecture for the OpenXR session/compositor backend on Android and Windows. User-facing API notes live in [xr.md](xr.md); coordinate conventions in [conventions.md](conventions.md).
+Canonical architecture for the OpenXR session/compositor backend on **Android, Windows, and Linux**. User-facing API notes live in [xr.md](xr.md); coordinate conventions in [conventions.md](conventions.md).
 
 ## Goals and non-goals
 
 **Goals**
 
-- Production OpenXR on Android (Quest, Samsung Galaxy XR) and Windows (Monado, Meta Link) via **vnerhi Vulkan**.
+- Production OpenXR on Android (Quest, Samsung Galaxy XR), Windows (Monado, Meta Link), and **Linux** (Monado / desktop VR dev) via **vnerhi Vulkan**.
 - Thin `OpenXrSession` orchestrator delegating to focused modules (vnerhi backend layout).
 - Per-eye color + depth swapchains, real composition layers, view/projection matrices, Khronos Ch.4 input.
 - `Result` + `VNE_XR_CHECK` error model aligned with vnerhi.
@@ -139,7 +139,7 @@ Portable logic stays in `.cpp`; platform files expose small `noexcept` init func
 
 - **CI**: `NullSession` backend (no OpenXR runtime).
 - **Optional**: `tests/backend/openxr/` gated on `VNE_XR_WITH_OPENXR`.
-- **Manual**: `03_hello_openxr` (Android), `04_openxr_windows` (Win32 loop).
+- **Manual**: `03_hello_openxr` (Android, Linux), `04_openxr_windows` (Win32 loop).
 
 ## References
 

@@ -22,11 +22,15 @@ function(_xr_set_vnerhi_backend_defaults)
         set(VNE_XR_BACKEND_METAL ON CACHE BOOL "" FORCE)
     elseif(VNE_TARGET_PLATFORM STREQUAL "Android")
         set(VNE_XR_BACKEND_VULKAN ON CACHE BOOL "" FORCE)
+    elseif(VNE_TARGET_PLATFORM STREQUAL "Linux")
+        set(VNE_XR_BACKEND_VULKAN ON CACHE BOOL "" FORCE)
     elseif(VNE_TARGET_PLATFORM STREQUAL "Web")
         set(VNE_XR_BACKEND_WEBGPU ON CACHE BOOL "" FORCE)
     endif()
 
-    if(VNE_XR_WITH_OPENXR AND VNE_TARGET_PLATFORM STREQUAL "Android")
+    if(VNE_XR_WITH_OPENXR AND (VNE_TARGET_PLATFORM STREQUAL "Android"
+                               OR VNE_TARGET_PLATFORM STREQUAL "Linux"
+                               OR VNE_TARGET_PLATFORM STREQUAL "Windows"))
         set(VNE_XR_BACKEND_VULKAN ON CACHE BOOL "" FORCE)
     endif()
 endfunction()

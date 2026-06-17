@@ -81,6 +81,10 @@ Or use the platform scripts (they use `build/<lib_type>/...`):
 ./scripts/build_linux.sh -t Debug -a configure_and_build
 ./scripts/build_linux.sh -l static -c clang -a test
 
+# Linux OpenXR (Monado / desktop VR)
+./scripts/install_linux_openxr_deps.sh
+./scripts/build_linux.sh -t Debug -a configure_and_build --with-openxr --with-examples
+
 # Windows
 .\scripts\build_windows.ps1 -BuildType Debug -Action configure_and_build
 .\scripts\build_windows.ps1 -LibType static -BuildType Release -Action configure_and_build   # static in build/static/...

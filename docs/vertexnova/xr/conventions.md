@@ -13,7 +13,7 @@ Backends may differ in handedness, depth range, and NDC Z. Applications should u
 | `View.projection_matrix` | Row-major 4×4, eye → clip |
 | `LayerParams.near_z` / `far_z` | App hint for depth submission |
 
-## OpenXR (Android / Windows)
+## OpenXR (Android / Windows / Linux)
 
 | Topic | Convention |
 |-------|------------|
