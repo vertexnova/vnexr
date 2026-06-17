@@ -64,7 +64,7 @@ src/vertexnova/xr/
   backend/openxr/          OpenXR + Vulkan swapchain bridge
   backend/visionos/        CompositorServices C++ wrapper
 cmake/                     VneXrDeps, VneXrOpenXR, VneXrVisionOS
-examples/                  Platform samples (see examples/README.md)
+samples/                   Platform samples (see samples/README.md)
 ```
 
 ## Dependency tiers
@@ -93,26 +93,27 @@ export VNE_VNERHI_PATH=../vnerhi   # local private checkout
 | `VNE_XR_WITH_RHI` | ON | Link vnerhi + vnemath |
 | `VNE_XR_WITH_OPENXR` | OFF (ON Android CI / Windows+Linux dev) | OpenXR backend |
 | `VNE_XR_WITH_VISIONOS` | OFF (ON visionOS) | CompositorServices backend |
-| `VNE_XR_WITH_GFX_SAMPLE` | OFF | Build vnegfx integration example |
+| `VNE_XR_WITH_GFX_SAMPLE` | OFF | Build vnegfx integration sample |
 | `VNE_XR_BACKEND_OPENXR_GRAPHICS` | vulkan | OpenXR graphics binding |
 | `VNE_XR_TESTS` | ON (dev) | Unit tests |
-| `VNE_XR_EXAMPLES` | ON (dev) | Example programs |
+| `VNE_XR_SAMPLES` | ON (dev) | Sample programs (`VNE_XR_EXAMPLES` is a deprecated alias) |
 | `VNE_XR_LIB_TYPE` | shared | static or shared |
 
 `VNE_XR_WITH_OPENXR` and `VNE_XR_WITH_VISIONOS` are mutually exclusive. OpenXR is blocked on Apple platforms.
 
 CMake minimum: **3.26** (vnerhi requirement).
 
-## Examples
+## Samples
 
-| Example | Backend | Platform |
-|---------|---------|----------|
-| `01_hello_xr` | — | All |
-| `02_null_session` | Null + vnerhi Null | CI / desktop |
-| `03_hello_openxr` | OpenXR stereo cube | Android, Windows, **Linux** |
-| `04_openxr_windows` | OpenXR + Win32 pump | Windows |
-| `05_visionos_immersive` | CompositorServices | visionOS |
-| `06_gfx_xr_scene` | Null + vnegfx | Optional sample |
+| Sample | Backend | Platform |
+|--------|---------|----------|
+| `00_hello_xr` | — | All |
+| `01_null_simulator` | Null + layer stack | CI / desktop (XR simulator without runtime) |
+| `02_openxr_stereo` | OpenXR stereo cube | Android, Windows, **Linux** |
+| `90_visionos_immersive` | CompositorServices | visionOS |
+| `91_gfx_xr_scene` | Null + vnegfx | Optional |
+
+See [samples/README.md](../../../samples/README.md) for the getting-started path and layer architecture.
 
 Android build:
 

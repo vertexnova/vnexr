@@ -171,7 +171,13 @@ if(VNE_XR_CI)
 endif()
 
 option(VNE_XR_TESTS "Build vnexr test suite (turn OFF when used as submodule)" ON)
-option(VNE_XR_EXAMPLES "Build vnexr example programs (turn OFF when used as submodule)" OFF)
+option(VNE_XR_SAMPLES "Build vnexr sample programs (turn OFF when used as submodule)" OFF)
+option(VNE_XR_EXAMPLES "Deprecated alias for VNE_XR_SAMPLES (scripts pass -DVNE_XR_EXAMPLES=ON)" OFF)
+if(VNE_XR_EXAMPLES)
+    set(VNE_XR_SAMPLES ON CACHE BOOL "" FORCE)
+elseif(VNE_XR_SAMPLES)
+    set(VNE_XR_EXAMPLES ON CACHE BOOL "" FORCE)
+endif()
 set(VNE_XR_LIB_TYPE "shared" CACHE STRING "Library type for vnexr: static or shared (one per build)")
 set_property(CACHE VNE_XR_LIB_TYPE PROPERTY STRINGS "static" "shared")
 if(NOT VNE_XR_LIB_TYPE STREQUAL "static" AND NOT VNE_XR_LIB_TYPE STREQUAL "shared")
@@ -282,12 +288,14 @@ if(VNE_XR_CI)
     if(NOT DEFINED VNE_XR_TESTS OR VNE_XR_TESTS)
         set(VNE_XR_TESTS ON CACHE BOOL "" FORCE)
     endif()
+    set(VNE_XR_SAMPLES OFF CACHE BOOL "" FORCE)
     set(VNE_XR_EXAMPLES OFF CACHE BOOL "" FORCE)
-    message(STATUS "VneXR: CI build -> VNE_XR_TESTS=${VNE_XR_TESTS}, VNE_XR_EXAMPLES=OFF")
+    message(STATUS "VneXR: CI build -> VNE_XR_TESTS=${VNE_XR_TESTS}, VNE_XR_SAMPLES=OFF")
 elseif(VNE_XR_DEV)
     set(VNE_XR_TESTS ON CACHE BOOL "" FORCE)
+    set(VNE_XR_SAMPLES ON CACHE BOOL "" FORCE)
     set(VNE_XR_EXAMPLES ON CACHE BOOL "" FORCE)
-    message(STATUS "VneXR: DEV build -> VNE_XR_TESTS=ON, VNE_XR_EXAMPLES=ON")
+    message(STATUS "VneXR: DEV build -> VNE_XR_TESTS=ON, VNE_XR_SAMPLES=ON")
 endif()
 
 #==============================================================================
@@ -347,8 +355,8 @@ endif()
 #==============================================================================
 # Examples
 #==============================================================================
-if(VNE_XR_EXAMPLES)
-    add_subdirectory(examples)
+if(VNE_XR_SAMPLES)
+    add_subdirectory(samples)
 endif()
 
 #==============================================================================

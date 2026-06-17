@@ -31,7 +31,7 @@ export VNE_VNERHI_PATH=../vnerhi
 
 ## Build
 
-### Standard dev build (null backend, tests, examples)
+### Standard dev build (null backend, tests, samples)
 
 ```bash
 ./scripts/build_linux.sh -t Debug -a configure_and_build --dev
@@ -52,7 +52,7 @@ cmake -B build -DCMAKE_BUILD_TYPE=Debug \
   -DVNE_XR_WITH_OPENXR=ON \
   -DVNE_XR_BACKEND_VULKAN=ON \
   -DVNE_XR_DEV=ON \
-  -DVNE_XR_EXAMPLES=ON
+  -DVNE_XR_SAMPLES=ON
 cmake --build build -j$(nproc)
 ```
 
@@ -65,7 +65,7 @@ Install an OpenXR runtime (e.g. [Monado](https://monado.freedesktop.org/)):
 ```bash
 # Example after Monado install
 export XR_RUNTIME_JSON=/usr/share/openxr/1/openxr_monado.json   # path varies by distro
-./build/shared/Debug/build-linux-gcc-*/bin/examples/example_03_hello_openxr
+./build/shared/Debug/build-linux-gcc-*/bin/samples/sample_02_openxr_stereo
 ```
 
 Without a runtime, session creation may fail at startup — that is expected on a headless CI machine; the **compile** is still validated.
@@ -75,8 +75,8 @@ Without a runtime, session creation may fail at startup — that is expected on 
 | Topic | Linux behavior |
 |-------|----------------|
 | Graphics API | Vulkan via `XR_KHR_vulkan_enable2` (fallback: `vulkan_enable`) |
-| Example app | `03_hello_openxr` (`main` entry; not Android-only) |
-| Win32 sample | `04_openxr_windows` is **not** built on Linux |
+| Getting-started sample | `01_null_simulator` (no runtime), then `02_openxr_stereo` |
+| Win32-specific loop | Folded into `samples/framework/app/platform/desktop_loop` |
 | Apple | OpenXR blocked — use `build_visionos.sh` |
 
 ## Troubleshooting

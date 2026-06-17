@@ -125,9 +125,9 @@ validate_links() {
         fi
     fi
 
-    if [[ -f "$PROJECT_ROOT/examples/README.md" ]]; then
-        log_info "Checking links in: examples/README.md"
-        if ! markdown-link-check "$PROJECT_ROOT/examples/README.md" 2>/dev/null; then
+    if [[ -f "$PROJECT_ROOT/samples/README.md" ]]; then
+        log_info "Checking links in: samples/README.md"
+        if ! markdown-link-check "$PROJECT_ROOT/samples/README.md" 2>/dev/null; then
             ((failed_links++)) || true
         fi
     fi

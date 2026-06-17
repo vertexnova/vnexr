@@ -121,7 +121,7 @@ jobs:
 
       - name: Check formatting (uses project .clang-format, no modifications)
         run: |
-          find src include examples tests \
+          find src include samples tests \
             -type f \( -name '*.h' -o -name '*.hpp' -o -name '*.cpp' -o -name '*.c' \) \
             -print0 \
           | xargs -0 -r clang-format --dry-run --Werror \
