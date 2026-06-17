@@ -9,54 +9,54 @@
 #==============================================================================
 
 set(SOURCE_FILES
-    vertexnova/template/template.cpp
+    vertexnova/xr/xr.cpp
 )
 
 set(HEADER_FILES
-    ${VNE_INCLUDE_DIR}/vertexnova/template/template.h
+    ${VNE_INCLUDE_DIR}/vertexnova/xr/xr.h
 )
 
-# One library per build: static or shared, always named vnetemplate (alias vne::template).
-if(VNE_TEMPLATE_LIB_TYPE STREQUAL "shared")
+# One library per build: static or shared, always named vnexr (alias vne::xr).
+if(VNE_XR_LIB_TYPE STREQUAL "shared")
     set(_lib_type SHARED)
 else()
     set(_lib_type STATIC)
 endif()
 
-add_library(vnetemplate ${_lib_type} ${SOURCE_FILES} ${HEADER_FILES})
+add_library(vnexr ${_lib_type} ${SOURCE_FILES} ${HEADER_FILES})
 
-target_include_directories(vnetemplate
+target_include_directories(vnexr
     PUBLIC
         $<BUILD_INTERFACE:${VNE_INCLUDE_DIR}>
         $<BUILD_INTERFACE:${VNE_SRC_DIR}>
         $<INSTALL_INTERFACE:include>
 )
 
-target_link_libraries(vnetemplate
+target_link_libraries(vnexr
     PUBLIC
-        vne::template::Warnings
-        vne::template::BuildSettings
+        vne::xr::Warnings
+        vne::xr::BuildSettings
 )
 
 if(TARGET vne::common)
-    target_link_libraries(vnetemplate PUBLIC vne::common)
+    target_link_libraries(vnexr PUBLIC vne::common)
 endif()
 if(TARGET vne::logging)
-    target_link_libraries(vnetemplate PUBLIC vne::logging)
+    target_link_libraries(vnexr PUBLIC vne::logging)
 endif()
 
-target_compile_features(vnetemplate PUBLIC cxx_std_20)
+target_compile_features(vnexr PUBLIC cxx_std_20)
 
 # Set export/import defines for shared builds. The header uses them only on Windows
-# (VNE_TEMPLATE_API becomes __declspec(dllexport)/dllimport); on other platforms they are no-ops.
+# (VNE_XR_API becomes __declspec(dllexport)/dllimport); on other platforms they are no-ops.
 if(_lib_type STREQUAL "SHARED")
-    target_compile_definitions(vnetemplate
-        PRIVATE VNE_TEMPLATE_BUILDING_DLL
-        INTERFACE VNE_TEMPLATE_DLL
+    target_compile_definitions(vnexr
+        PRIVATE VNE_XR_BUILDING_DLL
+        INTERFACE VNE_XR_DLL
     )
 endif()
 
-add_library(vne::template ALIAS vnetemplate)
+add_library(vne::xr ALIAS vnexr)
 
 source_group("Sources" FILES ${SOURCE_FILES})
 source_group(TREE ${VNE_INCLUDE_DIR} PREFIX "Headers" FILES ${HEADER_FILES})

@@ -8,7 +8,7 @@
 # Autodoc:   yes
 #==============================================================================
 
-if(NOT TARGET vnetemplate)
+if(NOT TARGET vnexr)
     return()
 endif()
 
@@ -48,25 +48,25 @@ endif()
 # Test sources
 #==============================================================================
 set(TEST_SOURCES
-    template_test.cpp
+    xr_test.cpp
 )
 
 #==============================================================================
 # Build test executable
 #==============================================================================
-add_executable(vnetemplate_tests ${TEST_SOURCES})
+add_executable(vnexr_tests ${TEST_SOURCES})
 
-target_include_directories(vnetemplate_tests
+target_include_directories(vnexr_tests
     PRIVATE
         ${GTEST_INCLUDE_DIRS}
         ${VNE_INCLUDE_DIR}
         ${VNE_SRC_DIR}
 )
 
-target_link_libraries(vnetemplate_tests
+target_link_libraries(vnexr_tests
     PRIVATE
         ${GTEST_LIBRARIES}
-        vne::template
+        vne::xr
 )
 
-add_test(NAME vnetemplate_tests COMMAND vnetemplate_tests)
+add_test(NAME vnexr_tests COMMAND vnexr_tests)

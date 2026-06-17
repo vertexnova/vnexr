@@ -10,16 +10,16 @@
  */
 
 #include <gtest/gtest.h>
-#include "vertexnova/template/template.h"
+#include "vertexnova/xr/xr.h"
 
-TEST(VneTemplate, GetVersion) {
-    const char* ver = vne::template_ns::get_version();
+TEST(VneXR, GetVersion) {
+    const char* ver = vne::xr_ns::get_version();
     ASSERT_NE(ver, nullptr);
     EXPECT_STRNE(ver, "");
 }
 
-TEST(VneTemplate, Hello) {
-    const char* msg = vne::template_ns::hello();
+TEST(VneXR, Hello) {
+    const char* msg = vne::xr_ns::hello();
     ASSERT_NE(msg, nullptr);
-    EXPECT_STREQ(msg, "Hello from VneTemplate");
+    EXPECT_STREQ(msg, "Hello from VneXR");
 }

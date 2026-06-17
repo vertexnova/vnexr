@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #==============================================================================
-# VneTemplate Documentation Generation Script
+# VneXR Documentation Generation Script
 # Drives Doxygen API docs via CMake and optionally validates links.
 #==============================================================================
 # Copyright (c) 2026 Ajeet Singh Yadav. All rights reserved.
@@ -49,7 +49,7 @@ check_prerequisites() {
     log_info "Checking prerequisites..."
 
     if [[ ! -f "$PROJECT_ROOT/CMakeLists.txt" ]]; then
-        log_error "Not in VneTemplate project root. Please run from project root."
+        log_error "Not in VneXR project root. Please run from project root."
         exit 1
     fi
 
@@ -86,8 +86,8 @@ generate_api_docs() {
 
     mkdir -p "$BUILD_DIR"
     cmake -S "$PROJECT_ROOT" -B "$BUILD_DIR" \
-        -DENABLE_DOXYGEN=ON -DVNE_TEMPLATE_LIB_TYPE=shared
-    cmake --build "$BUILD_DIR" --target vnetemplate_doc_doxygen
+        -DENABLE_DOXYGEN=ON -DVNE_XR_LIB_TYPE=shared
+    cmake --build "$BUILD_DIR" --target vnexr_doc_doxygen
 
     # Doxygen output is build/shared/docs/html/index.html (OUTPUT_DIRECTORY=.../docs, HTML_OUTPUT=html)
     if [[ -f "$DOXYGEN_HTML/index.html" ]]; then
@@ -174,7 +174,7 @@ generate_coverage_report() {
 
 # Main function
 main() {
-    log_info "Starting VneTemplate documentation generation..."
+    log_info "Starting VneXR documentation generation..."
 
     check_prerequisites
     generate_api_docs
@@ -190,7 +190,7 @@ main() {
 
 # Help function
 show_help() {
-    echo "VneTemplate Documentation Generator"
+    echo "VneXR Documentation Generator"
     echo ""
     echo "Usage: $0 [OPTIONS]"
     echo ""

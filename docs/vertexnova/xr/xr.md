@@ -2,7 +2,7 @@
 
 ## Overview
 
-VneTemplate is a minimal C++ project template for the VertexNova ecosystem. It provides a standard layout (include, src, tests, examples), CMake setup with vnecmake, optional internal deps (vnecommon, vnelogging), and a tiny API so you can build and run out of the box. Use it as a starting point for new libraries or applications.
+VneXR is a minimal C++ project template for the VertexNova ecosystem. It provides a standard layout (include, src, tests, examples), CMake setup with vnecmake, optional internal deps (vnecommon, vnelogging), and a tiny API so you can build and run out of the box. Use it as a starting point for new libraries or applications.
 
 ![System Context](diagrams/context.png)
 
@@ -11,11 +11,11 @@ VneTemplate is a minimal C++ project template for the VertexNova ecosystem. It p
 | Element | Description |
 |---------|-------------|
 | C++ Application | Developer/user code (tests, examples, or your app) that uses the template API |
-| VneTemplate | Template library; provides `get_version()`, `hello()`, and the project scaffold |
+| VneXR | Template library; provides `get_version()`, `hello()`, and the project scaffold |
 
 ## Project layout and build
 
-The template follows a standard directory layout and builds one library per build (static or shared), plus tests and optional examples. The library target is always `vnetemplate` with alias `vne::template`.
+The template follows a standard directory layout and builds one library per build (static or shared), plus tests and optional examples. The library target is always `vnexr` with alias `vne::xr`.
 
 ![Project layout](diagrams/architecture.png)
 
@@ -23,19 +23,19 @@ The template follows a standard directory layout and builds one library per buil
 
 | Element | Description |
 |---------|-------------|
-| include/vertexnova/template/ | Public API headers (e.g. `template.h`) |
-| src/vertexnova/template/ | Implementation |
+| include/vertexnova/xr/ | Public API headers (e.g. `xr.h`) |
+| src/vertexnova/xr/ | Implementation |
 | tests/ | Unit tests (Google Test) |
-| examples/ | Example apps (e.g. `01_hello_template`) |
+| examples/ | Example apps (e.g. `01_hello_xr`) |
 | cmake/vnecmake/ | CMake modules submodule |
 | deps/internal/, deps/external/ | Internal (vnecommon, vnelogging) and external (googletest) deps |
-| CMake configure + build | Produces one lib: `libvnetemplate.a` or `libvnetemplate.so` (or `.dylib`/`.dll`), plus tests and examples |
+| CMake configure + build | Produces one lib: `libvnexr.a` or `libvnexr.so` (or `.dylib`/`.dll`), plus tests and examples |
 
 See the root [README.md](../../../README.md) for prerequisites, dependencies, and build commands.
 
 ## API usage
 
-The public API lives in namespace `vne::template_ns` and exposes two functions:
+The public API lives in namespace `vne::xr_ns` and exposes two functions:
 
 ![API flow](diagrams/api.png)
 
@@ -49,29 +49,29 @@ The public API lives in namespace `vne::template_ns` and exposes two functions:
 Example:
 
 ```cpp
-#include <vertexnova/template/template.h>
+#include <vertexnova/xr/xr.h>
 
-const char* ver = vne::template_ns::get_version();  // e.g. "1.0.0"
-const char* msg = vne::template_ns::hello();        // e.g. "Hello from VneTemplate"
+const char* ver = vne::xr_ns::get_version();  // e.g. "1.0.0"
+const char* msg = vne::xr_ns::hello();        // e.g. "Hello from VneXR"
 ```
 
 ## CMake options
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `VNE_TEMPLATE_TESTS` | ON | Build unit tests. |
-| `VNE_TEMPLATE_EXAMPLES` | ON (dev/top-level) / OFF (submodule) | Build examples (on by default in dev builds, off when used as a submodule). |
-| `VNE_TEMPLATE_LIB_TYPE` | shared | Library type: `static` or `shared`. One library per build; target is always `vnetemplate` (alias `vne::template`). |
+| `VNE_XR_TESTS` | ON | Build unit tests. |
+| `VNE_XR_EXAMPLES` | ON (dev/top-level) / OFF (submodule) | Build examples (on by default in dev builds, off when used as a submodule). |
+| `VNE_XR_LIB_TYPE` | shared | Library type: `static` or `shared`. One library per build; target is always `vnexr` (alias `vne::xr`). |
 | `WARNINGS_AS_ERRORS` | OFF | Treat compiler warnings as errors. |
 | `ENABLE_DOXYGEN` | OFF | Generate Doxygen documentation. |
 
 ## Static vs shared for deployment
 
-- **Static** (`-DVNE_TEMPLATE_LIB_TYPE=static`): Single executable, no runtime lib to ship. Best for one-binary deploy.
-- **Shared** (`-DVNE_TEMPLATE_LIB_TYPE=shared`, default): For plugins, many apps sharing one lib, or ABI versioning. Preferred for **cross-platform GL / multibackend** libs (one `libvnetemplate.so` plus backend plugins).
+- **Static** (`-DVNE_XR_LIB_TYPE=static`): Single executable, no runtime lib to ship. Best for one-binary deploy.
+- **Shared** (`-DVNE_XR_LIB_TYPE=shared`, default): For plugins, many apps sharing one lib, or ABI versioning. Preferred for **cross-platform GL / multibackend** libs (one `libvnexr.so` plus backend plugins).
 
 ## Documentation
 
-- **This document:** `docs/vertexnova/template/template.md`
-- **Diagrams:** `docs/vertexnova/template/diagrams/` (Draw.io sources; export to PNG as described in [diagrams/README.md](diagrams/README.md))
+- **This document:** `docs/vertexnova/xr/xr.md`
+- **Diagrams:** `docs/vertexnova/xr/diagrams/` (Draw.io sources; export to PNG as described in [diagrams/README.md](diagrams/README.md))
 - **API reference:** Generated by Doxygen when `-DENABLE_DOXYGEN=ON` (see root README)

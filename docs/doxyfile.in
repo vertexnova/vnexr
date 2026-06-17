@@ -1,5 +1,5 @@
 #==============================================================================
-# Doxyfile Configuration for VneTemplate
+# Doxyfile Configuration for VneXR
 #==============================================================================
 
 PROJECT_NAME           = "@CMAKE_PROJECT_NAME@"

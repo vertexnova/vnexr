@@ -10,12 +10,12 @@
  */
 
 #include "common/logging_guard.h"
-#include "vertexnova/template/template.h"
+#include "vertexnova/xr/xr.h"
 
 int main() {
-    vne::template_ns::examples::LoggingGuard logging_guard;
+    vne::xr_ns::examples::LoggingGuard logging_guard;
 
-    using namespace vne::template_ns;
+    using namespace vne::xr_ns;
 
     VNE_LOG_INFO << hello();
     VNE_LOG_INFO << "Version: " << get_version();

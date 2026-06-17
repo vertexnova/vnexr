@@ -1,4 +1,4 @@
-# VneTemplate Scripts
+# VneXR Scripts
 
 Build scripts for macOS, Linux, and Windows.
 
