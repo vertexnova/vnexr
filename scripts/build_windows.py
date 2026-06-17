@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """
 VneXR Windows Build Script
-Copyright (c) 2024 Ajeet Singh Yadav. All rights reserved.
+Copyright (c) 2026 Ajeet Singh Yadav. All rights reserved.
 Licensed under the Apache License, Version 2.0 (the "License")
 
 This script builds VneXR for Windows with Visual Studio integration.
 """
 
-import os
-import sys
-import subprocess
 import argparse
-import shutil
+import os
 import re
+import shutil
+import subprocess
+import sys
 from pathlib import Path
 from typing import List, Optional
 
@@ -22,6 +22,10 @@ class BuildConfig:
         self.jobs = 10
         self.build_type = "Debug"
         self.action = "configure_and_build"
+        self.lib_type = "shared"
+        self.with_dev = False
+        self.with_tests = False
+        self.with_examples = False
         self.clean_build = False
         self.interactive = False
         self.platform = "Windows"
@@ -100,6 +104,10 @@ def interactive_mode(config: BuildConfig):
     print("\nSelect Action:\n1) Configure only\n2) Configure and build (default)\n3) Configure, build, and test")
     action_choice = input("Enter choice (1-3) [2]: ").strip()
     config.action = {"1": "configure", "3": "test"}.get(action_choice, "configure_and_build")
+    if input("\nEnable tests? (y/N): ").strip().lower() == "y":
+        config.with_tests = True
+    if input("Enable examples? (y/N): ").strip().lower() == "y":
+        config.with_examples = True
     if input("\nClean build directory before starting? (y/N): ").strip().lower() == "y":
         config.clean_build = True
     jobs_input = input(f"Number of parallel jobs (default: {config.jobs}): ").strip()
@@ -109,17 +117,64 @@ def interactive_mode(config: BuildConfig):
         except ValueError:
             pass
     print("\n=== Configuration Summary ===")
-    print(f"Platform: {config.platform}\nBuild Type: {config.build_type}\nAction: {config.action}\nClean: {config.clean_build}\nJobs: {config.jobs}")
+    print(
+        f"Platform: {config.platform}\nBuild Type: {config.build_type}\n"
+        f"Action: {config.action}\nTests: {config.with_tests}\nSamples: {config.with_examples}\n"
+        f"Clean: {config.clean_build}\nJobs: {config.jobs}"
+    )
     if input("Proceed? (Y/n): ").strip().lower() == "n":
         print("Build cancelled.")
         sys.exit(0)
 
 
-def build_cmake_command(project_root: Path, build_type: str) -> List[str]:
+def cmake_generator(compiler_version: str) -> str:
+    """Map detected VS/MSVC version to a CMake -G generator string."""
+    version = compiler_version.strip()
+    if version in ("16", "2019") or version.startswith("16."):
+        return "Visual Studio 16 2019"
+    if version in ("17", "2022") or version.startswith("17."):
+        return "Visual Studio 17 2022"
+    match = re.match(r"19\.(\d+)", version)
+    if match:
+        if int(match.group(1)) >= 30:
+            return "Visual Studio 17 2022"
+        return "Visual Studio 16 2019"
+    vs_path = find_visual_studio()
+    if vs_path:
+        if "2019" in vs_path:
+            return "Visual Studio 16 2019"
+        if "2022" in vs_path:
+            return "Visual Studio 17 2022"
+    return "Visual Studio 17 2022"
+
+
+def build_cmake_command(
+    project_root: Path,
+    build_type: str,
+    lib_type: str,
+    with_dev: bool,
+    with_tests: bool,
+    with_examples: bool,
+    compiler_version: str,
+) -> List[str]:
+    dev_flag = "ON" if with_dev else "OFF"
+    tests_flag = "ON" if with_tests else "OFF"
+    samples_flag = "ON" if with_examples else "OFF"
+    generator = cmake_generator(compiler_version)
     return [
-        "cmake", "-G", "Visual Studio 17 2022", "-A", "x64",
-        "-DCMAKE_BUILD_TYPE=" + build_type, "-DCMAKE_C_COMPILER=cl", "-DCMAKE_CXX_COMPILER=cl",
-        "-DVNE_XR_TESTS=ON", str(project_root),
+        "cmake",
+        "-G",
+        generator,
+        "-A",
+        "x64",
+        "-DCMAKE_BUILD_TYPE=" + build_type,
+        "-DCMAKE_C_COMPILER=cl",
+        "-DCMAKE_CXX_COMPILER=cl",
+        f"-DVNE_XR_LIB_TYPE={lib_type}",
+        f"-DVNE_XR_DEV={dev_flag}",
+        f"-DVNE_XR_TESTS={tests_flag}",
+        f"-DVNE_XR_EXAMPLES={samples_flag}",
+        str(project_root),
     ]
 
 
@@ -133,10 +188,29 @@ def ensure_build_dir(build_dir: Path):
     build_dir.mkdir(parents=True, exist_ok=True)
 
 
-def configure_project(build_dir: Path, project_root: Path, build_type: str) -> bool:
+def configure_project(
+    build_dir: Path,
+    project_root: Path,
+    config: BuildConfig,
+    compiler_version: str,
+) -> bool:
     print("Configuring project...")
+    generator = cmake_generator(compiler_version)
+    print(f"CMake generator: {generator}")
     try:
-        subprocess.run(build_cmake_command(project_root, build_type), cwd=build_dir, check=True)
+        subprocess.run(
+            build_cmake_command(
+                project_root,
+                config.build_type,
+                config.lib_type,
+                config.with_dev,
+                config.with_tests,
+                config.with_examples,
+                compiler_version,
+            ),
+            cwd=build_dir,
+            check=True,
+        )
         return True
     except subprocess.CalledProcessError:
         print("Error: CMake configuration failed")
@@ -146,7 +220,11 @@ def configure_project(build_dir: Path, project_root: Path, build_type: str) -> b
 def build_project(build_dir: Path, build_type: str, jobs: int) -> bool:
     print(f"Building with {jobs} parallel jobs...")
     try:
-        subprocess.run(["cmake", "--build", ".", "--config", build_type, "--parallel", str(jobs)], cwd=build_dir, check=True)
+        subprocess.run(
+            ["cmake", "--build", ".", "--config", build_type, "--parallel", str(jobs)],
+            cwd=build_dir,
+            check=True,
+        )
         return True
     except subprocess.CalledProcessError:
         print("Error: Build failed")
@@ -167,6 +245,12 @@ def main():
     parser = argparse.ArgumentParser(description="Build VneXR for Windows")
     parser.add_argument("-t", "--build-type", choices=["Debug", "Release", "RelWithDebInfo", "MinSizeRel"], default="Debug")
     parser.add_argument("-a", "--action", choices=["configure", "build", "configure_and_build", "test"], default="configure_and_build")
+    parser.add_argument("-l", "--lib-type", choices=["shared", "static"], default="shared")
+    parser.add_argument("--dev", action="store_true", help="Enable tests + examples (VNE_XR_DEV=ON)")
+    parser.add_argument("--with-tests", action="store_true", help="Build vnexr_tests")
+    parser.add_argument("--with-examples", "--with-examples", action="store_true", help="Build example programs")
+    parser.add_argument("--no-tests", action="store_true", help="Omit tests")
+    parser.add_argument("--no-examples", "--no-examples", action="store_true", help="Omit examples")
     parser.add_argument("-j", "--jobs", type=int, default=10)
     parser.add_argument("--clean", action="store_true")
     parser.add_argument("--interactive", action="store_true")
@@ -175,9 +259,25 @@ def main():
     config = BuildConfig()
     config.build_type = args.build_type
     config.action = args.action
+    config.lib_type = args.lib_type
+    config.with_dev = args.dev
+    config.with_tests = args.with_tests
+    config.with_examples = args.with_examples
     config.jobs = args.jobs
     config.clean_build = args.clean
     config.interactive = args.interactive
+
+    no_tests = args.no_tests
+    no_samples = args.no_samples
+    if no_tests:
+        config.with_tests = False
+    if no_samples:
+        config.with_examples = False
+    if config.with_dev:
+        if not no_tests:
+            config.with_tests = True
+        if not no_samples:
+            config.with_examples = True
 
     if config.interactive:
         interactive_mode(config)
@@ -193,15 +293,25 @@ def main():
 
     script_dir = Path(__file__).parent
     project_root = script_dir.parent
-    build_dir = project_root / "build" / config.build_type / f"build-windows-{config.compiler}-{compiler_version}"
+    build_dir = (
+        project_root
+        / "build"
+        / config.lib_type
+        / config.build_type
+        / f"build-windows-{config.compiler}-{compiler_version}"
+    )
 
     if config.clean_build:
         clean_build_dir(build_dir)
     else:
         ensure_build_dir(build_dir)
 
+    if config.action == "test" and not config.with_tests:
+        print("ERROR: Tests are disabled. Reconfigure with --with-tests or --dev.")
+        sys.exit(1)
+
     if config.action in ["configure", "build", "configure_and_build", "test"]:
-        if not configure_project(build_dir, project_root, config.build_type):
+        if not configure_project(build_dir, project_root, config, compiler_version):
             sys.exit(1)
     if config.action in ["build", "configure_and_build", "test"]:
         if not build_project(build_dir, config.build_type, config.jobs):
@@ -211,6 +321,7 @@ def main():
 
     print("\n=== Build completed successfully ===")
     print(f"Build directory: {build_dir}")
+    print(f"Tests enabled: {config.with_tests} | Examples enabled: {config.with_examples}")
 
 
 if __name__ == "__main__":

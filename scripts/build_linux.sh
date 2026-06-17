@@ -14,12 +14,11 @@
 # This script builds VneXR for Linux platforms
 #==============================================================================
 
-set -e  # Exit on any error
+set -e
 
-# Default parallel jobs
 JOBS=10
+ARGS=()
 
-# Parse command line arguments for jobs
 while [[ $# -gt 0 ]]; do
     case $1 in
         -j|--jobs)
@@ -45,51 +44,45 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
-
-# Reconstruct ARGS for the rest of the script
 set -- "${ARGS[@]}"
 
-# Platform detection (force Linux)
 PLATFORM="Linux"
 COMPILER="gcc"
 
-# Function to display usage information
 usage() {
-  echo "Usage: $0 [-t <build_type>] [-a <action>] [-c <compiler>] [-l <lib_type>] [-clean] [-interactive] [-j <jobs>]"
+  echo "Usage: $0 [-t <build_type>] [-a <action>] [-c <compiler>] [-l <lib_type>] [-clean] [-interactive] [-j <jobs>] [--dev] [--with-tests] [--with-examples]"
   echo "Options:"
-  echo "  -t <build_type>    Specify the build type (Debug, Release, RelWithDebInfo, MinSizeRel)"
-  echo "  -a <action>        Specify the action to perform:"
-  echo "                     configure: Configure the project"
-  echo "                     build: Build the project"
-  echo "                     configure_and_build: Configure and build the project"
-  echo "                     test: Run tests"
-  echo "  -c <compiler>      Specify the compiler (gcc, clang)"
-  echo "  -l <lib_type>      Library type: static or shared (default: shared). Build dir: build/<lib_type>/..."
+  echo "  -t <build_type>    Debug, Release, RelWithDebInfo, MinSizeRel"
+  echo "  -a <action>        configure|build|configure_and_build|test"
+  echo "  -c <compiler>      gcc or clang"
+  echo "  -l <lib_type>      static or shared (default: shared)"
   echo "  -clean             Clean the build directory before performing the action"
   echo "  -interactive       Run in interactive mode to choose options"
   echo "  -j <jobs>          Number of parallel jobs (default: 10)"
+  echo "  --dev              Enable tests + examples (VNE_XR_DEV/TESTS/EXAMPLES=ON)"
+  echo "  --with-tests       Build vnexr_tests"
+  echo "  --with-examples    Build example apps (01_hello_xr); alias: --with-samples"
+  echo "  --no-tests         Omit tests"
+  echo "  --no-examples      Omit examples; alias: --no-samples"
   echo ""
   echo "Examples:"
-  echo "  $0 -t Debug -a configure_and_build"
-  echo "  $0 -c clang -l static -j 32"
+  echo "  $0 -t Debug -a configure_and_build --dev"
+  echo "  $0 -c clang -l static -j 32 --with-examples"
   echo "  $0 -interactive"
-  echo "  $0 -t Release -l shared -clean"
   exit 1
 }
 
-# Function to run interactive mode
 interactive_mode() {
   echo "=== VneXR Interactive Build Configuration ==="
   echo ""
   echo "Detected Platform: $PLATFORM"
   echo ""
 
-  # Build type selection
   echo "Select Build Type:"
-  echo "1) Debug (default) - Development with debug symbols"
-  echo "2) Release - Optimized for production"
-  echo "3) RelWithDebInfo - Release with debug info"
-  echo "4) MinSizeRel - Minimum size release"
+  echo "1) Debug (default)"
+  echo "2) Release"
+  echo "3) RelWithDebInfo"
+  echo "4) MinSizeRel"
   read -p "Enter choice (1-4) [1]: " build_choice
   case $build_choice in
     2) BUILD_TYPE="Release" ;;
@@ -98,29 +91,26 @@ interactive_mode() {
     *) BUILD_TYPE="Debug" ;;
   esac
 
-  # Compiler selection
   echo ""
   echo "Select Compiler:"
-  echo "1) GCC (default) - GNU Compiler Collection"
-  echo "2) Clang - LLVM Compiler"
+  echo "1) GCC (default)"
+  echo "2) Clang"
   read -p "Enter choice (1-2) [1]: " compiler_choice
   case $compiler_choice in
     2) COMPILER="clang" ;;
     *) COMPILER="gcc" ;;
   esac
 
-  # Library type (static or shared; build dir will be build/<lib_type>/...)
   echo ""
   echo "Select library type:"
-  echo "1) shared (default) - shared library"
-  echo "2) static - static library"
+  echo "1) shared (default)"
+  echo "2) static"
   read -p "Enter choice (1-2) [1]: " lib_choice
   case $lib_choice in
     2) LIB_TYPE="static" ;;
     *) LIB_TYPE="shared" ;;
   esac
 
-  # Action selection
   echo ""
   echo "Select Action:"
   echo "1) Configure only"
@@ -133,81 +123,58 @@ interactive_mode() {
     *) ACTION="configure_and_build" ;;
   esac
 
-  # Clean build option
   echo ""
   read -p "Clean build directory before starting? (y/N): " clean_choice
-  if [[ $clean_choice =~ ^[Yy]$ ]]; then
-    CLEAN_BUILD=true
-  fi
+  [[ $clean_choice =~ ^[Yy]$ ]] && CLEAN_BUILD=true
 
   echo ""
-  echo "=== Configuration Summary ==="
-  echo "Platform: $PLATFORM"
-  echo "Build Type: $BUILD_TYPE"
-  echo "Library Type: $LIB_TYPE (build dir: build/$LIB_TYPE/...)"
-  echo "Compiler: $COMPILER"
-  echo "Action: $ACTION"
-  echo "Clean Build: $CLEAN_BUILD"
-  echo "Parallel Jobs: $JOBS"
+  read -p "Enable tests? (Y/n): " tests_choice
+  [[ $tests_choice =~ ^[Nn]$ ]] && WITH_TESTS=false || WITH_TESTS=true
+  read -p "Enable examples? (Y/n): " examples_choice
+  [[ $examples_choice =~ ^[Nn]$ ]] && WITH_EXAMPLES=false || WITH_EXAMPLES=true
+
   echo ""
   read -p "Proceed with this configuration? (Y/n): " proceed
-  if [[ $proceed =~ ^[Nn]$ ]]; then
-    echo "Build cancelled."
-    exit 0
-  fi
+  [[ $proceed =~ ^[Nn]$ ]] && { echo "Build cancelled."; exit 0; }
 }
 
-# Default values
 BUILD_TYPE="Debug"
 ACTION="configure_and_build"
-COMPILER="gcc"
 LIB_TYPE="shared"
 CLEAN_BUILD=false
 INTERACTIVE_MODE=false
+WITH_TESTS=true
+WITH_EXAMPLES=true
+WITH_DEV=false
+NO_TESTS=false
+NO_EXAMPLES=false
 
-# Parse command-line arguments
 while [[ $# -gt 0 ]]; do
   case $1 in
-    -t|--build-type)
-      BUILD_TYPE="$2"
-      shift 2
-      ;;
-    -a|--action)
-      ACTION="$2"
-      shift 2
-      ;;
-    -c|--compiler)
-      COMPILER="$2"
-      shift 2
-      ;;
-    -l|--lib-type)
-      LIB_TYPE="$2"
-      shift 2
-      ;;
-    -clean|--clean)
-      CLEAN_BUILD=true
-      shift
-      ;;
-    -interactive|--interactive)
-      INTERACTIVE_MODE=true
-      shift
-      ;;
-    -h|--help)
-      usage
-      ;;
-    *)
-      echo "Unknown option: $1"
-      usage
-      ;;
+    -t|--build-type) BUILD_TYPE="$2"; shift 2 ;;
+    -a|--action) ACTION="$2"; shift 2 ;;
+    -c|--compiler) COMPILER="$2"; shift 2 ;;
+    -l|--lib-type) LIB_TYPE="$2"; shift 2 ;;
+    -clean|--clean) CLEAN_BUILD=true; shift ;;
+    -interactive|--interactive) INTERACTIVE_MODE=true; shift ;;
+    --dev) WITH_DEV=true; shift ;;
+    --with-tests) WITH_TESTS=true; shift ;;
+    --with-examples|--with-samples) WITH_EXAMPLES=true; shift ;;
+    --no-tests) NO_TESTS=true; WITH_TESTS=false; shift ;;
+    --no-examples|--no-samples) NO_EXAMPLES=true; WITH_EXAMPLES=false; shift ;;
+    -h|--help) usage ;;
+    *) echo "Unknown option: $1"; usage ;;
   esac
 done
 
-# Check for interactive mode
-if [ "$INTERACTIVE_MODE" = true ]; then
-  interactive_mode
+if [ "$WITH_DEV" = true ]; then
+  WITH_TESTS=true
+  WITH_EXAMPLES=true
 fi
+[ "$NO_TESTS" = true ] && WITH_TESTS=false
+[ "$NO_EXAMPLES" = true ] && WITH_EXAMPLES=false
+[ "$INTERACTIVE_MODE" = true ] && interactive_mode
 
-# Determine compiler version
 if [ "$COMPILER" = "gcc" ]; then
   COMPILER_VERSION=$(gcc --version | head -n 1 | awk '{print $4}')
 elif [ "$COMPILER" = "clang" ]; then
@@ -219,104 +186,57 @@ fi
 
 echo "$PLATFORM :: $COMPILER-${COMPILER_VERSION}"
 
-# Store project root directory
 PROJECT_ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-
-# Set the build directory: build/<lib_type>/<build_type>/build-linux-<compiler>-<version>
 BUILD_DIR="$PROJECT_ROOT/build/${LIB_TYPE}/${BUILD_TYPE}/build-linux-$COMPILER-${COMPILER_VERSION}"
 
-# Build CMake command
+IPO_FLAGS=""
+[ "$COMPILER" = "clang" ] && IPO_FLAGS="-DENABLE_IPO=OFF"
+
+VNE_XR_DEV_VAL=OFF
+[ "$WITH_DEV" = true ] && VNE_XR_DEV_VAL=ON
+TESTS_FLAG=$( [ "$WITH_TESTS" = true ] && echo ON || echo OFF )
+EXAMPLES_FLAG=$( [ "$WITH_EXAMPLES" = true ] && echo ON || echo OFF )
+
 build_cmake_command() {
-  local base_cmd=""
-
+  local cxx_flags="-DCMAKE_BUILD_TYPE=$BUILD_TYPE -DVNE_XR_LIB_TYPE=$LIB_TYPE -DVNE_XR_DEV=$VNE_XR_DEV_VAL -DVNE_XR_TESTS=$TESTS_FLAG -DVNE_XR_EXAMPLES=$EXAMPLES_FLAG $IPO_FLAGS"
   if [ "$COMPILER" = "gcc" ]; then
-    base_cmd="cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DVNE_XR_LIB_TYPE=$LIB_TYPE -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DVNE_XR_TESTS=ON"
-  elif [ "$COMPILER" = "clang" ]; then
-    base_cmd="cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DVNE_XR_LIB_TYPE=$LIB_TYPE -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DVNE_XR_TESTS=ON"
+    echo "cmake $cxx_flags -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ $PROJECT_ROOT"
+  else
+    echo "cmake $cxx_flags -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ $PROJECT_ROOT"
   fi
-
-  echo "$base_cmd $PROJECT_ROOT"
 }
 
 CONFIGURE_COMMAND=$(build_cmake_command)
 BUILD_COMMAND="make -j$JOBS"
 TEST_COMMAND="ctest --output-on-failure"
 
-# Clean previous build
-clean_build() {
-  rm -rf "$BUILD_DIR"
-  mkdir -p "$BUILD_DIR"
-  cd "$BUILD_DIR" || exit
-}
+clean_build() { rm -rf "$BUILD_DIR"; mkdir -p "$BUILD_DIR"; cd "$BUILD_DIR" || exit; }
+ensure_build_dir() { mkdir -p "$BUILD_DIR"; cd "$BUILD_DIR" || exit; }
+configure_project() { echo "Configuring with command: $CONFIGURE_COMMAND"; eval $CONFIGURE_COMMAND; }
+build_project() { echo "Building with $JOBS parallel jobs..."; eval $BUILD_COMMAND; }
+run_tests() { eval $TEST_COMMAND; }
 
-# Ensure build directory exists (if not cleaning)
-ensure_build_dir() {
-  if [ ! -d "$BUILD_DIR" ]; then
-    mkdir -p "$BUILD_DIR"
-  fi
-  cd "$BUILD_DIR" || exit
-}
-
-# Configure the project
-configure_project() {
-  echo "Configuring with command: $CONFIGURE_COMMAND"
-  eval $CONFIGURE_COMMAND
-}
-
-# Build the project
-build_project() {
-  echo "Building with $JOBS parallel jobs..."
-  eval $BUILD_COMMAND
-}
-
-# Run tests
-run_tests() {
-  eval $TEST_COMMAND
-}
-
-# Perform actions based on the specified option
 case $ACTION in
   configure)
-    if [ "$CLEAN_BUILD" = true ]; then
-      clean_build
-    else
-      ensure_build_dir
-    fi
+    [ "$CLEAN_BUILD" = true ] && clean_build || ensure_build_dir
     configure_project
     ;;
-  build)
-    if [ "$CLEAN_BUILD" = true ]; then
-      clean_build
-    else
-      ensure_build_dir
-    fi
-    configure_project
-    build_project
-    ;;
-  configure_and_build)
-    if [ "$CLEAN_BUILD" = true ]; then
-      clean_build
-    else
-      ensure_build_dir
-    fi
+  build|configure_and_build)
+    [ "$CLEAN_BUILD" = true ] && clean_build || ensure_build_dir
     configure_project
     build_project
     ;;
   test)
-    if [ "$CLEAN_BUILD" = true ]; then
-      clean_build
-    else
-      ensure_build_dir
-    fi
+    [ "$WITH_TESTS" != true ] && { echo "ERROR: Tests disabled. Use --with-tests or --dev."; exit 1; }
+    [ "$CLEAN_BUILD" = true ] && clean_build || ensure_build_dir
     configure_project
     build_project
     run_tests
     ;;
-  *)
-    usage
-    ;;
+  *) usage ;;
 esac
 
 echo ""
 echo "=== Build completed successfully ==="
 echo "Build directory: $BUILD_DIR"
+echo "Tests enabled: $WITH_TESTS | Examples enabled: $WITH_EXAMPLES"

@@ -1,14 +1,6 @@
 #==============================================================================
 # VneXR Windows Build Script (PowerShell)
 #==============================================================================
-# Copyright (c) 2026 Ajeet Singh Yadav. All rights reserved.
-# Licensed under the Apache License, Version 2.0 (the "License")
-#
-# Author:    Ajeet Singh Yadav
-# Created:   February 2026
-#
-# Minimal: configure, build, test. Uses CMake with default generator.
-#==============================================================================
 
 param(
     [ValidateSet("Debug", "Release", "RelWithDebInfo", "MinSizeRel")]
@@ -18,7 +10,10 @@ param(
     [ValidateSet("configure", "build", "configure_and_build", "test")]
     [string]$Action = "configure_and_build",
     [switch]$Clean,
-    [int]$Jobs = 10
+    [int]$Jobs = 10,
+    [switch]$Dev,
+    [switch]$WithTests,
+    [switch]$WithExamples
 )
 
 $ErrorActionPreference = "Stop"
@@ -26,7 +21,6 @@ $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = Split-Path -Parent $ScriptDir
 
-# Prefer Visual Studio generator if available
 $Generator = ""
 $vsWhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
 if (Test-Path $vsWhere) {
@@ -39,9 +33,12 @@ if (-not $Generator) {
     $Generator = "-G `"Ninja`" -DCMAKE_C_COMPILER=cl.exe -DCMAKE_CXX_COMPILER=cl.exe"
 }
 
-# Build dir: build/<LibType>/<BuildType>/build-windows-msvc (matches bash script layout)
+$DevFlag = if ($Dev) { "ON" } else { "OFF" }
+$TestsFlag = if ($Dev -or $WithTests) { "ON" } else { "OFF" }
+$ExamplesFlag = if ($Dev -or $WithExamples) { "ON" } else { "OFF" }
+
 $BuildDir = Join-Path $ProjectRoot "build\$LibType\$BuildType\build-windows-msvc"
-$ConfigureCmd = "cmake -B `"$BuildDir`" -S `"$ProjectRoot`" -DCMAKE_BUILD_TYPE=$BuildType -DVNE_XR_LIB_TYPE=$LibType -DVNE_XR_TESTS=ON $Generator"
+$ConfigureCmd = "cmake -B `"$BuildDir`" -S `"$ProjectRoot`" -DCMAKE_BUILD_TYPE=$BuildType -DVNE_XR_LIB_TYPE=$LibType -DVNE_XR_DEV=$DevFlag -DVNE_XR_TESTS=$TestsFlag -DVNE_XR_EXAMPLES=$ExamplesFlag $Generator"
 $BuildCmd = "cmake --build `"$BuildDir`" --config $BuildType --parallel $Jobs"
 $TestCmd = "ctest --test-dir `"$BuildDir`" --output-on-failure -C $BuildType"
 
@@ -80,7 +77,7 @@ switch ($Action) {
         Invoke-Expression $TestCmd
     }
     default {
-        Write-Host "Usage: .\build_windows.ps1 [-BuildType Debug|Release|...] [-LibType shared|static] [-Action configure|build|configure_and_build|test] [-Clean] [-Jobs N]"
+        Write-Host "Usage: .\build_windows.ps1 [-BuildType Debug|Release|...] [-LibType shared|static] [-Action configure|build|configure_and_build|test] [-Clean] [-Jobs N] [-Dev] [-WithTests] [-WithExamples]"
         exit 1
     }
 }
