@@ -24,7 +24,7 @@ Executables are placed in `build/shared/bin/examples/` (or `build/static/bin/exa
 
 ### 01_hello_xr — Getting Started
 
-Minimal usage: call `vne::xr_ns::hello()` and `get_version()`.
+Minimal usage: call `vne::xr::hello()` and `getVersion()`.
 
 **Run:** `./build/<lib_type>/bin/examples/example_01_hello_xr` (use `shared` or `static` to match your build)
 
@@ -32,4 +32,4 @@ Minimal usage: call `vne::xr_ns::hello()` and `get_version()`.
 
 | Example              | Focus          | Key Concepts              |
 |----------------------|----------------|---------------------------|
-| 01_hello_xr    | Getting started| hello(), get_version()   |
+| 01_hello_xr    | Getting started| hello(), getVersion()   |

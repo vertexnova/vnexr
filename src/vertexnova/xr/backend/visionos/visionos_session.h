@@ -6,7 +6,7 @@
 
 #include "vertexnova/xr/session.h"
 
-namespace vne::xr_ns {
+namespace vne::xr {
 
 /**
  * @brief visionOS CompositorServices session (Metal via vnerhi).
@@ -19,11 +19,11 @@ class VisionOsSession final : public ISession {
     explicit VisionOsSession(SessionConfig config);
     ~VisionOsSession() override;
 
-    [[nodiscard]] BackendType backend_type() const override;
+    [[nodiscard]] BackendType backendType() const override;
     [[nodiscard]] SessionState state() const override;
-    bool poll_events() override;
-    bool begin_frame(Frame& out_frame) override;
-    void end_frame(const Frame& frame, const LayerParams& layers) override;
+    bool pollEvents() override;
+    bool beginFrame(Frame& out_frame) override;
+    void endFrame(const Frame& frame, const LayerParams& layers) override;
 
    private:
     SessionConfig config_;
@@ -32,4 +32,4 @@ class VisionOsSession final : public ISession {
     std::uint64_t frame_index_ = 0;
 };
 
-}  // namespace vne::xr_ns
+}  // namespace vne::xr

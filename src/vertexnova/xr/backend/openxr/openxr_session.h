@@ -7,7 +7,7 @@
 #include "vertexnova/xr/backend/openxr/openxr_swapchain_bridge.h"
 #include "vertexnova/xr/session.h"
 
-namespace vne::xr_ns {
+namespace vne::xr {
 
 /** @brief OpenXR session (Android / Windows). */
 class OpenXrSession final : public ISession {
@@ -15,11 +15,11 @@ class OpenXrSession final : public ISession {
     explicit OpenXrSession(SessionConfig config);
     ~OpenXrSession() override;
 
-    [[nodiscard]] BackendType backend_type() const override;
+    [[nodiscard]] BackendType backendType() const override;
     [[nodiscard]] SessionState state() const override;
-    bool poll_events() override;
-    bool begin_frame(Frame& out_frame) override;
-    void end_frame(const Frame& frame, const LayerParams& layers) override;
+    bool pollEvents() override;
+    bool beginFrame(Frame& out_frame) override;
+    void endFrame(const Frame& frame, const LayerParams& layers) override;
 
    private:
     SessionConfig config_;
@@ -35,9 +35,9 @@ class OpenXrSession final : public ISession {
     std::uint32_t swapchain_height_ = 0;
     bool swapchains_ready_ = false;
 
-    bool init_openxr();
-    void shutdown_openxr();
-    bool ensure_swapchains(std::uint32_t view_count);
+    bool initOpenXr();
+    void shutdownOpenXr();
+    bool ensureSwapchains(std::uint32_t view_count);
 };
 
-}  // namespace vne::xr_ns
+}  // namespace vne::xr

@@ -8,14 +8,14 @@
 #include "vertexnova/xr/session.h"
 
 int main() {
-    vne::xr_ns::examples::LoggingGuard logging_guard;
+    vne::xr::examples::LoggingGuard logging_guard;
 
-    vne::xr_ns::SessionConfig config;
-    config.backend = vne::xr_ns::BackendType::eOpenXr;
+    vne::xr::SessionConfig config;
+    config.backend = vne::xr::BackendType::eOpenXr;
     config.application_name = "03_hello_openxr";
 
-    auto session = vne::xr_ns::create_session(config);
-    vne::xr_ns::examples::StereoCubeRenderer renderer;
+    auto session = vne::xr::createSession(config);
+    vne::xr::examples::StereoCubeRenderer renderer;
     session->run(renderer);
     return 0;
 }

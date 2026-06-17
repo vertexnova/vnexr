@@ -6,7 +6,7 @@
 
 #include "vertexnova/xr/session.h"
 
-namespace vne::xr_ns::examples {
+namespace vne::xr::examples {
 
 /** @brief Pump Win32 messages between XR frames. */
 class Win32Loop {
@@ -29,4 +29,4 @@ class Win32OpenXrApp final : public IRenderSession {
     Win32Loop& loop_;
 };
 
-}  // namespace vne::xr_ns::examples
+}  // namespace vne::xr::examples

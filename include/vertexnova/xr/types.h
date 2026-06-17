@@ -2,13 +2,23 @@
 /* ---------------------------------------------------------------------
  * Copyright (c) 2026 Ajeet Singh Yadav. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License")
+ *
+ * Author:    Ajeet Singh Yadav
+ * Created:   June 2026
+ *
+ * Autodoc:   yes
  * ---------------------------------------------------------------------- */
 
-#include "vertexnova/xr/xr.h"
+/**
+ * @file types.h
+ * @brief XR backend identifiers, session state, pose, and field-of-view types.
+ */
+
+#include "vertexnova/xr/export.h"
 
 #include <cstdint>
 
-namespace vne::xr_ns {
+namespace vne::xr {
 
 /** @brief XR compositor / session backend identifier. */
 enum class BackendType : std::uint8_t {
@@ -30,7 +40,7 @@ enum class SessionState : std::uint8_t {
     eExiting,
 };
 
-/** @brief 3D pose: position (meters) + orientation quaternion (x,y,z,w). */
+/** @brief 3D pose: position (meters) + orientation quaternion (x, y, z, w). */
 struct Pose {
     float position[3]{0.f, 0.f, 0.f};
     float orientation[4]{0.f, 0.f, 0.f, 1.f};
@@ -44,4 +54,4 @@ struct FieldOfView {
     float angle_down = 0.f;
 };
 
-}  // namespace vne::xr_ns
+}  // namespace vne::xr

@@ -6,7 +6,7 @@
 
 #include "vertexnova/xr/session.h"
 
-namespace vne::xr_ns {
+namespace vne::xr {
 
 /** @brief Headless / CI session using vnerhi Null backend when available. */
 class NullSession final : public ISession {
@@ -14,11 +14,11 @@ class NullSession final : public ISession {
     explicit NullSession(SessionConfig config);
     ~NullSession() override;
 
-    [[nodiscard]] BackendType backend_type() const override;
+    [[nodiscard]] BackendType backendType() const override;
     [[nodiscard]] SessionState state() const override;
-    bool poll_events() override;
-    bool begin_frame(Frame& out_frame) override;
-    void end_frame(const Frame& frame, const LayerParams& layers) override;
+    bool pollEvents() override;
+    bool beginFrame(Frame& out_frame) override;
+    void endFrame(const Frame& frame, const LayerParams& layers) override;
 
    private:
     SessionConfig config_;
@@ -27,4 +27,4 @@ class NullSession final : public ISession {
     bool running_ = true;
 };
 
-}  // namespace vne::xr_ns
+}  // namespace vne::xr

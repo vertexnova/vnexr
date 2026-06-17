@@ -2,14 +2,24 @@
 /* ---------------------------------------------------------------------
  * Copyright (c) 2026 Ajeet Singh Yadav. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License")
+ *
+ * Author:    Ajeet Singh Yadav
+ * Created:   June 2026
+ *
+ * Autodoc:   yes
  * ---------------------------------------------------------------------- */
+
+/**
+ * @file frame.h
+ * @brief Per-frame timing, views, and layer parameters.
+ */
 
 #include "vertexnova/xr/swapchain_image.h"
 #include "vertexnova/xr/view.h"
 
 #include <cstdint>
 
-namespace vne::xr_ns {
+namespace vne::xr {
 
 /** @brief Per-frame timing and view data from the compositor. */
 struct Frame {
@@ -35,4 +45,4 @@ struct LayerParams {
     bool request_exit = false;
 };
 
-}  // namespace vne::xr_ns
+}  // namespace vne::xr

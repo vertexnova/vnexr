@@ -25,7 +25,7 @@ Application (shell + XR content)
             └── vnegfx (optional peer) — ECS scene content in XR views
 ```
 
-## Core API (`vne::xr_ns`)
+## Core API (`vne::xr`)
 
 | Type | Role |
 |------|------|
@@ -33,23 +33,23 @@ Application (shell + XR content)
 | `IFrame` / `Frame` | Per-frame timing, views, surface textures |
 | `IView` / `View` | Per-eye pose, FOV, view/projection matrices |
 | `IRenderSession` | App callback: `update(FrameParams, LayerParams)` |
-| `create_session(SessionConfig)` | Factory: Null, OpenXR, visionOS backends |
+| `createSession(SessionConfig)` | Factory: Null, OpenXR, visionOS backends |
 
 Portable render loop:
 
 ```cpp
 #include "vertexnova/xr/session.h"
 
-class MyApp : public vne::xr_ns::IRenderSession {
-  void update(const vne::xr_ns::FrameParams& params,
-              vne::xr_ns::LayerParams& out) override {
+class MyApp : public vne::xr::IRenderSession {
+  void update(const vne::xr::FrameParams& params,
+              vne::xr::LayerParams& out) override {
     // render into params.frame.surfaces per eye
   }
 };
 
-vne::xr_ns::SessionConfig cfg;
-cfg.backend = vne::xr_ns::BackendType::eOpenXr;
-auto session = vne::xr_ns::create_session(cfg);
+vne::xr::SessionConfig cfg;
+cfg.backend = vne::xr::BackendType::eOpenXr;
+auto session = vne::xr::createSession(cfg);
 MyApp app;
 session->run(app);
 ```

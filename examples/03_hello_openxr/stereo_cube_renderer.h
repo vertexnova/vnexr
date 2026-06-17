@@ -6,16 +6,16 @@
 
 #include "vertexnova/xr/render_session.h"
 
-namespace vne::xr_ns::examples {
+namespace vne::xr::examples {
 
 /** @brief Minimal per-eye stereo cube hook (clears swapchain surfaces when available). */
 class StereoCubeRenderer final : public IRenderSession {
    public:
-    void on_session_ready() override;
+    void onSessionReady() override;
     void update(const FrameParams& params, LayerParams& out_layers) override;
 
    private:
     std::uint64_t frames_rendered_ = 0;
 };
 
-}  // namespace vne::xr_ns::examples
+}  // namespace vne::xr::examples

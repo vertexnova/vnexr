@@ -8,13 +8,13 @@
 
 namespace {
 
-class GfxXrSceneApp final : public vne::xr_ns::IRenderSession {
+class GfxXrSceneApp final : public vne::xr::IRenderSession {
    public:
-    void on_session_ready() override {
+    void onSessionReady() override {
         VNE_LOG_INFO << "vnegfx XR integration sample: render ECS scenes per XR view";
     }
 
-    void update(const vne::xr_ns::FrameParams& params, vne::xr_ns::LayerParams& out_layers) override {
+    void update(const vne::xr::FrameParams& params, vne::xr::LayerParams& out_layers) override {
         (void)params;
         if (++frames_ >= 120) {
             out_layers.request_exit = true;
@@ -28,13 +28,13 @@ class GfxXrSceneApp final : public vne::xr_ns::IRenderSession {
 }  // namespace
 
 int main() {
-    vne::xr_ns::examples::LoggingGuard logging_guard;
+    vne::xr::examples::LoggingGuard logging_guard;
 
-    vne::xr_ns::SessionConfig config;
-    config.backend = vne::xr_ns::BackendType::eNull;
+    vne::xr::SessionConfig config;
+    config.backend = vne::xr::BackendType::eNull;
     config.application_name = "06_gfx_xr_scene";
 
-    auto session = vne::xr_ns::create_session(config);
+    auto session = vne::xr::createSession(config);
     GfxXrSceneApp app;
     session->run(app);
     return 0;

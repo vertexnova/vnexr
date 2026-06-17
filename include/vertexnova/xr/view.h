@@ -2,13 +2,23 @@
 /* ---------------------------------------------------------------------
  * Copyright (c) 2026 Ajeet Singh Yadav. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License")
+ *
+ * Author:    Ajeet Singh Yadav
+ * Created:   June 2026
+ *
+ * Autodoc:   yes
  * ---------------------------------------------------------------------- */
+
+/**
+ * @file view.h
+ * @brief Single XR view (eye) pose and projection inputs.
+ */
 
 #include "vertexnova/xr/types.h"
 
 #include <cstdint>
 
-namespace vne::xr_ns {
+namespace vne::xr {
 
 /** @brief Single XR view (eye) pose and projection inputs. */
 struct View {
@@ -21,4 +31,4 @@ struct View {
     float projection_matrix[16]{};
 };
 
-}  // namespace vne::xr_ns
+}  // namespace vne::xr

@@ -33,6 +33,6 @@ drawio -x -f png -o . .
 
 | Source | Output | Used in xr.md | Contents |
 |--------|--------|---------------------|----------|
-| context.drawio | context.png | Overview | C4 system context: Application → VneXR (get_version, hello) |
-| api.drawio | api.png | API usage | API flow: get_version(), hello() |
+| context.drawio | context.png | Overview | C4 system context: Application → VneXR (getVersion, hello) |
+| api.drawio | api.png | API usage | API flow: getVersion(), hello() |
 | architecture.drawio | architecture.png | Project layout | Folder structure and build flow |

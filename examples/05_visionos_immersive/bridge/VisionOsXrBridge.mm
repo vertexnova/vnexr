@@ -9,9 +9,9 @@
 
 namespace {
 
-class VisionOsImmersiveApp final : public vne::xr_ns::IRenderSession {
+class VisionOsImmersiveApp final : public vne::xr::IRenderSession {
    public:
-    void update(const vne::xr_ns::FrameParams& params, vne::xr_ns::LayerParams& out_layers) override {
+    void update(const vne::xr::FrameParams& params, vne::xr::LayerParams& out_layers) override {
         if (params.frame.frame_index >= 600) {
             out_layers.request_exit = true;
         }
@@ -21,10 +21,10 @@ class VisionOsImmersiveApp final : public vne::xr_ns::IRenderSession {
 }  // namespace
 
 void vnexr_visionos_run_immersive_session(void) {
-    vne::xr_ns::SessionConfig config;
-    config.backend = vne::xr_ns::BackendType::eVisionOs;
+    vne::xr::SessionConfig config;
+    config.backend = vne::xr::BackendType::eVisionOs;
     config.application_name = "05_visionos_immersive";
-    auto session = vne::xr_ns::create_session(config);
+    auto session = vne::xr::createSession(config);
     VisionOsImmersiveApp app;
     session->run(app);
 }

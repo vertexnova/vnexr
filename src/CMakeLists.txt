@@ -10,6 +10,7 @@ set(SOURCE_FILES
 )
 
 set(HEADER_FILES
+    ${VNE_INCLUDE_DIR}/vertexnova/xr/export.h
     ${VNE_INCLUDE_DIR}/vertexnova/xr/xr.h
     ${VNE_INCLUDE_DIR}/vertexnova/xr/types.h
     ${VNE_INCLUDE_DIR}/vertexnova/xr/view.h
@@ -50,8 +51,9 @@ add_library(vnexr ${_lib_type} ${SOURCE_FILES} ${HEADER_FILES})
 target_include_directories(vnexr
     PUBLIC
         $<BUILD_INTERFACE:${VNE_INCLUDE_DIR}>
-        $<BUILD_INTERFACE:${VNE_SRC_DIR}>
         $<INSTALL_INTERFACE:include>
+    PRIVATE
+        ${VNE_SRC_DIR}
 )
 
 target_link_libraries(vnexr
@@ -107,6 +109,7 @@ add_library(vne::xr ALIAS vnexr)
 
 source_group(TREE ${VNE_SRC_DIR} PREFIX "Sources" FILES ${SOURCE_FILES})
 set(_xr_public_headers
+    ${VNE_INCLUDE_DIR}/vertexnova/xr/export.h
     ${VNE_INCLUDE_DIR}/vertexnova/xr/xr.h
     ${VNE_INCLUDE_DIR}/vertexnova/xr/types.h
     ${VNE_INCLUDE_DIR}/vertexnova/xr/view.h

@@ -12,11 +12,9 @@
 #include <vulkan/vulkan.h>
 #endif
 
-#ifdef VNE_XR_WITH_RHI
 #include "vertexnova/xr/backend/openxr/openxr_vulkan_texture.h"
-#endif
 
-namespace vne::xr_ns {
+namespace vne::xr {
 
 OpenXrSwapchainBridge::~OpenXrSwapchainBridge() {
     destroy();
@@ -91,7 +89,7 @@ void OpenXrSwapchainBridge::destroy() {
     session_ = nullptr;
 }
 
-bool OpenXrSwapchainBridge::acquire_for_frame(Frame& in_out_frame) {
+bool OpenXrSwapchainBridge::acquireForFrame(Frame& in_out_frame) {
     if (session_ == nullptr || views_.empty()) {
         return false;
     }
@@ -115,18 +113,15 @@ bool OpenXrSwapchainBridge::acquire_for_frame(Frame& in_out_frame) {
         in_out_frame.surfaces.views[i].view_index = i;
         in_out_frame.surfaces.views[i].width = view.width;
         in_out_frame.surfaces.views[i].height = view.height;
-#ifdef VNE_XR_WITH_RHI
         if (index < view.vk_images.size()) {
             void* vk_image = reinterpret_cast<void*>(view.vk_images[index]);
-            in_out_frame.surfaces.views[i].color_texture =
-                make_openxr_vulkan_texture(vk_image, view.width, view.height);
+            in_out_frame.surfaces.views[i].color_texture = makeOpenXrVulkanTexture(vk_image, view.width, view.height);
         }
-#endif
     }
     return true;
 }
 
-void OpenXrSwapchainBridge::release_for_frame() {
+void OpenXrSwapchainBridge::releaseForFrame() {
     for (auto& view : views_) {
         if (view.swapchain == XR_NULL_HANDLE) {
             continue;
@@ -136,4 +131,4 @@ void OpenXrSwapchainBridge::release_for_frame() {
     }
 }
 
-}  // namespace vne::xr_ns
+}  // namespace vne::xr

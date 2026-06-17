@@ -13,13 +13,13 @@
 #include "vertexnova/xr/xr.h"
 
 TEST(VneXR, GetVersion) {
-    const char* ver = vne::xr_ns::get_version();
+    const char* ver = vne::xr::getVersion();
     ASSERT_NE(ver, nullptr);
     EXPECT_STRNE(ver, "");
 }
 
 TEST(VneXR, Hello) {
-    const char* msg = vne::xr_ns::hello();
+    const char* msg = vne::xr::hello();
     ASSERT_NE(msg, nullptr);
     EXPECT_STREQ(msg, "Hello from VneXR");
 }

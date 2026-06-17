@@ -6,13 +6,12 @@
 #include "vertexnova/xr/core/null_session.h"
 
 #ifdef VNE_XR_WITH_RHI
-#include "vertexnova/rhi/device.h"
 #include "vertexnova/rhi/graphics_factory.h"
 #endif
 
 #include <cstring>
 
-namespace vne::xr_ns {
+namespace vne::xr {
 
 NullSession::NullSession(SessionConfig config)
     : config_(std::move(config)) {
@@ -25,7 +24,7 @@ NullSession::NullSession(SessionConfig config)
 
 NullSession::~NullSession() = default;
 
-BackendType NullSession::backend_type() const {
+BackendType NullSession::backendType() const {
     return BackendType::eNull;
 }
 
@@ -33,11 +32,11 @@ SessionState NullSession::state() const {
     return state_;
 }
 
-bool NullSession::poll_events() {
+bool NullSession::pollEvents() {
     return running_;
 }
 
-bool NullSession::begin_frame(Frame& out_frame) {
+bool NullSession::beginFrame(Frame& out_frame) {
     if (!running_) {
         return false;
     }
@@ -60,7 +59,7 @@ bool NullSession::begin_frame(Frame& out_frame) {
     return true;
 }
 
-void NullSession::end_frame(const Frame& frame, const LayerParams& layers) {
+void NullSession::endFrame(const Frame& frame, const LayerParams& layers) {
     (void)frame;
     if (layers.request_exit) {
         running_ = false;
@@ -68,4 +67,4 @@ void NullSession::end_frame(const Frame& frame, const LayerParams& layers) {
     }
 }
 
-}  // namespace vne::xr_ns
+}  // namespace vne::xr

@@ -8,9 +8,9 @@
 
 namespace {
 
-class NullRenderSession final : public vne::xr_ns::IRenderSession {
+class NullRenderSession final : public vne::xr::IRenderSession {
    public:
-    void update(const vne::xr_ns::FrameParams& params, vne::xr_ns::LayerParams& out_layers) override {
+    void update(const vne::xr::FrameParams& params, vne::xr::LayerParams& out_layers) override {
         VNE_LOG_INFO << "Null XR frame " << params.frame.frame_index << " views="
                      << params.frame.view_count;
         if (params.frame.frame_index >= 2) {
@@ -22,13 +22,13 @@ class NullRenderSession final : public vne::xr_ns::IRenderSession {
 }  // namespace
 
 int main() {
-    vne::xr_ns::examples::LoggingGuard logging_guard;
+    vne::xr::examples::LoggingGuard logging_guard;
 
-    vne::xr_ns::SessionConfig config;
-    config.backend = vne::xr_ns::BackendType::eNull;
+    vne::xr::SessionConfig config;
+    config.backend = vne::xr::BackendType::eNull;
     config.application_name = "02_null_session";
 
-    auto session = vne::xr_ns::create_session(config);
+    auto session = vne::xr::createSession(config);
     NullRenderSession app;
     session->run(app);
     return 0;

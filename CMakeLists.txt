@@ -194,6 +194,10 @@ option(VNE_XR_WITH_GFX_SAMPLE "Build optional vnegfx integration example" OFF)
 set(VNE_XR_BACKEND_OPENXR_GRAPHICS "vulkan" CACHE STRING "OpenXR graphics binding: vulkan or d3d12")
 set_property(CACHE VNE_XR_BACKEND_OPENXR_GRAPHICS PROPERTY STRINGS "vulkan" "d3d12")
 
+if(VNE_XR_WITH_OPENXR AND NOT VNE_XR_WITH_RHI)
+    message(FATAL_ERROR "VNE_XR_WITH_OPENXR requires VNE_XR_WITH_RHI=ON (vnerhi is required for swapchain bridging).")
+endif()
+
 if(VNE_XR_WITH_OPENXR AND VNE_XR_WITH_VISIONOS)
     message(FATAL_ERROR "VNE_XR_WITH_OPENXR and VNE_XR_WITH_VISIONOS are mutually exclusive.")
 endif()

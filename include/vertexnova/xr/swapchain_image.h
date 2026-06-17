@@ -2,7 +2,17 @@
 /* ---------------------------------------------------------------------
  * Copyright (c) 2026 Ajeet Singh Yadav. All rights reserved.
  * Licensed under the Apache License, Version 2.0 (the "License")
+ *
+ * Author:    Ajeet Singh Yadav
+ * Created:   June 2026
+ *
+ * Autodoc:   yes
  * ---------------------------------------------------------------------- */
+
+/**
+ * @file swapchain_image.h
+ * @brief Compositor swapchain surfaces bridged to vne::rhi::ITexture.
+ */
 
 #include "vertexnova/xr/types.h"
 
@@ -13,7 +23,7 @@
 #include <cstdint>
 #include <memory>
 
-namespace vne::xr_ns {
+namespace vne::xr {
 
 /** @brief Per-eye or per-view color/depth targets for one render pass. */
 struct ViewSurface {
@@ -33,4 +43,4 @@ struct SurfaceTextures {
     ViewSurface views[kMaxViews]{};
 };
 
-}  // namespace vne::xr_ns
+}  // namespace vne::xr

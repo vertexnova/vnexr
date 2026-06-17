@@ -2,7 +2,7 @@
 
 Backends may differ in handedness, depth range, and NDC Z. Applications should use matrices supplied in `Frame::views[]` rather than assuming a single global convention.
 
-## Shared contract (`vne::xr_ns`)
+## Shared contract (`vne::xr`)
 
 | Field | Convention |
 |-------|------------|

@@ -5,7 +5,7 @@
 
 #include "vertexnova/xr/backend/openxr/openxr_vulkan_texture.h"
 
-namespace vne::xr_ns {
+namespace vne::xr {
 
 OpenXrVulkanTexture::OpenXrVulkanTexture(void* vk_image, std::uint32_t width, std::uint32_t height) {
     vk_image_ = vk_image;
@@ -70,10 +70,8 @@ void* OpenXrVulkanTexture::nativeHandle() const {
     return vk_image_;
 }
 
-std::shared_ptr<vne::rhi::ITexture> make_openxr_vulkan_texture(void* vk_image,
-                                                               std::uint32_t width,
-                                                               std::uint32_t height) {
+std::shared_ptr<vne::rhi::ITexture> makeOpenXrVulkanTexture(void* vk_image, std::uint32_t width, std::uint32_t height) {
     return std::make_shared<OpenXrVulkanTexture>(vk_image, width, height);
 }
 
-}  // namespace vne::xr_ns
+}  // namespace vne::xr

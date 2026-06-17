@@ -6,28 +6,29 @@
 #include "vertexnova/xr/backend/openxr/openxr_session.h"
 
 #include <openxr/openxr.h>
+
+#if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
 #include <openxr/openxr_platform.h>
+#endif
 
 #include <algorithm>
 #include <array>
 #include <cstring>
 #include <vector>
 
-#ifdef VNE_XR_WITH_RHI
 #include "vertexnova/rhi/graphics_factory.h"
-#endif
 
-namespace vne::xr_ns {
+namespace vne::xr {
 
 namespace {
 
-XrPosef identity_pose() {
+XrPosef identityPose() {
     XrPosef pose{};
     pose.orientation.w = 1.f;
     return pose;
 }
 
-void store_pose(const XrPosef& src, Pose& dst) {
+void storePose(const XrPosef& src, Pose& dst) {
     dst.position[0] = src.position.x;
     dst.position[1] = src.position.y;
     dst.position[2] = src.position.z;
@@ -37,7 +38,7 @@ void store_pose(const XrPosef& src, Pose& dst) {
     dst.orientation[3] = src.orientation.w;
 }
 
-void store_fov(const XrFovf& src, FieldOfView& dst) {
+void storeFov(const XrFovf& src, FieldOfView& dst) {
     dst.angle_left = src.angleLeft;
     dst.angle_right = src.angleRight;
     dst.angle_up = src.angleUp;
@@ -48,17 +49,17 @@ void store_fov(const XrFovf& src, FieldOfView& dst) {
 
 OpenXrSession::OpenXrSession(SessionConfig config)
     : config_(std::move(config)) {
-    if (!init_openxr()) {
+    if (!initOpenXr()) {
         state_ = SessionState::eExiting;
         running_ = false;
     }
 }
 
 OpenXrSession::~OpenXrSession() {
-    shutdown_openxr();
+    shutdownOpenXr();
 }
 
-BackendType OpenXrSession::backend_type() const {
+BackendType OpenXrSession::backendType() const {
     return BackendType::eOpenXr;
 }
 
@@ -66,7 +67,7 @@ SessionState OpenXrSession::state() const {
     return state_;
 }
 
-bool OpenXrSession::init_openxr() {
+bool OpenXrSession::initOpenXr() {
     XrInstanceCreateInfo create_info{XR_TYPE_INSTANCE_CREATE_INFO};
     create_info.applicationInfo.apiVersion = XR_CURRENT_API_VERSION;
     std::strncpy(create_info.applicationInfo.applicationName,
@@ -102,7 +103,7 @@ bool OpenXrSession::init_openxr() {
     XrSessionCreateInfo session_info{XR_TYPE_SESSION_CREATE_INFO};
     session_info.systemId = system_id;
 
-#if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN) && defined(VNE_XR_WITH_RHI)
+#if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
     XrGraphicsBindingVulkanKHR vulkan_binding{XR_TYPE_GRAPHICS_BINDING_VULKAN_KHR};
     const auto backend = vne::rhi::GraphicsFactory::getDefaultBackend();
     (void)backend;
@@ -122,7 +123,7 @@ bool OpenXrSession::init_openxr() {
 
     XrReferenceSpaceCreateInfo space_info{XR_TYPE_REFERENCE_SPACE_CREATE_INFO};
     space_info.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;
-    space_info.poseInReferenceSpace = identity_pose();
+    space_info.poseInReferenceSpace = identityPose();
     XrSpace reference_space = XR_NULL_HANDLE;
     if (XR_FAILED(xrCreateReferenceSpace(session, &space_info, &reference_space))) {
         return false;
@@ -133,7 +134,7 @@ bool OpenXrSession::init_openxr() {
     return true;
 }
 
-void OpenXrSession::shutdown_openxr() {
+void OpenXrSession::shutdownOpenXr() {
     swapchain_bridge_.destroy();
     swapchains_ready_ = false;
 
@@ -151,7 +152,7 @@ void OpenXrSession::shutdown_openxr() {
     }
 }
 
-bool OpenXrSession::ensure_swapchains(std::uint32_t view_count) {
+bool OpenXrSession::ensureSwapchains(std::uint32_t view_count) {
     if (swapchains_ready_) {
         return true;
     }
@@ -169,7 +170,7 @@ bool OpenXrSession::ensure_swapchains(std::uint32_t view_count) {
     return true;
 }
 
-bool OpenXrSession::poll_events() {
+bool OpenXrSession::pollEvents() {
     if (!running_ || instance_ == nullptr) {
         return false;
     }
@@ -213,7 +214,7 @@ bool OpenXrSession::poll_events() {
     return running_;
 }
 
-bool OpenXrSession::begin_frame(Frame& out_frame) {
+bool OpenXrSession::beginFrame(Frame& out_frame) {
     if (!running_ || session_ == nullptr) {
         return false;
     }
@@ -254,25 +255,25 @@ bool OpenXrSession::begin_frame(Frame& out_frame) {
         out_frame.surfaces.view_count = view_count;
         for (uint32_t i = 0; i < view_count && i < Frame::kMaxViews; ++i) {
             out_frame.views[i].view_index = i;
-            store_pose(xr_views[i].pose, out_frame.views[i].pose);
-            store_fov(xr_views[i].fov, out_frame.views[i].fov);
+            storePose(xr_views[i].pose, out_frame.views[i].pose);
+            storeFov(xr_views[i].fov, out_frame.views[i].fov);
             out_frame.surfaces.views[i].view_index = i;
         }
-        if (ensure_swapchains(view_count)) {
-            swapchain_bridge_.acquire_for_frame(out_frame);
+        if (ensureSwapchains(view_count)) {
+            swapchain_bridge_.acquireForFrame(out_frame);
         }
     }
     return true;
 }
 
-void OpenXrSession::end_frame(const Frame& frame, const LayerParams& layers) {
+void OpenXrSession::endFrame(const Frame& frame, const LayerParams& layers) {
     (void)layers;
     if (session_ == nullptr) {
         return;
     }
 
     if (swapchains_ready_) {
-        swapchain_bridge_.release_for_frame();
+        swapchain_bridge_.releaseForFrame();
     }
 
     XrFrameEndInfo end_info{XR_TYPE_FRAME_END_INFO};
@@ -286,7 +287,7 @@ void OpenXrSession::end_frame(const Frame& frame, const LayerParams& layers) {
     if (frame.should_render && frame.view_count > 0) {
         for (std::uint32_t i = 0; i < frame.view_count && i < 2; ++i) {
             projection_views[i] = {XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW};
-            projection_views[i].pose = identity_pose();
+            projection_views[i].pose = identityPose();
             projection_views[i].fov = {-0.5f, 0.5f, 0.5f, -0.5f};
             projection_views[i].subImage.swapchain = XR_NULL_HANDLE;
         }
@@ -302,4 +303,4 @@ void OpenXrSession::end_frame(const Frame& frame, const LayerParams& layers) {
     xrEndFrame(static_cast<XrSession>(session_), &end_info);
 }
 
-}  // namespace vne::xr_ns
+}  // namespace vne::xr

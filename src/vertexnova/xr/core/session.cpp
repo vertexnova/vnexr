@@ -15,26 +15,26 @@
 #include "vertexnova/xr/backend/visionos/visionos_session.h"
 #endif
 
-namespace vne::xr_ns {
+namespace vne::xr {
 
 void ISession::run(IRenderSession& app_session) {
-    app_session.on_session_ready();
+    app_session.onSessionReady();
     Frame frame{};
     LayerParams layers{};
-    while (poll_events()) {
-        if (!begin_frame(frame)) {
+    while (pollEvents()) {
+        if (!beginFrame(frame)) {
             continue;
         }
         FrameParams params{frame};
         app_session.update(params, layers);
-        end_frame(frame, layers);
+        endFrame(frame, layers);
         if (layers.request_exit) {
             break;
         }
     }
 }
 
-std::unique_ptr<ISession> create_session(const SessionConfig& config) {
+std::unique_ptr<ISession> createSession(const SessionConfig& config) {
     switch (config.backend) {
 #if defined(VNE_XR_WITH_OPENXR) && VNE_XR_WITH_OPENXR
         case BackendType::eOpenXr:
@@ -50,4 +50,4 @@ std::unique_ptr<ISession> create_session(const SessionConfig& config) {
     }
 }
 
-}  // namespace vne::xr_ns
+}  // namespace vne::xr

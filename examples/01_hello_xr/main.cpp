@@ -13,12 +13,12 @@
 #include "vertexnova/xr/xr.h"
 
 int main() {
-    vne::xr_ns::examples::LoggingGuard logging_guard;
+    vne::xr::examples::LoggingGuard logging_guard;
 
-    using namespace vne::xr_ns;
+    using namespace vne::xr;
 
     VNE_LOG_INFO << hello();
-    VNE_LOG_INFO << "Version: " << get_version();
+    VNE_LOG_INFO << "Version: " << getVersion();
 
     return 0;
 }

@@ -12,7 +12,7 @@
 struct XrSwapchain_T;
 struct XrSession_T;
 
-namespace vne::xr_ns {
+namespace vne::xr {
 
 /** @brief Per-view OpenXR swapchain + Vulkan image bridge. */
 class OpenXrSwapchainBridge {
@@ -26,8 +26,8 @@ class OpenXrSwapchainBridge {
     bool create(void* session, std::uint32_t view_count, std::uint32_t width, std::uint32_t height);
     void destroy();
 
-    bool acquire_for_frame(Frame& in_out_frame);
-    void release_for_frame();
+    bool acquireForFrame(Frame& in_out_frame);
+    void releaseForFrame();
 
    private:
     struct ViewSwapchain {
@@ -43,4 +43,4 @@ class OpenXrSwapchainBridge {
     std::uint32_t view_count_ = 0;
 };
 
-}  // namespace vne::xr_ns
+}  // namespace vne::xr

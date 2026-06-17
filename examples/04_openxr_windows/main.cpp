@@ -11,15 +11,15 @@
 #include <windows.h>
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
-    vne::xr_ns::examples::LoggingGuard logging_guard;
+    vne::xr::examples::LoggingGuard logging_guard;
 
-    vne::xr_ns::SessionConfig config;
-    config.backend = vne::xr_ns::BackendType::eOpenXr;
+    vne::xr::SessionConfig config;
+    config.backend = vne::xr::BackendType::eOpenXr;
     config.application_name = "04_openxr_windows";
 
-    auto session = vne::xr_ns::create_session(config);
-    vne::xr_ns::examples::Win32Loop loop;
-    vne::xr_ns::examples::Win32OpenXrApp app(loop);
+    auto session = vne::xr::createSession(config);
+    vne::xr::examples::Win32Loop loop;
+    vne::xr::examples::Win32OpenXrApp app(loop);
     session->run(app);
     return 0;
 }

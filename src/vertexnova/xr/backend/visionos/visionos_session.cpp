@@ -11,7 +11,7 @@
 #include "vertexnova/rhi/graphics_factory.h"
 #endif
 
-namespace vne::xr_ns {
+namespace vne::xr {
 
 VisionOsSession::VisionOsSession(SessionConfig config)
     : config_(std::move(config)) {
@@ -24,7 +24,7 @@ VisionOsSession::VisionOsSession(SessionConfig config)
 
 VisionOsSession::~VisionOsSession() = default;
 
-BackendType VisionOsSession::backend_type() const {
+BackendType VisionOsSession::backendType() const {
     return BackendType::eVisionOs;
 }
 
@@ -32,11 +32,11 @@ SessionState VisionOsSession::state() const {
     return state_;
 }
 
-bool VisionOsSession::poll_events() {
+bool VisionOsSession::pollEvents() {
     return running_;
 }
 
-bool VisionOsSession::begin_frame(Frame& out_frame) {
+bool VisionOsSession::beginFrame(Frame& out_frame) {
     if (!running_) {
         return false;
     }
@@ -61,16 +61,15 @@ bool VisionOsSession::begin_frame(Frame& out_frame) {
     return true;
 }
 
-void VisionOsSession::end_frame(const Frame& frame, const LayerParams& layers) {
+void VisionOsSession::endFrame(const Frame& frame, const LayerParams& layers) {
     (void)frame;
     if (layers.request_exit) {
         running_ = false;
         state_ = SessionState::eExiting;
     }
 #ifdef VNE_XR_WITH_RHI
-    // Compositor-owned drawables: flush GPU work without window Present (Diligent T30 pattern).
     (void)layers;
 #endif
 }
 
-}  // namespace vne::xr_ns
+}  // namespace vne::xr

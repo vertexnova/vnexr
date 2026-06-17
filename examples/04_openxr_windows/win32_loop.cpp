@@ -10,7 +10,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-namespace vne::xr_ns::examples {
+namespace vne::xr::examples {
 
 bool Win32Loop::pump_messages() {
     MSG msg{};
@@ -45,4 +45,4 @@ void Win32OpenXrApp::update(const FrameParams& params, LayerParams& out_layers) 
     }
 }
 
-}  // namespace vne::xr_ns::examples
+}  // namespace vne::xr::examples

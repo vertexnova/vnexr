@@ -11,9 +11,9 @@
 #include "vertexnova/rhi/graphics_factory.h"
 #endif
 
-namespace vne::xr_ns::examples {
+namespace vne::xr::examples {
 
-void StereoCubeRenderer::on_session_ready() {
+void StereoCubeRenderer::onSessionReady() {
     VNE_LOG_INFO << "OpenXR stereo cube session ready";
 #ifdef VNE_XR_WITH_RHI
     const auto backend = vne::rhi::GraphicsFactory::getDefaultBackend();
@@ -41,4 +41,4 @@ void StereoCubeRenderer::update(const FrameParams& params, LayerParams& out_laye
     }
 }
 
-}  // namespace vne::xr_ns::examples
+}  // namespace vne::xr::examples

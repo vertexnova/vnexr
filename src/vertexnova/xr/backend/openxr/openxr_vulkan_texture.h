@@ -4,19 +4,19 @@
  * Licensed under the Apache License, Version 2.0 (the "License")
  * ---------------------------------------------------------------------- */
 
-#ifdef VNE_XR_WITH_RHI
-
 #include "vertexnova/rhi/texture.h"
 
 #include <cstdint>
 #include <memory>
+#include <string>
 
-namespace vne::xr_ns {
+namespace vne::xr {
 
 /**
  * @brief Non-owning vne::rhi::ITexture view over an OpenXR Vulkan swapchain image.
  *
  * Compositor-owned VkImage lifetime; vnexr only wraps the handle for render hooks.
+ * Requires vnerhi (OpenXR backend always links vne::rhi).
  */
 class OpenXrVulkanTexture final : public vne::rhi::ITexture {
    public:
@@ -41,10 +41,8 @@ class OpenXrVulkanTexture final : public vne::rhi::ITexture {
     vne::rhi::TextureDescriptor descriptor_{};
 };
 
-[[nodiscard]] std::shared_ptr<vne::rhi::ITexture> make_openxr_vulkan_texture(void* vk_image,
-                                                                             std::uint32_t width,
-                                                                             std::uint32_t height);
+[[nodiscard]] std::shared_ptr<vne::rhi::ITexture> makeOpenXrVulkanTexture(void* vk_image,
+                                                                          std::uint32_t width,
+                                                                          std::uint32_t height);
 
-}  // namespace vne::xr_ns
-
-#endif  // VNE_XR_WITH_RHI
+}  // namespace vne::xr
