@@ -123,10 +123,10 @@ jobs:
           echo "CACHE_LIB_TYPE=$EFFECTIVE_LIB_TYPE" >> "$GITHUB_ENV"
           echo "BUILD_DIR=build/$EFFECTIVE_LIB_TYPE" >> "$GITHUB_ENV"
 
-      # Skip cache for coverage: we clean build/ right after to force instrumented rebuild,
-      # so restore would be discarded and would waste time/bandwidth.
+      # Skip cache for coverage / ASan: instrumented (or sanitizer) rebuilds must not
+      # reuse uninstrumented or shared-lib artifacts from a prior run.
       - name: Cache CMake build
-        if: ${{ !inputs.enable_coverage }}
+        if: ${{ !inputs.enable_coverage && inputs.platform != 'linux-asan' }}
         uses: actions/cache@v4
         with:
           path: ${{ env.BUILD_DIR }}
@@ -135,6 +135,11 @@ jobs:
             build-${{ inputs.platform }}-${{ env.CACHE_BUILD_TYPE }}-${{ env.CACHE_LIB_TYPE }}-
             build-${{ inputs.platform }}-${{ env.CACHE_BUILD_TYPE }}-
             build-${{ inputs.platform }}-
+
+      - name: Clean build directory (ASan only)
+        if: inputs.platform == 'linux-asan'
+        shell: bash
+        run: rm -rf ${{ env.BUILD_DIR }}
 
       - name: Install Linux build dependencies
         if: runner.os == 'Linux'

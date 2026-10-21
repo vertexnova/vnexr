@@ -65,13 +65,15 @@ Result OpenXrVulkanGraphics::createDevice() {
         return Result::eErrorInitializationFailed;
     }
 
+    // Khronos names: XrGraphicsRequirementsVulkan[2]KHR (not XrVulkanGraphicsRequirements*).
+    XrGraphicsRequirementsVulkanKHR requirements{XR_TYPE_GRAPHICS_REQUIREMENTS_VULKAN_KHR};
     if (use_vulkan_enable2_) {
         auto pfn_get_requirements =
             OpenXrUtil::loadXrProc<PFN_xrGetVulkanGraphicsRequirements2KHR>(attribs_.instance,
                                                                             attribs_.get_instance_proc_addr,
                                                                             "xrGetVulkanGraphicsRequirements2KHR");
         if (pfn_get_requirements != nullptr) {
-            XrVulkanGraphicsRequirements2KHR requirements{XR_TYPE_VULKAN_GRAPHICS_REQUIREMENTS2_KHR};
+            requirements.type = XR_TYPE_GRAPHICS_REQUIREMENTS_VULKAN2_KHR;
             const XrResult req_result = pfn_get_requirements(attribs_.instance, attribs_.system_id, &requirements);
             if (XR_FAILED(req_result)) {
                 VNE_LOG_WARN << "OpenXR: xrGetVulkanGraphicsRequirements2KHR failed";
@@ -83,7 +85,6 @@ Result OpenXrVulkanGraphics::createDevice() {
                                                                            attribs_.get_instance_proc_addr,
                                                                            "xrGetVulkanGraphicsRequirementsKHR");
         if (pfn_get_requirements != nullptr) {
-            XrVulkanGraphicsRequirementsKHR requirements{XR_TYPE_VULKAN_GRAPHICS_REQUIREMENTS_KHR};
             const XrResult req_result = pfn_get_requirements(attribs_.instance, attribs_.system_id, &requirements);
             if (XR_FAILED(req_result)) {
                 VNE_LOG_WARN << "OpenXR: xrGetVulkanGraphicsRequirementsKHR failed";
