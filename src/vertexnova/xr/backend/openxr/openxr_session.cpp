@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "vertexnova/logging/logging.h"
+#include "vertexnova/rhi/device.h"
 #include "vertexnova/xr/backend/openxr/math/openxr_math.h"
 #include "vertexnova/xr/backend/openxr/openxr_instance_lifetime.h"
 #include "vertexnova/xr/backend/openxr/openxr_util.h"
