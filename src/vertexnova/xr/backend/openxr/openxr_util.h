@@ -172,10 +172,8 @@ namespace vne::xr::OpenXrUtil {
 }
 
 /** @brief Resolve an OpenXR function pointer; returns nullptr on failure. */
-template <typename Pfn>
-[[nodiscard]] inline Pfn loadXrProc(XrInstance instance,
-                                    PFN_xrGetInstanceProcAddr get_proc,
-                                    const char* name) {
+template<typename Pfn>
+[[nodiscard]] inline Pfn loadXrProc(XrInstance instance, PFN_xrGetInstanceProcAddr get_proc, const char* name) {
     if (get_proc == nullptr || name == nullptr) {
         return nullptr;
     }

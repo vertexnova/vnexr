@@ -57,8 +57,7 @@ Result OpenXrInput::suggestBindings(XrInstance instance) {
     };
 
     XrInteractionProfileSuggestedBinding suggested{XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
-    suggested.interactionProfile =
-        OpenXrUtil::stringToPath(instance, "/interaction_profiles/khr/simple_controller");
+    suggested.interactionProfile = OpenXrUtil::stringToPath(instance, "/interaction_profiles/khr/simple_controller");
     suggested.countSuggestedBindings = static_cast<std::uint32_t>(std::size(khr_bindings));
     suggested.suggestedBindings = khr_bindings;
     const XrResult result = xrSuggestInteractionProfileBindings(instance, &suggested);
@@ -76,8 +75,7 @@ Result OpenXrInput::suggestBindings(XrInstance instance) {
         {palm_pose_action_, OpenXrUtil::stringToPath(instance, "/user/hand/left/input/grip/pose")},
         {palm_pose_action_, OpenXrUtil::stringToPath(instance, "/user/hand/right/input/grip/pose")},
     };
-    suggested.interactionProfile =
-        OpenXrUtil::stringToPath(instance, "/interaction_profiles/oculus/touch_controller");
+    suggested.interactionProfile = OpenXrUtil::stringToPath(instance, "/interaction_profiles/oculus/touch_controller");
     suggested.countSuggestedBindings = static_cast<std::uint32_t>(std::size(touch_bindings));
     suggested.suggestedBindings = touch_bindings;
     if (XR_FAILED(xrSuggestInteractionProfileBindings(instance, &suggested))) {

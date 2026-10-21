@@ -45,8 +45,9 @@ XrBool32 XRAPI_PTR debugCallback(XrDebugUtilsMessageSeverityFlagsEXT severity,
 
 bool OpenXrDebugMessenger::create(XrInstance instance, PFN_xrGetInstanceProcAddr get_proc) {
     destroy(instance);
-    auto pfn_create = OpenXrUtil::loadXrProc<PFN_xrCreateDebugUtilsMessengerEXT>(
-        instance, get_proc, "xrCreateDebugUtilsMessengerEXT");
+    auto pfn_create = OpenXrUtil::loadXrProc<PFN_xrCreateDebugUtilsMessengerEXT>(instance,
+                                                                                 get_proc,
+                                                                                 "xrCreateDebugUtilsMessengerEXT");
     if (pfn_create == nullptr) {
         return false;
     }
@@ -63,8 +64,9 @@ void OpenXrDebugMessenger::destroy(XrInstance instance) {
     if (messenger_ == XR_NULL_HANDLE || instance == XR_NULL_HANDLE) {
         return;
     }
-    auto pfn_destroy = OpenXrUtil::loadXrProc<PFN_xrDestroyDebugUtilsMessengerEXT>(
-        instance, &xrGetInstanceProcAddr, "xrDestroyDebugUtilsMessengerEXT");
+    auto pfn_destroy = OpenXrUtil::loadXrProc<PFN_xrDestroyDebugUtilsMessengerEXT>(instance,
+                                                                                   &xrGetInstanceProcAddr,
+                                                                                   "xrDestroyDebugUtilsMessengerEXT");
     if (pfn_destroy != nullptr) {
         pfn_destroy(messenger_);
     }

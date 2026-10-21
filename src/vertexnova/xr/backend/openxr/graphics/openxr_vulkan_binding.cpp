@@ -32,8 +32,8 @@ Result OpenXrVulkanBinding::createVulkanInstance(XrInstance instance,
     return Result::eErrorNotSupported;
 #else
     (void)use_enable2;
-    auto pfn_create_instance = OpenXrUtil::loadXrProc<PFN_xrCreateVulkanInstanceKHR>(
-        instance, get_proc, "xrCreateVulkanInstanceKHR");
+    auto pfn_create_instance =
+        OpenXrUtil::loadXrProc<PFN_xrCreateVulkanInstanceKHR>(instance, get_proc, "xrCreateVulkanInstanceKHR");
     auto pfn_create_device =
         OpenXrUtil::loadXrProc<PFN_xrCreateVulkanDeviceKHR>(instance, get_proc, "xrCreateVulkanDeviceKHR");
     if (pfn_create_instance == nullptr || pfn_create_device == nullptr) {
