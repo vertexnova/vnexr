@@ -46,7 +46,7 @@ Result initializeOpenXrLoaderAndroid(void* application_vm, void* application_con
         VNE_LOG_ERROR << "xrInitializeLoaderKHR not available";
         return Result::eErrorOpenXrFailed;
     }
-    OPENXR_CHECK(pfn_init(reinterpret_cast<const XrLoaderInitInfoBaseHeader*>(&loader_info)));
+    OPENXR_CHECK(pfn_init(reinterpret_cast<const XrLoaderInitInfoBaseHeaderKHR*>(&loader_info)));
     VNE_LOG_INFO << "OpenXR Android loader initialized";
     return Result::eSuccess;
 #endif

@@ -13,6 +13,9 @@
 #include "vertexnova/xr/xr_error.h"
 
 #include <openxr/openxr.h>
+#if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
+#include <openxr/openxr_platform.h>
+#endif
 
 #include <memory>
 
