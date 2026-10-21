@@ -116,6 +116,36 @@ if(VNE_XR_WITH_OPENXR)
                 "vulkan/vulkan.h not found for vnexr OpenXR/Vulkan.\n"
                 "  Install a Vulkan SDK, or run: ./scripts/init_submodules.sh full")
         endif()
+        # openxr_vulkan_binding calls vkGetInstanceProcAddr / vkDestroyInstance /
+        # vkDestroyDevice. Headers alone do not provide those symbols.
+        set(_vne_xr_vk_loader_ok FALSE)
+        if(TARGET Vulkan::Vulkan)
+            target_link_libraries(vnexr PRIVATE Vulkan::Vulkan)
+            set(_vne_xr_vk_loader_ok TRUE)
+        endif()
+        if(NOT _vne_xr_vk_loader_ok)
+            set(_vne_xr_vk_loader_hints)
+            if(DEFINED ENV{VULKAN_SDK})
+                list(APPEND _vne_xr_vk_loader_hints
+                    "$ENV{VULKAN_SDK}/Lib"
+                    "$ENV{VULKAN_SDK}/lib")
+            endif()
+            find_library(_vne_xr_vk_loader
+                NAMES vulkan-1 vulkan
+                HINTS ${_vne_xr_vk_loader_hints})
+            if(_vne_xr_vk_loader)
+                target_link_libraries(vnexr PRIVATE "${_vne_xr_vk_loader}")
+                set(_vne_xr_vk_loader_ok TRUE)
+            elseif(ANDROID)
+                target_link_libraries(vnexr PRIVATE vulkan)
+                set(_vne_xr_vk_loader_ok TRUE)
+            endif()
+        endif()
+        if(NOT _vne_xr_vk_loader_ok)
+            message(FATAL_ERROR
+                "Vulkan loader not found for vnexr OpenXR/Vulkan.\n"
+                "  Install the Vulkan SDK loader (vulkan-1) or libvulkan-dev.")
+        endif()
     endif()
     if(ANDROID)
         target_compile_definitions(vnexr PUBLIC XR_USE_PLATFORM_ANDROID=1)

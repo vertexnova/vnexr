@@ -13,10 +13,6 @@
 
 #include <openxr/openxr.h>
 
-#if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
-#include <vulkan/vulkan.hpp>
-#endif
-
 #include <algorithm>
 #include <array>
 #include <cstring>
@@ -24,7 +20,6 @@
 #include <vector>
 
 #include "vertexnova/logging/logging.h"
-#include "vertexnova/rhi/backend/vulkan/vulkan_device.h"
 #include "vertexnova/xr/backend/openxr/math/openxr_math.h"
 #include "vertexnova/xr/backend/openxr/openxr_instance_lifetime.h"
 #include "vertexnova/xr/backend/openxr/openxr_util.h"
@@ -337,12 +332,10 @@ bool OpenXrSession::ensureSwapchains() {
 
 void OpenXrSession::flushGpu() {
     if (auto device = graphics_.getDevice()) {
-        if (auto* vk_device = dynamic_cast<vne::rhi::VulkanDevice*>(device.get())) {
-            const vk::Device dev = vk_device->getVulkanDevice();
-            if (dev) {
-                dev.waitIdle();
-            }
-        }
+        // IDevice::waitIdle() is implemented in vnerhi. Calling vk::Device::waitIdle()
+        // from this DLL references vk::detail::defaultDispatchLoaderDynamic, which is
+        // defined only in the RHI library.
+        device->waitIdle();
     }
 }
 
