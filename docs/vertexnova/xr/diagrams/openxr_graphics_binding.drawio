@@ -7,26 +7,26 @@
                 <mxCell id="title" value="IOpenXrGraphics &#8212; one seam, two graphics bindings" style="text;html=1;align=left;verticalAlign=middle;fontSize=15;fontStyle=1;fontColor=#1a1a1a;" parent="1" vertex="1">
                     <mxGeometry x="70" y="30" width="700" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="sess" value="OpenXrSession &#8212; backend-agnostic orchestrator&#10;holds IOpenXrGraphics, never a concrete binding type" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;strokeWidth=2;fontSize=12;fontStyle=1;fontColor=#1a1a1a;" parent="1" vertex="1">
+                <mxCell id="sess" value="OpenXrSession (planned) &#8212; backend-agnostic orchestrator&#10;holds IOpenXrGraphics, never a concrete binding type" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;strokeWidth=2;fontSize=12;fontStyle=1;fontColor=#1a1a1a;dashed=1;" parent="1" vertex="1">
                     <mxGeometry x="360" y="70" width="480" height="55" as="geometry"/>
                 </mxCell>
-                <mxCell id="iface" value="IOpenXrGraphics&#10;&#10;queryRequirements(XrInstance, XrSystemId)&#9;&#8212; MUST run first&#10;createDevice()&#9;&#9;&#9;&#8212; adopts what the runtime dictates&#10;graphicsBindingChain() &#8594; const void*&#9;&#8212; XrSessionCreateInfo::next&#10;allocSwapchainImages(count)&#9;&#9;&#8212; binding-specific image structs&#10;wrapImage(index) &#8594; rhi::ITexture&#9;&#8212; compositor-owned, non-owning view&#10;flushGpu()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1565c0;strokeWidth=3;fontSize=11;align=left;spacingLeft=12;fontColor=#1a1a1a;" parent="1" vertex="1">
+                <mxCell id="iface" value="IOpenXrGraphics (planned)&#10;&#10;queryRequirements(XrInstance, XrSystemId)&#9;&#8212; MUST run first&#10;createDevice()&#9;&#9;&#9;&#8212; adopts what the runtime dictates&#10;graphicsBindingChain() &#8594; const void*&#9;&#8212; XrSessionCreateInfo::next&#10;allocSwapchainImages(count)&#9;&#9;&#8212; binding-specific image structs&#10;wrapImage(index) &#8594; rhi::ITexture&#9;&#8212; compositor-owned, non-owning view&#10;flushGpu()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1565c0;strokeWidth=3;fontSize=11;align=left;spacingLeft=12;fontColor=#1a1a1a;dashed=1;" parent="1" vertex="1">
                     <mxGeometry x="270" y="160" width="660" height="150" as="geometry"/>
                 </mxCell>
                 <mxCell id="vhdr" value="OpenXrVulkanGraphics &#8212; Android / Windows / Linux / macOS via MoltenVK" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;strokeWidth=2;fontSize=12;fontStyle=1;fontColor=#1a1a1a;" parent="1" vertex="1">
                     <mxGeometry x="60" y="360" width="520" height="45" as="geometry"/>
                 </mxCell>
-                <mxCell id="v1" value="queryRequirements()&#10;xrGetVulkanGraphicsRequirements2KHR &#8594; min / max API version&#10;xrGetVulkanGraphicsDeviceKHR &#8594; the REQUIRED VkPhysicalDevice" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=2;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
-                    <mxGeometry x="60" y="425" width="520" height="70" as="geometry"/>
+                <mxCell id="v1" value="queryRequirements()&#10;enable2: xrGetVulkanGraphicsRequirements2KHR + xrGetVulkanGraphicsDevice2KHR&#10;enable: xrGetVulkanGraphicsRequirementsKHR + xrGetVulkanGraphicsDeviceKHR" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=2;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="425" width="520" height="86" as="geometry"/>
                 </mxCell>
                 <mxCell id="v2" value="createDevice()&#10;select the vnerhi physical device matching that VkPhysicalDevice&#10;fail hard if it is unavailable &#8212; never silently fall back" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
-                    <mxGeometry x="60" y="510" width="520" height="70" as="geometry"/>
+                    <mxGeometry x="60" y="530" width="520" height="70" as="geometry"/>
                 </mxCell>
                 <mxCell id="v3" value="XrGraphicsBindingVulkanKHR&#10;instance, physicalDevice, device, queueFamilyIndex, queueIndex&#10;sourced from vne::rhi::VulkanDevice accessors" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
-                    <mxGeometry x="60" y="595" width="520" height="70" as="geometry"/>
+                    <mxGeometry x="60" y="615" width="520" height="70" as="geometry"/>
                 </mxCell>
                 <mxCell id="v4" value="XrSwapchainImageVulkanKHR { VkImage }&#10;&#8594; OpenXrVulkanTexture (isWrappedImage() is true)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
-                    <mxGeometry x="60" y="680" width="520" height="60" as="geometry"/>
+                    <mxGeometry x="60" y="700" width="520" height="60" as="geometry"/>
                 </mxCell>
                 <mxCell id="mhdr" value="OpenXrMetalGraphics &#8212; Apple, via embedded runtime (designed, not built)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;strokeWidth=2;fontSize=12;fontStyle=1;fontColor=#1a1a1a;dashed=1;" parent="1" vertex="1">
                     <mxGeometry x="620" y="360" width="520" height="45" as="geometry"/>
@@ -35,16 +35,16 @@
                     <mxGeometry x="620" y="425" width="520" height="70" as="geometry"/>
                 </mxCell>
                 <mxCell id="m2" value="createDevice()&#10;wrap the runtime MTLDevice in vne::rhi::MetalPlatformHandle&#10;&#8594; PhysicalDeviceInfo::platform_handle &#8594; MetalDevice adopts it&#10;NO vnerhi change required &#8212; this path already exists" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;dashed=1;" parent="1" vertex="1">
-                    <mxGeometry x="620" y="510" width="520" height="70" as="geometry"/>
+                    <mxGeometry x="620" y="530" width="520" height="70" as="geometry"/>
                 </mxCell>
                 <mxCell id="m3" value="XrGraphicsBindingMetalKHR { commandQueue }&#10;the queue MUST come from the runtime-returned device&#10;metal-cpp pointers are the ObjC objects &#8212; no .mm file needed" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;dashed=1;" parent="1" vertex="1">
-                    <mxGeometry x="620" y="595" width="520" height="70" as="geometry"/>
+                    <mxGeometry x="620" y="615" width="520" height="70" as="geometry"/>
                 </mxCell>
                 <mxCell id="m4" value="XrSwapchainImageMetalKHR { MTLTexture }&#10;&#8594; OpenXrMetalTexture (same non-owning contract)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;dashed=1;" parent="1" vertex="1">
-                    <mxGeometry x="620" y="680" width="520" height="60" as="geometry"/>
+                    <mxGeometry x="620" y="700" width="520" height="60" as="geometry"/>
                 </mxCell>
                 <mxCell id="rhi" value="vne::rhi &#8212; IDevice + ITexture&#10;swapchain images surface to the app as Frame::surfaces.views[i].color_texture / depth_texture" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;strokeWidth=3;fontSize=12;fontStyle=1;fontColor=#1a1a1a;" parent="1" vertex="1">
-                    <mxGeometry x="270" y="790" width="660" height="60" as="geometry"/>
+                    <mxGeometry x="270" y="810" width="660" height="60" as="geometry"/>
                 </mxCell>
                 <mxCell id="a1" style="endArrow=blockThin;endFill=1;html=1;strokeWidth=2;strokeColor=#1565c0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="sess" target="iface" edge="1">
                     <mxGeometry relative="1" as="geometry"/>

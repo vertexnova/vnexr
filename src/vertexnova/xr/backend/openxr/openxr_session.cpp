@@ -278,6 +278,7 @@ void OpenXrSession::handleSessionStateChanged(XrSessionState xr_state) {
                 begin.primaryViewConfigurationType = view_configuration_;
                 if (XR_SUCCEEDED(xrBeginSession(session_, &begin))) {
                     session_begun_ = true;
+                    session_running_ = true;
                 }
             }
             break;
@@ -303,7 +304,6 @@ void OpenXrSession::handleSessionStateChanged(XrSessionState xr_state) {
             }
             swapchain_bridge_.destroy();
             swapchains_ready_ = false;
-            running_ = false;
             break;
         case XR_SESSION_STATE_LOSS_PENDING:
             state_ = SessionState::eLossPending;

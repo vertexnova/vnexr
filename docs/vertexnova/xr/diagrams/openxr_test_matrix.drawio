@@ -22,16 +22,16 @@
                 <mxCell id="h4" value="What it validates" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;strokeWidth=2;fontSize=12;fontStyle=1;fontColor=#1a1a1a;" parent="1" vertex="1">
                     <mxGeometry x="810" y="100" width="330" height="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="r1a" value="macOS &#8212; Apple Silicon&#10;(primary dev machine)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;strokeWidth=2;fontSize=11;fontStyle=1;fontColor=#1a1a1a;" parent="1" vertex="1">
+                <mxCell id="r1a" value="macOS &#8212; Apple Silicon&#10;(primary dev machine)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;strokeWidth=2;fontSize=11;fontStyle=1;fontColor=#1a1a1a;dashed=1;" parent="1" vertex="1">
                     <mxGeometry x="60" y="150" width="230" height="70" as="geometry"/>
                 </mxCell>
-                <mxCell id="r1b" value="Meta XR Simulator (Mac ARM)&#10;brew tap Oculus-VR/tap&#10;registers active_runtime.json" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontSize=11;fontColor=#1a1a1a;" parent="1" vertex="1">
+                <mxCell id="r1b" value="Meta XR Simulator (Mac ARM)&#10;brew tap Oculus-VR/tap&#10;registers active_runtime.json" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;fontSize=11;fontColor=#1a1a1a;dashed=1;" parent="1" vertex="1">
                     <mxGeometry x="300" y="150" width="290" height="70" as="geometry"/>
                 </mxCell>
-                <mxCell id="r1c" value="Vulkan via MoltenVK&#10;enable2 only" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontSize=11;fontColor=#1a1a1a;" parent="1" vertex="1">
+                <mxCell id="r1c" value="Vulkan via MoltenVK&#10;enable2 only" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;fontSize=11;fontColor=#1a1a1a;dashed=1;" parent="1" vertex="1">
                     <mxGeometry x="600" y="150" width="200" height="70" as="geometry"/>
                 </mxCell>
-                <mxCell id="r1d" value="Full frame loop, composition,&#10;input &#8212; on the machine the code&#10;is written on. Needs the Apple&#10;CMake block lifted first." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontSize=11;align=left;spacingLeft=8;fontColor=#1a1a1a;" parent="1" vertex="1">
+                <mxCell id="r1d" value="Full frame loop, composition,&#10;input &#8212; on the machine the code&#10;is written on. Needs the Apple&#10;CMake block lifted first." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;fontSize=11;align=left;spacingLeft=8;fontColor=#1a1a1a;dashed=1;" parent="1" vertex="1">
                     <mxGeometry x="810" y="150" width="330" height="70" as="geometry"/>
                 </mxCell>
                 <mxCell id="r2a" value="Linux&#10;(desktop VR dev)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;strokeWidth=2;fontSize=11;fontStyle=1;fontColor=#1a1a1a;" parent="1" vertex="1">
