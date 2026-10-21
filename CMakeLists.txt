@@ -173,11 +173,14 @@ endif()
 option(VNE_XR_TESTS "Build vnexr test suite (turn OFF when used as submodule)" ON)
 option(VNE_XR_SAMPLES "Build vnexr sample programs (turn OFF when used as submodule)" OFF)
 option(VNE_XR_EXAMPLES "Deprecated alias for VNE_XR_SAMPLES (scripts pass -DVNE_XR_EXAMPLES=ON)" OFF)
+# Canonical cache is VNE_XR_SAMPLES. Apply -DVNE_XR_EXAMPLES=ON as a one-shot enable,
+# then drop the alias from cache so a later -DVNE_XR_SAMPLES=OFF is not overridden by a
+# stale EXAMPLES=ON on reconfigure.
 if(VNE_XR_EXAMPLES)
-    set(VNE_XR_SAMPLES ON CACHE BOOL "" FORCE)
-elseif(VNE_XR_SAMPLES)
-    set(VNE_XR_EXAMPLES ON CACHE BOOL "" FORCE)
+    set(VNE_XR_SAMPLES ON CACHE BOOL "Build vnexr sample programs (turn OFF when used as submodule)" FORCE)
 endif()
+unset(VNE_XR_EXAMPLES CACHE)
+set(VNE_XR_EXAMPLES ${VNE_XR_SAMPLES})
 set(VNE_XR_LIB_TYPE "shared" CACHE STRING "Library type for vnexr: static or shared (one per build)")
 set_property(CACHE VNE_XR_LIB_TYPE PROPERTY STRINGS "static" "shared")
 if(NOT VNE_XR_LIB_TYPE STREQUAL "static" AND NOT VNE_XR_LIB_TYPE STREQUAL "shared")
@@ -288,20 +291,14 @@ if(VNE_XR_CI)
     if(NOT DEFINED VNE_XR_TESTS OR VNE_XR_TESTS)
         set(VNE_XR_TESTS ON CACHE BOOL "" FORCE)
     endif()
-    # Samples off by default in CI; honor explicit -DVNE_XR_EXAMPLES=ON / -DVNE_XR_SAMPLES=ON
-    # (e.g. Linux OpenXR job builds sample_02_openxr_stereo).
-    if(VNE_XR_EXAMPLES OR VNE_XR_SAMPLES)
-        set(VNE_XR_SAMPLES ON CACHE BOOL "" FORCE)
-        set(VNE_XR_EXAMPLES ON CACHE BOOL "" FORCE)
-    else()
-        set(VNE_XR_SAMPLES OFF CACHE BOOL "" FORCE)
-        set(VNE_XR_EXAMPLES OFF CACHE BOOL "" FORCE)
-    endif()
+    # Samples follow canonical VNE_XR_SAMPLES (alias already applied above). Default OFF
+    # in CI unless -DVNE_XR_SAMPLES=ON or -DVNE_XR_EXAMPLES=ON was passed this configure.
+    set(VNE_XR_EXAMPLES ${VNE_XR_SAMPLES})
     message(STATUS "VneXR: CI build -> VNE_XR_TESTS=${VNE_XR_TESTS}, VNE_XR_SAMPLES=${VNE_XR_SAMPLES}")
 elseif(VNE_XR_DEV)
     set(VNE_XR_TESTS ON CACHE BOOL "" FORCE)
-    set(VNE_XR_SAMPLES ON CACHE BOOL "" FORCE)
-    set(VNE_XR_EXAMPLES ON CACHE BOOL "" FORCE)
+    set(VNE_XR_SAMPLES ON CACHE BOOL "Build vnexr sample programs (turn OFF when used as submodule)" FORCE)
+    set(VNE_XR_EXAMPLES ON)
     message(STATUS "VneXR: DEV build -> VNE_XR_TESTS=ON, VNE_XR_SAMPLES=ON")
 endif()
 
