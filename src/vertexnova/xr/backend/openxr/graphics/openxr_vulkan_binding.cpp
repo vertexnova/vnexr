@@ -51,7 +51,9 @@ Result OpenXrVulkanBinding::createVulkanInstance(XrInstance instance,
 
     if (use_enable2) {
         auto pfn_get_device =
-            OpenXrUtil::loadXrProc<PFN_xrGetVulkanGraphicsDevice2KHR>(instance, get_proc, "xrGetVulkanGraphicsDevice2KHR");
+            OpenXrUtil::loadXrProc<PFN_xrGetVulkanGraphicsDevice2KHR>(instance,
+                                                                      get_proc,
+                                                                      "xrGetVulkanGraphicsDevice2KHR");
         if (pfn_get_device == nullptr) {
             destroy();
             return Result::eErrorNotSupported;
@@ -64,8 +66,9 @@ Result OpenXrVulkanBinding::createVulkanInstance(XrInstance instance,
             return Result::eErrorOpenXrFailed;
         }
     } else {
-        auto pfn_get_device =
-            OpenXrUtil::loadXrProc<PFN_xrGetVulkanGraphicsDeviceKHR>(instance, get_proc, "xrGetVulkanGraphicsDeviceKHR");
+        auto pfn_get_device = OpenXrUtil::loadXrProc<PFN_xrGetVulkanGraphicsDeviceKHR>(instance,
+                                                                                       get_proc,
+                                                                                       "xrGetVulkanGraphicsDeviceKHR");
         if (pfn_get_device == nullptr) {
             destroy();
             return Result::eErrorNotSupported;
