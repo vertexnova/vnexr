@@ -192,6 +192,34 @@ option(ENABLE_COVERAGE "Enable code coverage reporting" OFF)
 option(ENABLE_ASAN "Enable AddressSanitizer + UndefinedBehaviorSanitizer (Clang/GCC, Linux/macOS only)" OFF)
 option(WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 
+# Coverage and ASan/UBSan must not both be enabled (--coverage + -fsanitize=... together
+# produce noisy/incorrect results). Checked before deps so nested builds see a consistent tree.
+if(ENABLE_COVERAGE AND ENABLE_ASAN)
+    message(FATAL_ERROR
+        "ENABLE_COVERAGE and ENABLE_ASAN cannot both be ON. "
+        "Choose one: coverage (gcov/lcov) or ASan/UBSan. "
+        "Reconfigure with -DENABLE_COVERAGE=OFF or -DENABLE_ASAN=OFF.")
+endif()
+
+# Apply ASan before nested deps: they also read ENABLE_ASAN from the cache. Shared
+# instrumented deps leave unresolved __asan_* / __ubsan_* in .so files and the final
+# test link fails; force static so sanitizer runtime is linked into the executable.
+if(ENABLE_ASAN)
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang" AND NOT WIN32)
+        if(NOT VNE_XR_LIB_TYPE STREQUAL "static")
+            message(STATUS
+                "ENABLE_ASAN=ON: forcing VNE_XR_LIB_TYPE=static "
+                "(ASan with nested shared vnerhi/vnemath is unsupported)")
+            set(VNE_XR_LIB_TYPE "static" CACHE STRING
+                "Library type for vnexr: static or shared (one per build)" FORCE)
+        endif()
+        add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
+        add_link_options(-fsanitize=address,undefined)
+    else()
+        message(WARNING "ENABLE_ASAN is only supported with GCC/Clang on Linux/macOS — ignoring.")
+    endif()
+endif()
+
 #==============================================================================
 # XR framework options
 #==============================================================================
@@ -249,17 +277,6 @@ if(VNE_XR_WITH_GFX_SAMPLE)
 endif()
 
 #==============================================================================
-# Incompatible options: coverage and ASan/UBSan must not both be enabled
-# (--coverage + -fsanitize=... together produce noisy/incorrect results).
-#==============================================================================
-if(ENABLE_COVERAGE AND ENABLE_ASAN)
-    message(FATAL_ERROR
-        "ENABLE_COVERAGE and ENABLE_ASAN cannot both be ON. "
-        "Choose one: coverage (gcov/lcov) or ASan/UBSan. "
-        "Reconfigure with -DENABLE_COVERAGE=OFF or -DENABLE_ASAN=OFF.")
-endif()
-
-#==============================================================================
 # Coverage Support (gcov/lcov for CI; .gcda files generated when tests run)
 #==============================================================================
 if(ENABLE_COVERAGE)
@@ -269,19 +286,6 @@ if(ENABLE_COVERAGE)
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
-    endif()
-endif()
-
-#==============================================================================
-# AddressSanitizer + UndefinedBehaviorSanitizer
-# Linux/macOS only; incompatible with coverage (--coverage + ASan = noise).
-#==============================================================================
-if(ENABLE_ASAN)
-    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang" AND NOT WIN32)
-        add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
-        add_link_options(-fsanitize=address,undefined)
-    else()
-        message(WARNING "ENABLE_ASAN is only supported with GCC/Clang on Linux/macOS — ignoring.")
     endif()
 endif()
 

@@ -154,10 +154,23 @@ init_paths "${PHASE1[@]}"
 if [[ "$TIER" == "full" ]]; then
   init_paths "${FULL_EXTRA[@]}"
   init_vnerhi
+  # Nested deps required for Vulkan (Android NDK has vulkan.h but not vulkan.hpp).
+  # Keep this list minimal — optional sample deps (vneio, vnescene, …) stay skipped.
+  local_vnerhi_nested=(
+    cmake/vnecmake
+    deps/internal/vnecommon
+    deps/internal/vnelogging
+    deps/internal/vnemath
+    deps/external/vulkan-headers
+  )
   echo ">> nested init inside vnerhi (may take a while)..."
-  git -C deps/internal/vnerhi submodule sync --recursive || true
+  git -C deps/internal/vnerhi submodule sync --recursive
   git -C deps/internal/vnerhi submodule update --init --recursive \
-    cmake/vnecmake deps/internal/vnecommon deps/internal/vnelogging deps/internal/vnemath || true
+    "${local_vnerhi_nested[@]}"
+  if [[ ! -f deps/internal/vnerhi/deps/external/vulkan-headers/include/vulkan/vulkan.hpp ]]; then
+    echo "ERROR: vnerhi deps/external/vulkan-headers missing vulkan.hpp after nested init." >&2
+    exit 1
+  fi
 fi
 
 echo "=== submodule init done ==="
