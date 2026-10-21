@@ -1,0 +1,103 @@
+<mxfile host="65bd71144e">
+    <diagram name="OpenXR test topology" id="openxr_test_matrix">
+        <mxGraphModel dx="1520" dy="937" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="900" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="title" value="Where the OpenXR backend can actually be exercised" style="text;html=1;align=left;verticalAlign=middle;fontSize=15;fontStyle=1;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="35" width="700" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="sub" value="Compiling the backend is not the same as running it. Only the green rows execute xrCreateSession against a live runtime." style="text;html=1;align=left;verticalAlign=middle;fontSize=11;fontStyle=2;fontColor=#616161;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="62" width="900" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="h1" value="Host" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;strokeWidth=2;fontSize=12;fontStyle=1;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="100" width="230" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="h2" value="OpenXR runtime" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;strokeWidth=2;fontSize=12;fontStyle=1;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="300" y="100" width="290" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="h3" value="Graphics" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;strokeWidth=2;fontSize=12;fontStyle=1;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="600" y="100" width="200" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="h4" value="What it validates" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;strokeWidth=2;fontSize=12;fontStyle=1;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="810" y="100" width="330" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="r1a" value="macOS &#8212; Apple Silicon&#10;(primary dev machine)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;strokeWidth=2;fontSize=11;fontStyle=1;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="150" width="230" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="r1b" value="Meta XR Simulator (Mac ARM)&#10;brew tap Oculus-VR/tap&#10;registers active_runtime.json" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontSize=11;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="300" y="150" width="290" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="r1c" value="Vulkan via MoltenVK&#10;enable2 only" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontSize=11;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="600" y="150" width="200" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="r1d" value="Full frame loop, composition,&#10;input &#8212; on the machine the code&#10;is written on. Needs the Apple&#10;CMake block lifted first." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontSize=11;align=left;spacingLeft=8;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="810" y="150" width="330" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="r2a" value="Linux&#10;(desktop VR dev)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;strokeWidth=2;fontSize=11;fontStyle=1;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="230" width="230" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="r2b" value="Monado&#10;XR_RUNTIME_JSON=&#8230;/openxr_monado.json" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontSize=11;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="300" y="230" width="290" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="r2c" value="Vulkan (native)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontSize=11;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="600" y="230" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="r2d" value="Full frame loop. Closest match to&#10;the Android code path." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontSize=11;align=left;spacingLeft=8;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="810" y="230" width="330" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="r3a" value="Windows&#10;(PC VR)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;strokeWidth=2;fontSize=11;fontStyle=1;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="300" width="230" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="r3b" value="SteamVR / WMR / Meta Link&#10;or Meta XR Simulator" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontSize=11;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="300" y="300" width="290" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="r3c" value="Vulkan (native)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontSize=11;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="600" y="300" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="r3d" value="Full frame loop + Win32 shell path." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontSize=11;align=left;spacingLeft=8;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="810" y="300" width="330" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="r4a" value="Android device&#10;Quest / Samsung Galaxy XR" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;strokeWidth=2;fontSize=11;fontStyle=1;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="370" width="230" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="r4b" value="On-device runtime&#10;loader init via xrInitializeLoaderKHR&#10;(needs VM + activity handles)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontSize=11;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="300" y="370" width="290" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="r4c" value="Vulkan&#10;(OpenXR 1.1 required)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontSize=11;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="600" y="370" width="200" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="r4d" value="The real target. Only place hand&#10;tracking, passthrough and true&#10;stereo timing can be judged." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontSize=11;align=left;spacingLeft=8;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="810" y="370" width="330" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="r5a" value="Android XR Emulator&#10;(Android Studio)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=3;fontSize=11;fontStyle=1;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="465" width="230" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="r5b" value="NOT AVAILABLE&#10;&#10;&#8220;The Android XR emulator is not&#10;supported for Unity or OpenXR apps.&#8221;&#10;&#8212; developer.android.com" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=3;fontSize=11;fontStyle=1;fontColor=#c2185b;" parent="1" vertex="1">
+                    <mxGeometry x="300" y="465" width="290" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="r5c" value="&#8212;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=3;fontSize=11;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="600" y="465" width="200" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="r5d" value="Nothing. The emulator serves&#10;Jetpack XR / Compose apps only.&#10;Use Meta XR Simulator on macOS&#10;instead &#8212; do not re-attempt this." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=3;fontSize=11;align=left;spacingLeft=8;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="810" y="465" width="330" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="r6a" value="CI runners&#10;Linux / macOS / Windows" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;strokeWidth=2;fontSize=11;fontStyle=1;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="570" width="230" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="r6b" value="None &#8212; NullSession backend" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=11;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="300" y="570" width="290" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="r6c" value="vnerhi Null / Metal" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=11;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="600" y="570" width="200" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="r6d" value="Compilation, factory dispatch, layer&#10;stack, run() loop. The OpenXR&#10;backend compiles here but never&#10;executes a single xr* call." style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=11;align=left;spacingLeft=8;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="810" y="570" width="330" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="gap" value="CI gap worth closing first&#10;&#10;The Linux OpenXR job passes -DVNE_XR_EXAMPLES=ON, but VNE_XR_CI=ON force-sets VNE_XR_SAMPLES=OFF.&#10;Result: 02_openxr_stereo &#8212; the only sample that exercises this backend &#8212; is never compiled by CI.&#10;Until that is fixed, every row above rests on code no automated check has built." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#c2185b;strokeWidth=3;fontSize=11;align=left;spacingLeft=12;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="680" width="1080" height="120" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

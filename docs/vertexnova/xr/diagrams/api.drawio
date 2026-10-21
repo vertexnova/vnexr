@@ -1,23 +1,87 @@
 <mxfile host="65bd71144e">
-    <diagram name="Public API" id="api">
-        <mxGraphModel dx="910" dy="770" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="800" math="0" shadow="0">
+    <diagram name="Public API usage" id="api">
+        <mxGraphModel dx="910" dy="770" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="900" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
-                <mxCell id="step1" value="1. get_version()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1565c0;strokeWidth=2;fontSize=14;fontStyle=1;fontColor=#1a1a1a;" vertex="1" parent="1">
-                    <mxGeometry x="80" y="80" width="140" height="36" as="geometry"/>
+                <mxCell id="title" value="Public API &#8212; vne::xr" style="text;html=1;align=left;verticalAlign=middle;fontSize=15;fontStyle=1;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="35" width="500" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="code1" value="const char* ver = vne::xr_ns::get_version();&#10;// e.g. &quot;1.0.0&quot;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#1565c0;align=left;verticalAlign=middle;spacingLeft=10;fontSize=11;fontFamily=Courier New;fontColor=#1a1a1a;" vertex="1" parent="1">
-                    <mxGeometry x="80" y="130" width="280" height="50" as="geometry"/>
+                <mxCell id="sub" value="Everything below is declared in include/vertexnova/xr/. No OpenXR or Metal type appears in this surface." style="text;html=1;align=left;verticalAlign=middle;fontSize=11;fontStyle=2;fontColor=#616161;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="62" width="900" height="20" as="geometry"/>
                 </mxCell>
-                <mxCell id="step2" value="2. hello()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;strokeWidth=2;fontSize=14;fontStyle=1;fontColor=#1a1a1a;" vertex="1" parent="1">
-                    <mxGeometry x="480" y="80" width="120" height="36" as="geometry"/>
+                <mxCell id="cfg" value="SessionConfig&#10;&#10;backend = BackendType::eOpenXr &#183; eVisionOs &#183; eNull&#10;application_name&#10;platform (HWND / Android VM + activity)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1565c0;strokeWidth=2;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="110" width="400" height="100" as="geometry"/>
                 </mxCell>
-                <mxCell id="code2" value="const char* msg = vne::xr_ns::hello();&#10;// e.g. &quot;Hello from VneXR&quot;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#e65100;align=left;verticalAlign=middle;spacingLeft=10;fontSize=11;fontFamily=Courier New;fontColor=#1a1a1a;" vertex="1" parent="1">
-                    <mxGeometry x="480" y="130" width="320" height="50" as="geometry"/>
+                <mxCell id="factory" value="createSession(config)&#10;&#8594; an owning ISession handle" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;strokeWidth=3;fontSize=12;fontStyle=1;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="540" y="125" width="320" height="70" as="geometry"/>
                 </mxCell>
-                <mxCell id="arr1" style="endArrow=blockThin;endFill=1;html=1;strokeWidth=2;strokeColor=#1565c0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="code1" target="code2">
+                <mxCell id="impl" value="Backend chosen at&#10;compile + run time" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;fontSize=11;fontColor=#1a1a1a;dashed=1;" parent="1" vertex="1">
+                    <mxGeometry x="920" y="130" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="sess" value="ISession&#10;&#10;pollEvents() &#8594; bool&#10;beginFrame(Frame) &#8594; bool&#10;pollInput(InputState)&#10;endFrame(Frame, LayerParams)&#10;run(IRenderSession)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1565c0;strokeWidth=3;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="270" width="400" height="150" as="geometry"/>
+                </mxCell>
+                <mxCell id="app" value="IRenderSession &#8212; implemented by the application&#10;&#10;onSessionReady()&#10;update(FrameParams, LayerParams)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=3;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="620" y="285" width="440" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="frame" value="Frame &#8212; produced by beginFrame()&#10;&#10;frame_index, predicted_display_time, should_render&#10;view_count&#10;views[i]   &#8594; pose, fov, view_matrix, projection_matrix&#10;surfaces.views[i] &#8594; color_texture, depth_texture, width, height" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;strokeWidth=2;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="480" width="500" height="130" as="geometry"/>
+                </mxCell>
+                <mxCell id="layers" value="LayerParams &#8212; written back by the application&#10;&#10;near_z, far_z&#9;&#8212; clip planes for the NEXT frame&#10;request_exit&#9;&#8212; ask the session to stop" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;strokeWidth=2;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="620" y="480" width="440" height="130" as="geometry"/>
+                </mxCell>
+                <mxCell id="input" value="InputState &#8212; optional snapshot after beginFrame()&#10;per-hand pose, trigger, grip, click; filled by the backend's action system" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1565c0;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="660" width="500" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="err" value="Result + VNE_XR_CHECK&#10;internal modules return Result; ISession keeps bool at the public boundary" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="620" y="660" width="440" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="e1" style="endArrow=blockThin;endFill=1;html=1;strokeWidth=2;strokeColor=#1565c0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="cfg" target="factory" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e2" style="endArrow=blockThin;endFill=1;html=1;strokeWidth=1;strokeColor=#616161;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;dashed=1;" parent="1" source="factory" target="impl" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e3" style="endArrow=blockThin;endFill=1;html=1;strokeWidth=2;strokeColor=#1565c0;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="factory" target="sess" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="620" y="240"/>
+                            <mxPoint x="260" y="240"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e4" style="endArrow=blockThin;endFill=1;html=1;strokeWidth=3;strokeColor=#c2185b;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="sess" target="app" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e4lbl" value="run() drives&#10;update() each frame" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#c2185b;backgroundColor=#ffffff;" parent="e4" connectable="0" vertex="1">
+                    <mxGeometry x="-0.1" y="1" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e5" style="endArrow=blockThin;endFill=1;html=1;strokeWidth=2;strokeColor=#2e7d32;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="sess" target="frame" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e5lbl" value="produces" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#2e7d32;backgroundColor=#ffffff;" parent="e5" connectable="0" vertex="1">
+                    <mxGeometry x="-0.2" y="1" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e6" style="endArrow=blockThin;endFill=1;html=1;strokeWidth=2;strokeColor=#e65100;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="app" target="layers" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e6lbl" value="writes back" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#e65100;backgroundColor=#ffffff;" parent="e6" connectable="0" vertex="1">
+                    <mxGeometry x="-0.2" y="1" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e7" style="endArrow=blockThin;endFill=1;html=1;strokeWidth=1;strokeColor=#616161;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;dashed=1;" parent="1" source="layers" target="frame" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e7lbl" value="endFrame(frame, layers)" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#1a1a1a;backgroundColor=#ffffff;" parent="e7" connectable="0" vertex="1">
+                    <mxGeometry x="0" y="0" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
                 </mxCell>
             </root>
         </mxGraphModel>

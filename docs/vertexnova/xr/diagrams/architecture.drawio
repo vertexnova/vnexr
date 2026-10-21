@@ -4,26 +4,50 @@
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
-                <mxCell id="root" value="vnexr/&#10;(root)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;strokeWidth=2;fontStyle=1;fontSize=12;fontColor=#1a1a1a;" parent="1" vertex="1">
-                    <mxGeometry x="60" y="30" width="120" height="50" as="geometry"/>
+                <mxCell id="title" value="Repository layout and build flow" style="text;html=1;align=left;verticalAlign=middle;fontSize=15;fontStyle=1;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="30" width="500" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="include" value="include/&#10;vertexnova/xr/&#10;(public API)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1565c0;fontSize=11;align=left;spacingLeft=8;fontColor=#1a1a1a;" parent="1" vertex="1">
-                    <mxGeometry x="40" y="120" width="160" height="50" as="geometry"/>
+                <mxCell id="root" value="vnexr/ (root)&#10;VERSION &#183; CMakeLists.txt" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;strokeWidth=2;fontStyle=1;fontSize=12;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="80" width="220" height="55" as="geometry"/>
                 </mxCell>
-                <mxCell id="src" value="src/&#10;vertexnova/xr/&#10;(implementation)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontSize=11;align=left;spacingLeft=8;fontColor=#1a1a1a;" parent="1" vertex="1">
-                    <mxGeometry x="40" y="190" width="160" height="50" as="geometry"/>
+                <mxCell id="include" value="include/vertexnova/xr/&#10;public API &#8212; session, frame, view,&#10;input, xr_error, xr_factory" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1565c0;strokeWidth=2;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="170" width="300" height="70" as="geometry"/>
                 </mxCell>
-                <mxCell id="tests" value="tests/&#10;(Google Test)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=11;fontColor=#1a1a1a;" parent="1" vertex="1">
-                    <mxGeometry x="60" y="280" width="120" height="40" as="geometry"/>
+                <mxCell id="src" value="src/vertexnova/xr/&#10;implementation &#8212; never installed" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;strokeWidth=2;fontSize=11;align=left;spacingLeft=10;fontStyle=1;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="270" width="300" height="55" as="geometry"/>
                 </mxCell>
-                <mxCell id="examples" value="examples/&#10;(01_hello_xr)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;fontSize=11;fontColor=#1a1a1a;" parent="1" vertex="1">
-                    <mxGeometry x="40" y="360" width="160" height="40" as="geometry"/>
+                <mxCell id="core" value="core/&#10;factory, session state machine, NullSession" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontSize=10;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="90" y="340" width="290" height="45" as="geometry"/>
                 </mxCell>
-                <mxCell id="cmake" value="cmake/vnecmake/&#10;(submodule)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;fontSize=11;fontColor=#1a1a1a;" parent="1" vertex="1">
-                    <mxGeometry x="290" y="120" width="140" height="40" as="geometry"/>
+                <mxCell id="boxr" value="backend/openxr/&#10;graphics &#183; presentation &#183; input &#183; math &#183; platform" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;strokeWidth=2;fontSize=10;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="90" y="395" width="290" height="45" as="geometry"/>
                 </mxCell>
-                <mxCell id="build" value="CMake configure + build&#10;→ libvnexr (static or shared)&#10;→ tests, examples" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;strokeWidth=2;fontSize=12;fontStyle=1;fontColor=#1a1a1a;" parent="1" vertex="1">
-                    <mxGeometry x="560" y="180" width="220" height="70" as="geometry"/>
+                <mxCell id="bvos" value="backend/visionos/&#10;CompositorServices wrapper (stub)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;fontSize=10;align=left;spacingLeft=10;fontColor=#1a1a1a;dashed=1;" parent="1" vertex="1">
+                    <mxGeometry x="90" y="450" width="290" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="tests" value="tests/&#10;Google Test" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="525" width="140" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="samples" value="samples/&#10;framework/ + 00_hello_xr, 01_null_simulator,&#10;02_openxr_stereo, 90_visionos_immersive,&#10;91_gfx_xr_scene" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=2;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="600" width="300" height="85" as="geometry"/>
+                </mxCell>
+                <mxCell id="cmake" value="cmake/&#10;vnecmake (submodule)&#10;VneXrDeps &#183; VneXrRhi&#10;VneXrOpenXR &#183; VneXrVisionOS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;strokeWidth=2;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="450" y="170" width="270" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="deps" value="deps/&#10;internal/ &#8212; vnecommon, vnelogging,&#10;&#9;&#9;vnerhi, vnemath, vnegfx&#10;external/ &#8212; googletest" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;strokeWidth=2;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="450" y="290" width="270" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="docs" value="docs/vertexnova/xr/&#10;xr.md &#183; openxr_design.md&#10;conventions.md &#183; linux_setup.md&#10;macos_setup.md &#183; diagrams/" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1565c0;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="450" y="410" width="270" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="scripts" value="scripts/&#10;build_macos.sh &#183; build_linux.sh&#10;build_windows.ps1 &#183; build_android.sh&#10;format.sh &#183; generate-docs.sh" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="450" y="530" width="270" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="build" value="CMake configure + build&#10;&#10;&#8594; libvnexr (static or shared, one per build dir)&#10;&#8594; vnexr_tests&#10;&#8594; sample_00 &#8230; sample_91&#10;&#10;build/«lib_type»/«config»/" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;strokeWidth=3;fontSize=12;align=left;spacingLeft=12;fontStyle=1;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="810" y="270" width="330" height="180" as="geometry"/>
+                </mxCell>
+                <mxCell id="opts" value="Backend selection&#10;&#10;VNE_XR_WITH_RHI&#9;&#9;ON&#10;VNE_XR_WITH_OPENXR&#9;Android / Win / Linux&#10;VNE_XR_WITH_VISIONOS&#9;visionOS&#10;&#10;OPENXR and VISIONOS are&#10;mutually exclusive." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;strokeWidth=2;fontSize=11;align=left;spacingLeft=12;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="810" y="500" width="330" height="180" as="geometry"/>
                 </mxCell>
                 <mxCell id="e1" style="endArrow=blockThin;endFill=1;html=1;strokeWidth=1;strokeColor=#616161;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="root" target="include" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
@@ -31,22 +55,28 @@
                 <mxCell id="e2" style="endArrow=blockThin;endFill=1;html=1;strokeWidth=1;strokeColor=#616161;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="include" target="src" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="e3" style="endArrow=blockThin;endFill=1;html=1;strokeWidth=1;strokeColor=#616161;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="src" target="tests" edge="1">
+                <mxCell id="e3" style="endArrow=blockThin;endFill=1;html=1;strokeWidth=1;strokeColor=#2e7d32;exitX=0.3;exitY=1;exitDx=0;exitDy=0;entryX=0.3;entryY=0;entryDx=0;entryDy=0;" parent="1" source="src" target="core" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="e4" style="endArrow=blockThin;endFill=1;html=1;strokeWidth=1;strokeColor=#616161;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="tests" target="examples" edge="1">
+                <mxCell id="e4" style="endArrow=blockThin;endFill=1;html=1;strokeWidth=1;strokeColor=#616161;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="bvos" target="tests" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="e5" style="endArrow=blockThin;endFill=1;html=1;strokeWidth=2;strokeColor=#2e7d32;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;dashed=1;" parent="1" source="src" target="build" edge="1">
+                <mxCell id="e5" style="endArrow=blockThin;endFill=1;html=1;strokeWidth=1;strokeColor=#616161;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.3;entryY=0;entryDx=0;entryDy=0;" parent="1" source="tests" target="samples" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="e5label" value="builds" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#1a1a1a;backgroundColor=#ffffff;" parent="e5" connectable="0" vertex="1">
+                <mxCell id="e6" style="endArrow=blockThin;endFill=1;html=1;strokeWidth=2;strokeColor=#2e7d32;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;dashed=1;" parent="1" source="deps" target="build" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e6lbl" value="builds" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#1a1a1a;backgroundColor=#ffffff;" parent="e6" connectable="0" vertex="1">
                     <mxGeometry x="-0.2" y="1" relative="1" as="geometry">
                         <mxPoint as="offset"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="deps" value="deps/internal/&#10;deps/external/&#10;(vnecommon, vnelogging, GTest)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;fontSize=11;align=left;spacingLeft=8;fontColor=#1a1a1a;" parent="1" vertex="1">
-                    <mxGeometry x="260" y="190" width="220" height="50" as="geometry"/>
+                <mxCell id="e7" style="endArrow=blockThin;endFill=1;html=1;strokeWidth=1;strokeColor=#616161;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.2;entryDx=0;entryDy=0;dashed=1;" parent="1" source="cmake" target="build" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e8" style="endArrow=blockThin;endFill=1;html=1;strokeWidth=1;strokeColor=#e65100;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;dashed=1;" parent="1" source="scripts" target="opts" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>
