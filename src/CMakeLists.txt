@@ -168,9 +168,12 @@ endif()
 target_compile_features(vnexr PUBLIC cxx_std_20)
 
 if(_lib_type STREQUAL "SHARED")
+    # VNE_XR_DLL must be set while *building* the DLL too — export.h only
+    # enables __declspec(dllexport) when both VNE_XR_DLL and VNE_XR_BUILDING_DLL
+    # are defined. INTERFACE-only left symbols unexported and MSVC omitted vnexr.lib.
     target_compile_definitions(vnexr
+        PUBLIC VNE_XR_DLL
         PRIVATE VNE_XR_BUILDING_DLL
-        INTERFACE VNE_XR_DLL
     )
 endif()
 
