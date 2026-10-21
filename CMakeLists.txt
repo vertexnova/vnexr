@@ -284,13 +284,20 @@ endif()
 
 if(VNE_XR_CI)
     # CI enables tests by default, but allow explicit -DVNE_XR_TESTS=OFF to override
-    # (e.g. iOS/Android cross-compile builds: Xcode requires bundle ID for test targets).
+    # (e.g. Android cross-compile builds: binaries cannot run on the host runner).
     if(NOT DEFINED VNE_XR_TESTS OR VNE_XR_TESTS)
         set(VNE_XR_TESTS ON CACHE BOOL "" FORCE)
     endif()
-    set(VNE_XR_SAMPLES OFF CACHE BOOL "" FORCE)
-    set(VNE_XR_EXAMPLES OFF CACHE BOOL "" FORCE)
-    message(STATUS "VneXR: CI build -> VNE_XR_TESTS=${VNE_XR_TESTS}, VNE_XR_SAMPLES=OFF")
+    # Samples off by default in CI; honor explicit -DVNE_XR_EXAMPLES=ON / -DVNE_XR_SAMPLES=ON
+    # (e.g. Linux OpenXR job builds sample_02_openxr_stereo).
+    if(VNE_XR_EXAMPLES OR VNE_XR_SAMPLES)
+        set(VNE_XR_SAMPLES ON CACHE BOOL "" FORCE)
+        set(VNE_XR_EXAMPLES ON CACHE BOOL "" FORCE)
+    else()
+        set(VNE_XR_SAMPLES OFF CACHE BOOL "" FORCE)
+        set(VNE_XR_EXAMPLES OFF CACHE BOOL "" FORCE)
+    endif()
+    message(STATUS "VneXR: CI build -> VNE_XR_TESTS=${VNE_XR_TESTS}, VNE_XR_SAMPLES=${VNE_XR_SAMPLES}")
 elseif(VNE_XR_DEV)
     set(VNE_XR_TESTS ON CACHE BOOL "" FORCE)
     set(VNE_XR_SAMPLES ON CACHE BOOL "" FORCE)

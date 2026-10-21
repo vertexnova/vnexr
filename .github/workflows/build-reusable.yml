@@ -64,6 +64,9 @@ on:
       codecov_token:
         description: "Codecov upload token (required when enable_coverage is true)"
         required: false
+      REPO_ACCESS_TOKEN:
+        description: "Optional PAT used by scripts/init_submodules.sh when GITHUB_TOKEN lacks cross-repo access"
+        required: false
 
 permissions:
   contents: read
@@ -75,14 +78,19 @@ jobs:
     runs-on: ${{ inputs.runner }}
 
     steps:
-      - name: Use HTTPS for GitHub (CI runners have no SSH key)
-        run: git config --global url."https://github.com/".insteadOf "git@github.com:"
-
-      # Submodules are fetched here; we do not cache them (a cache restored
-      # after checkout would not reduce fetch cost). We rely on the build cache only.
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false
+          # Prefer org PAT for private vnerhi HTTPS rewrite; else job token.
+          token: ${{ secrets.REPO_ACCESS_TOKEN || github.token }}
+          persist-credentials: false
+
+      - name: Init submodules (full — includes private vnerhi)
+        env:
+          # init_submodules.sh uses REPO_ACCESS_TOKEN, else GITHUB_TOKEN, for HTTPS auth.
+          GITHUB_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN || github.token }}
+          REPO_ACCESS_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
+        run: bash scripts/init_submodules.sh full
 
       # ------------------------------------------------------------------
       # Single effective build type: always inputs.build_type (CI runs Release only).

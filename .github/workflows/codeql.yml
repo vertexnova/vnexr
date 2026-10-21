@@ -42,12 +42,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Use HTTPS for GitHub (CI runners have no SSH key)
-        run: git config --global url."https://github.com/".insteadOf "git@github.com:"
-
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false
+          token: ${{ secrets.REPO_ACCESS_TOKEN || github.token }}
+          persist-credentials: false
+
+      - name: Init submodules (full — includes private vnerhi)
+        env:
+          GITHUB_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN || github.token }}
+          REPO_ACCESS_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
+        run: bash scripts/init_submodules.sh full
 
       # No build cache: CodeQL must trace a full build. Restoring a cached build
       # would let cmake --build skip most compilations, so CodeQL would miss
