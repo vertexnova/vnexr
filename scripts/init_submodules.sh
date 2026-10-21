@@ -5,6 +5,11 @@
 #   ./scripts/init_submodules.sh              # public deps only
 #   ./scripts/init_submodules.sh full         # includes vnemath + private vnerhi
 #
+# full tier expects recorded gitlinks (mode 160000) for deps/internal/vnemath and
+# deps/internal/vnerhi — same as vnegfx. .gitmodules alone is not enough; add with:
+#   git submodule add <url> deps/internal/vnemath
+#   git submodule add git@github.com:vertexnova/vnerhi.git deps/internal/vnerhi
+#
 # Local override when vnerhi is checked out beside vnexr:
 #   export VNE_VNERHI_PATH=/path/to/vnerhi
 #   ./scripts/init_submodules.sh full
