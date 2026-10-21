@@ -12,6 +12,11 @@
 #include "vertexnova/xr/backend/openxr/platform/openxr_debug.h"
 
 #include "vertexnova/logging/logging.h"
+#include "vertexnova/xr/backend/openxr/openxr_util.h"
+
+namespace {
+CREATE_VNE_LOGGER_CATEGORY("vne.xr.openxr.debug");
+}
 
 namespace vne::xr {
 
@@ -40,8 +45,8 @@ XrBool32 XRAPI_PTR debugCallback(XrDebugUtilsMessageSeverityFlagsEXT severity,
 
 bool OpenXrDebugMessenger::create(XrInstance instance, PFN_xrGetInstanceProcAddr get_proc) {
     destroy(instance);
-    auto pfn_create =
-        reinterpret_cast<PFN_xrCreateDebugUtilsMessengerEXT>(get_proc(instance, "xrCreateDebugUtilsMessengerEXT"));
+    auto pfn_create = OpenXrUtil::loadXrProc<PFN_xrCreateDebugUtilsMessengerEXT>(
+        instance, get_proc, "xrCreateDebugUtilsMessengerEXT");
     if (pfn_create == nullptr) {
         return false;
     }
@@ -58,8 +63,8 @@ void OpenXrDebugMessenger::destroy(XrInstance instance) {
     if (messenger_ == XR_NULL_HANDLE || instance == XR_NULL_HANDLE) {
         return;
     }
-    auto pfn_destroy = reinterpret_cast<PFN_xrDestroyDebugUtilsMessengerEXT>(
-        xrGetInstanceProcAddr(instance, "xrDestroyDebugUtilsMessengerEXT"));
+    auto pfn_destroy = OpenXrUtil::loadXrProc<PFN_xrDestroyDebugUtilsMessengerEXT>(
+        instance, &xrGetInstanceProcAddr, "xrDestroyDebugUtilsMessengerEXT");
     if (pfn_destroy != nullptr) {
         pfn_destroy(messenger_);
     }

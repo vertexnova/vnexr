@@ -20,8 +20,8 @@ namespace vne::xr {
 /** @brief OpenXR-specific projection and pose math (Diligent XrCreateProjectionFov). */
 namespace OpenXrMath {
 
-void poseToMatrix(const Pose& pose, float out_matrix[16]);
-void createProjectionFov(const FieldOfView& fov, float near_z, float far_z, float out_matrix[16]);
+void poseToMatrix(const Pose& pose, float out_matrix[kMat4FloatCount]);
+void createProjectionFov(const FieldOfView& fov, float near_z, float far_z, float out_matrix[kMat4FloatCount]);
 void populateViewMatrices(const XrView& xr_view, float near_z, float far_z, View& out_view);
 
 }  // namespace OpenXrMath

@@ -27,7 +27,8 @@
 namespace vne::xr {
 
 namespace {
-constexpr auto kIdlePollInterval = std::chrono::milliseconds(10);
+constexpr int kIdlePollIntervalMs = 10;
+constexpr auto kIdlePollInterval = std::chrono::milliseconds(kIdlePollIntervalMs);
 }  // namespace
 
 void ISession::run(IRenderSession& app_session) {

@@ -11,6 +11,8 @@
 
 #include "vertexnova/xr/backend/openxr/graphics/openxr_vulkan_binding.h"
 
+#include "vertexnova/xr/backend/openxr/openxr_util.h"
+
 #if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
 #include <openxr/openxr_platform.h>
 #include <vulkan/vulkan.h>
@@ -30,10 +32,10 @@ Result OpenXrVulkanBinding::createVulkanInstance(XrInstance instance,
     return Result::eErrorNotSupported;
 #else
     (void)use_enable2;
-    auto pfn_create_instance =
-        reinterpret_cast<PFN_xrCreateVulkanInstanceKHR>(get_proc(instance, "xrCreateVulkanInstanceKHR"));
+    auto pfn_create_instance = OpenXrUtil::loadXrProc<PFN_xrCreateVulkanInstanceKHR>(
+        instance, get_proc, "xrCreateVulkanInstanceKHR");
     auto pfn_create_device =
-        reinterpret_cast<PFN_xrCreateVulkanDeviceKHR>(get_proc(instance, "xrCreateVulkanDeviceKHR"));
+        OpenXrUtil::loadXrProc<PFN_xrCreateVulkanDeviceKHR>(instance, get_proc, "xrCreateVulkanDeviceKHR");
     if (pfn_create_instance == nullptr || pfn_create_device == nullptr) {
         return Result::eErrorNotSupported;
     }

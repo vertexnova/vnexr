@@ -41,7 +41,6 @@ class OpenXrVulkanTexture final : public vne::rhi::ITexture {
 
    private:
     void* vk_image_ = nullptr;
-    bool is_depth_ = false;
     vne::rhi::TextureDescriptor descriptor_{};
 };
 

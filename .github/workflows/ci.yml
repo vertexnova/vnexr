@@ -437,15 +437,50 @@ jobs:
 
       - name: Run clang-tidy
         run: |
-          find src -type f \( -name '*.cpp' -o -name '*.h' \) -print0 \
-            | xargs -0 -r clang-tidy -p build/shared \
-                --warnings-as-errors='*'
+          python3 - <<'PY'
+          import json
+          import os
+          import shlex
+          import subprocess
+          import sys
+
+          compile_db_path = "build/shared/compile_commands.json"
+          repo_root = os.path.abspath(".")
+          src_root = os.path.join(repo_root, "src") + os.sep
+          with open(compile_db_path, "r", encoding="utf-8") as f:
+              commands = json.load(f)
+
+          files = []
+          seen = set()
+          for entry in commands:
+              file_path = os.path.abspath(os.path.normpath(entry.get("file", "")))
+              if not file_path:
+                  continue
+              if not (file_path.endswith(".cpp") or file_path.endswith(".cc") or file_path.endswith(".cxx")):
+                  continue
+              if not file_path.startswith(src_root):
+                  continue
+              if file_path in seen:
+                  continue
+              seen.add(file_path)
+              files.append(file_path)
+
+          if not files:
+              print("No translation units found in compile_commands.json", file=sys.stderr)
+              sys.exit(1)
+
+          print(f"Running clang-tidy on {len(files)} translation units from compile_commands.json")
+          cmd = ["clang-tidy", "-p", "build/shared", "--warnings-as-errors=*"] + files
+          print("Command:", " ".join(shlex.quote(x) for x in cmd))
+          result = subprocess.run(cmd, check=False)
+          sys.exit(result.returncode)
+          PY
 
       - name: Write clang-tidy summary
         if: always()
         run: |
           echo "## clang-tidy" >> "$GITHUB_STEP_SUMMARY"
-          echo "Analyzed \`src/\` using Clang compile database (\`build/shared/compile_commands.json\`)" >> "$GITHUB_STEP_SUMMARY"
+          echo "Analyzed \`src/\` translation units from Clang compile database (\`build/shared/compile_commands.json\`)" >> "$GITHUB_STEP_SUMMARY"
 
   # ====================================================================
   # STAGE 5: CI GATE

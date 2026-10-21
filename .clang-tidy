@@ -28,7 +28,8 @@ Checks: >
 
 WarningsAsErrors: ''
 
-HeaderFilterRegex: '(src/vertexnova/.*|include/vertexnova/.*)'
+# Limit to this repo's XR sources/headers (exclude deps/*/include/vertexnova/...).
+HeaderFilterRegex: '(src/vertexnova/xr/|include/vertexnova/xr/)'
 
 CheckOptions:
   - key: readability-identifier-naming.ClassCase

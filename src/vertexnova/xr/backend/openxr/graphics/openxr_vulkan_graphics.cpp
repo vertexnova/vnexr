@@ -72,8 +72,8 @@ Result OpenXrVulkanGraphics::createDevice() {
     }
 
     if (use_vulkan_enable2_) {
-        auto pfn_get_requirements = reinterpret_cast<PFN_xrGetVulkanGraphicsRequirements2KHR>(
-            attribs_.get_instance_proc_addr(attribs_.instance, "xrGetVulkanGraphicsRequirements2KHR"));
+        auto pfn_get_requirements = OpenXrUtil::loadXrProc<PFN_xrGetVulkanGraphicsRequirements2KHR>(
+            attribs_.instance, attribs_.get_instance_proc_addr, "xrGetVulkanGraphicsRequirements2KHR");
         if (pfn_get_requirements != nullptr) {
             XrVulkanGraphicsRequirements2KHR requirements{XR_TYPE_VULKAN_GRAPHICS_REQUIREMENTS2_KHR};
             const XrResult req_result = pfn_get_requirements(attribs_.instance, attribs_.system_id, &requirements);
@@ -82,8 +82,8 @@ Result OpenXrVulkanGraphics::createDevice() {
             }
         }
     } else {
-        auto pfn_get_requirements = reinterpret_cast<PFN_xrGetVulkanGraphicsRequirementsKHR>(
-            attribs_.get_instance_proc_addr(attribs_.instance, "xrGetVulkanGraphicsRequirementsKHR"));
+        auto pfn_get_requirements = OpenXrUtil::loadXrProc<PFN_xrGetVulkanGraphicsRequirementsKHR>(
+            attribs_.instance, attribs_.get_instance_proc_addr, "xrGetVulkanGraphicsRequirementsKHR");
         if (pfn_get_requirements != nullptr) {
             XrVulkanGraphicsRequirementsKHR requirements{XR_TYPE_VULKAN_GRAPHICS_REQUIREMENTS_KHR};
             const XrResult req_result = pfn_get_requirements(attribs_.instance, attribs_.system_id, &requirements);

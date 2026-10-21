@@ -14,6 +14,8 @@
 #include "vertexnova/logging/logging.h"
 #include "vertexnova/xr/backend/openxr/openxr_util.h"
 
+#include <cstddef>
+
 namespace {
 CREATE_VNE_LOGGER_CATEGORY("vne.xr.openxr.input");
 }
@@ -36,8 +38,8 @@ OpenXrInput::~OpenXrInput() {
 Result OpenXrInput::createAction(XrActionSet action_set, const char* name, XrActionType type, XrAction& out_action) {
     XrActionCreateInfo info{XR_TYPE_ACTION_CREATE_INFO};
     info.actionType = type;
-    std::strncpy(info.actionName, name, XR_MAX_ACTION_NAME_SIZE - 1);
-    std::strncpy(info.localizedActionName, name, XR_MAX_LOCALIZED_ACTION_NAME_SIZE - 1);
+    OpenXrUtil::copyXrFixedString(info.actionName, XR_MAX_ACTION_NAME_SIZE, name);
+    OpenXrUtil::copyXrFixedString(info.localizedActionName, XR_MAX_LOCALIZED_ACTION_NAME_SIZE, name);
     info.countSubactionPaths = 0;
     info.subactionPaths = nullptr;
     OPENXR_CHECK(xrCreateAction(action_set, &info, &out_action));
@@ -45,17 +47,18 @@ Result OpenXrInput::createAction(XrActionSet action_set, const char* name, XrAct
 }
 
 Result OpenXrInput::suggestBindings(XrInstance instance) {
-    XrActionSuggestedBinding khr_bindings[] = {
-        {grab_action_, xrStringToPath(instance, "/user/hand/left/input/squeeze/value")},
-        {grab_action_, xrStringToPath(instance, "/user/hand/right/input/squeeze/value")},
-        {spawn_action_, xrStringToPath(instance, "/user/hand/left/input/select/click")},
-        {spawn_action_, xrStringToPath(instance, "/user/hand/right/input/select/click")},
-        {palm_pose_action_, xrStringToPath(instance, "/user/hand/left/input/grip/pose")},
-        {palm_pose_action_, xrStringToPath(instance, "/user/hand/right/input/grip/pose")},
+    const XrActionSuggestedBinding khr_bindings[] = {
+        {grab_action_, OpenXrUtil::stringToPath(instance, "/user/hand/left/input/squeeze/value")},
+        {grab_action_, OpenXrUtil::stringToPath(instance, "/user/hand/right/input/squeeze/value")},
+        {spawn_action_, OpenXrUtil::stringToPath(instance, "/user/hand/left/input/select/click")},
+        {spawn_action_, OpenXrUtil::stringToPath(instance, "/user/hand/right/input/select/click")},
+        {palm_pose_action_, OpenXrUtil::stringToPath(instance, "/user/hand/left/input/grip/pose")},
+        {palm_pose_action_, OpenXrUtil::stringToPath(instance, "/user/hand/right/input/grip/pose")},
     };
 
     XrInteractionProfileSuggestedBinding suggested{XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
-    suggested.interactionProfile = xrStringToPath(instance, "/interaction_profiles/khr/simple_controller");
+    suggested.interactionProfile =
+        OpenXrUtil::stringToPath(instance, "/interaction_profiles/khr/simple_controller");
     suggested.countSuggestedBindings = static_cast<std::uint32_t>(std::size(khr_bindings));
     suggested.suggestedBindings = khr_bindings;
     const XrResult result = xrSuggestInteractionProfileBindings(instance, &suggested);
@@ -63,17 +66,18 @@ Result OpenXrInput::suggestBindings(XrInstance instance) {
         VNE_LOG_WARN << "KHR simple controller bindings failed; continuing";
     }
 
-    XrActionSuggestedBinding touch_bindings[] = {
-        {grab_action_, xrStringToPath(instance, "/user/hand/left/input/squeeze/value")},
-        {grab_action_, xrStringToPath(instance, "/user/hand/right/input/squeeze/value")},
-        {spawn_action_, xrStringToPath(instance, "/user/hand/left/input/trigger/value")},
-        {spawn_action_, xrStringToPath(instance, "/user/hand/right/input/trigger/value")},
-        {change_color_action_, xrStringToPath(instance, "/user/hand/left/input/x/click")},
-        {change_color_action_, xrStringToPath(instance, "/user/hand/right/input/a/click")},
-        {palm_pose_action_, xrStringToPath(instance, "/user/hand/left/input/grip/pose")},
-        {palm_pose_action_, xrStringToPath(instance, "/user/hand/right/input/grip/pose")},
+    const XrActionSuggestedBinding touch_bindings[] = {
+        {grab_action_, OpenXrUtil::stringToPath(instance, "/user/hand/left/input/squeeze/value")},
+        {grab_action_, OpenXrUtil::stringToPath(instance, "/user/hand/right/input/squeeze/value")},
+        {spawn_action_, OpenXrUtil::stringToPath(instance, "/user/hand/left/input/trigger/value")},
+        {spawn_action_, OpenXrUtil::stringToPath(instance, "/user/hand/right/input/trigger/value")},
+        {change_color_action_, OpenXrUtil::stringToPath(instance, "/user/hand/left/input/x/click")},
+        {change_color_action_, OpenXrUtil::stringToPath(instance, "/user/hand/right/input/a/click")},
+        {palm_pose_action_, OpenXrUtil::stringToPath(instance, "/user/hand/left/input/grip/pose")},
+        {palm_pose_action_, OpenXrUtil::stringToPath(instance, "/user/hand/right/input/grip/pose")},
     };
-    suggested.interactionProfile = xrStringToPath(instance, "/interaction_profiles/oculus/touch_controller");
+    suggested.interactionProfile =
+        OpenXrUtil::stringToPath(instance, "/interaction_profiles/oculus/touch_controller");
     suggested.countSuggestedBindings = static_cast<std::uint32_t>(std::size(touch_bindings));
     suggested.suggestedBindings = touch_bindings;
     if (XR_FAILED(xrSuggestInteractionProfileBindings(instance, &suggested))) {
@@ -88,8 +92,8 @@ Result OpenXrInput::create(XrInstance instance, XrSession session) {
     session_ = session;
 
     XrActionSetCreateInfo set_info{XR_TYPE_ACTION_SET_CREATE_INFO};
-    std::strncpy(set_info.actionSetName, "gameplay", XR_MAX_ACTION_SET_NAME_SIZE - 1);
-    std::strncpy(set_info.localizedActionSetName, "Gameplay", XR_MAX_LOCALIZED_ACTION_SET_NAME_SIZE - 1);
+    OpenXrUtil::copyXrFixedString(set_info.actionSetName, XR_MAX_ACTION_SET_NAME_SIZE, "gameplay");
+    OpenXrUtil::copyXrFixedString(set_info.localizedActionSetName, XR_MAX_LOCALIZED_ACTION_SET_NAME_SIZE, "Gameplay");
     set_info.priority = 0;
     OPENXR_CHECK(xrCreateActionSet(instance, &set_info, &action_set_));
 
@@ -109,7 +113,7 @@ Result OpenXrInput::create(XrInstance instance, XrSession session) {
     for (std::uint32_t i = 0; i < palm_spaces_.size(); ++i) {
         XrActionSpaceCreateInfo space_info{XR_TYPE_ACTION_SPACE_CREATE_INFO};
         space_info.action = palm_pose_action_;
-        space_info.subactionPath = xrStringToPath(instance, kHandSubpaths[i]);
+        space_info.subactionPath = OpenXrUtil::stringToPath(instance, kHandSubpaths[i]);
         space_info.poseInActionSpace.orientation.w = 1.f;
         OPENXR_CHECK(xrCreateActionSpace(session, &space_info, &palm_spaces_[i]));
     }
@@ -138,7 +142,8 @@ Result OpenXrInput::poll(XrTime predicted_time, InputState& out_input) {
         return Result::eErrorBadState;
     }
 
-    XrActiveActionSet active{XR_TYPE_ACTIVE_ACTION_SET};
+    // XrActiveActionSet has no type field in the OpenXR 1.0 core headers.
+    XrActiveActionSet active{};
     active.actionSet = action_set_;
     active.subactionPath = XR_NULL_PATH;
     XrActionsSyncInfo sync_info{XR_TYPE_ACTIONS_SYNC_INFO};
@@ -148,7 +153,7 @@ Result OpenXrInput::poll(XrTime predicted_time, InputState& out_input) {
 
     out_input.controller_count = InputState::kMaxControllers;
     for (std::uint32_t i = 0; i < InputState::kMaxControllers; ++i) {
-        const XrPath subpath = xrStringToPath(instance_, kHandSubpaths[i]);
+        const XrPath subpath = OpenXrUtil::stringToPath(instance_, kHandSubpaths[i]);
 
         XrActionStateGetInfo get_info{XR_TYPE_ACTION_STATE_GET_INFO};
         get_info.action = grab_action_;
@@ -198,7 +203,7 @@ Result OpenXrInput::applyHaptic(std::uint32_t hand_index, float strength, XrDura
     }
     XrHapticActionInfo haptic_info{XR_TYPE_HAPTIC_ACTION_INFO};
     haptic_info.action = buzz_action_;
-    haptic_info.subactionPath = xrStringToPath(instance_, kHandSubpaths[hand_index]);
+    haptic_info.subactionPath = OpenXrUtil::stringToPath(instance_, kHandSubpaths[hand_index]);
     XrHapticVibration vibration{XR_TYPE_HAPTIC_VIBRATION};
     vibration.amplitude = strength;
     vibration.duration = duration;

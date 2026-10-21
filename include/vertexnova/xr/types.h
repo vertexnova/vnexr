@@ -54,4 +54,13 @@ struct FieldOfView {
     float angle_down = 0.f;
 };
 
+/** @brief Element count of a row-major 4×4 float matrix. */
+inline constexpr std::uint32_t kMat4FloatCount = 16;
+
+/** @brief Default near clip plane distance (meters). */
+inline constexpr float kDefaultNearZ = 0.1f;
+
+/** @brief Default far clip plane distance (meters). */
+inline constexpr float kDefaultFarZ = 100.f;
+
 }  // namespace vne::xr

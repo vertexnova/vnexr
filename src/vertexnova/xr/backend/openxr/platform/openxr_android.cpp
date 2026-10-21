@@ -18,6 +18,10 @@
 #include "vertexnova/logging/logging.h"
 #include "vertexnova/xr/backend/openxr/openxr_util.h"
 
+namespace {
+CREATE_VNE_LOGGER_CATEGORY("vne.xr.openxr.android");
+}
+
 namespace vne::xr {
 
 Result initializeOpenXrLoaderAndroid(void* application_vm, void* application_context) {

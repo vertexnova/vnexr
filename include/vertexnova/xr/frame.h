@@ -41,8 +41,8 @@ struct FrameParams {
 
 /** @brief App → host layer hints (AppParams pattern from IGL). */
 struct LayerParams {
-    float near_z = 0.1f;
-    float far_z = 100.f;
+    float near_z = kDefaultNearZ;
+    float far_z = kDefaultFarZ;
     bool enable_passthrough = false;
     bool request_exit = false;
 };

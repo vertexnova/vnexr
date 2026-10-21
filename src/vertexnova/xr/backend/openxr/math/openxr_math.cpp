@@ -22,20 +22,22 @@ namespace vne::xr::OpenXrMath {
 
 namespace {
 
-void storeMat4(const glm::mat4& m, float out[16]) {
-    std::memcpy(out, glm::value_ptr(m), sizeof(float) * 16);
+constexpr float kTwice = 2.f;
+
+void storeMat4(const glm::mat4& m, float out[kMat4FloatCount]) {
+    std::memcpy(out, glm::value_ptr(m), sizeof(float) * kMat4FloatCount);
 }
 
 }  // namespace
 
-void poseToMatrix(const Pose& pose, float out_matrix[16]) {
+void poseToMatrix(const Pose& pose, float out_matrix[kMat4FloatCount]) {
     const glm::quat rotation(pose.orientation[3], pose.orientation[0], pose.orientation[1], pose.orientation[2]);
     glm::mat4 m = glm::translate(glm::mat4(1.f), glm::vec3(pose.position[0], pose.position[1], pose.position[2]));
     m = m * glm::mat4_cast(rotation);
     storeMat4(m, out_matrix);
 }
 
-void createProjectionFov(const FieldOfView& fov, float near_z, float far_z, float out_matrix[16]) {
+void createProjectionFov(const FieldOfView& fov, float near_z, float far_z, float out_matrix[kMat4FloatCount]) {
     const float tan_left = std::tan(fov.angle_left);
     const float tan_right = std::tan(fov.angle_right);
     const float tan_down = std::tan(fov.angle_down);
@@ -47,8 +49,8 @@ void createProjectionFov(const FieldOfView& fov, float near_z, float far_z, floa
     const float inv_tb = 1.f / (tan_up - tan_down);
 
     glm::mat4 proj(0.f);
-    proj[0][0] = 2.f * inv_rl;
-    proj[1][1] = 2.f * inv_tb;
+    proj[0][0] = kTwice * inv_rl;
+    proj[1][1] = kTwice * inv_tb;
     proj[2][0] = sum_rl * inv_rl;
     proj[2][1] = sum_tb * inv_tb;
     proj[2][2] = far_z / (near_z - far_z);
@@ -76,7 +78,7 @@ void populateViewMatrices(const XrView& xr_view, float near_z, float far_z, View
     fov.angle_down = xr_view.fov.angleDown;
     out_view.fov = fov;
 
-    float world_matrix[16]{};
+    float world_matrix[kMat4FloatCount]{};
     poseToMatrix(pose, world_matrix);
     glm::mat4 world = glm::make_mat4(world_matrix);
     glm::mat4 view = glm::inverse(world);

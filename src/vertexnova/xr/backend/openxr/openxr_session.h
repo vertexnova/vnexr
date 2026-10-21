@@ -54,8 +54,8 @@ class OpenXrSession final : public ISession {
 
     std::uint64_t frame_index_ = 0;
     XrTime predicted_display_time_ = 0;
-    float near_z_ = 0.1f;
-    float far_z_ = 100.f;
+    float near_z_ = kDefaultNearZ;
+    float far_z_ = kDefaultFarZ;
 
     OpenXrVulkanGraphics graphics_;
     OpenXrSwapchainBridge swapchain_bridge_;

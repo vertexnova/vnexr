@@ -26,9 +26,9 @@ struct View {
     Pose pose{};
     FieldOfView fov{};
     /** @brief Row-major 4x4 view matrix (world → eye). */
-    float view_matrix[16]{};
+    float view_matrix[kMat4FloatCount]{};
     /** @brief Row-major 4x4 projection matrix. */
-    float projection_matrix[16]{};
+    float projection_matrix[kMat4FloatCount]{};
 };
 
 }  // namespace vne::xr
