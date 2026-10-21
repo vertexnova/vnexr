@@ -12,7 +12,7 @@
 #include "vertexnova/xr/backend/openxr/platform/openxr_android.h"
 
 #if defined(__ANDROID__)
-#include <openxr/openxr_platform.h>
+#include "vertexnova/xr/backend/openxr/openxr_platform_prelude.h"
 #endif
 
 #include "vertexnova/logging/logging.h"

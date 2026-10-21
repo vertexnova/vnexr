@@ -24,6 +24,7 @@ set(_openxr_sources
 set(_openxr_headers
     ${CMAKE_CURRENT_SOURCE_DIR}/openxr_instance_lifetime.h
     ${CMAKE_CURRENT_SOURCE_DIR}/openxr_platform_handle.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/openxr_platform_prelude.h
     ${CMAKE_CURRENT_SOURCE_DIR}/openxr_session.h
     ${CMAKE_CURRENT_SOURCE_DIR}/openxr_util.h
     ${CMAKE_CURRENT_SOURCE_DIR}/graphics/openxr_vulkan_graphics.h

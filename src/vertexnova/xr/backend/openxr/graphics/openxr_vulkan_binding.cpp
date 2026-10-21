@@ -13,11 +13,6 @@
 
 #include "vertexnova/xr/backend/openxr/openxr_util.h"
 
-#if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
-#include <openxr/openxr_platform.h>
-#include <vulkan/vulkan.h>
-#endif
-
 namespace vne::xr {
 
 Result OpenXrVulkanBinding::createVulkanInstance(XrInstance instance,

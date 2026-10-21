@@ -11,12 +11,6 @@
 
 #include "vertexnova/xr/backend/openxr/graphics/openxr_vulkan_graphics.h"
 
-#include <openxr/openxr.h>
-
-#if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
-#include <openxr/openxr_platform.h>
-#endif
-
 #include "vertexnova/logging/logging.h"
 #include "vertexnova/rhi/backend/vulkan/vulkan_device.h"
 #include "vertexnova/rhi/graphics_factory.h"
