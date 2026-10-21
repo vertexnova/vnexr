@@ -15,6 +15,10 @@
 #include "vertexnova/rhi/graphics_factory.h"
 #endif
 
+namespace {
+CREATE_VNE_LOGGER_CATEGORY("vne.xr.samples.openxr_stereo");
+}
+
 namespace vne::xr::samples {
 
 namespace {
@@ -129,10 +133,12 @@ void StereoCubeSceneLayer::onAttach() {
     const auto backend = vne::rhi::GraphicsFactory::getDefaultBackend();
     if (auto physical = vne::rhi::GraphicsFactory::createPhysicalDevice(backend)) {
         vne::rhi::PhysicalDeviceDescriptor phys_desc{};
-        const auto info = physical->getDefaultDevice(phys_desc);
-        vne::rhi::DeviceDescriptor dev_desc{};
-        dev_desc.debug_name = "openxr_stereo_sample";
-        device_ = physical->createDevice(info, dev_desc);
+        const auto info = physical->selectBestDevice(phys_desc);
+        if (info.isValid()) {
+            vne::rhi::DeviceDescriptor dev_desc{};
+            dev_desc.name = "openxr_stereo_sample";
+            device_ = physical->createDevice(info, dev_desc);
+        }
     }
 #endif
     VNE_LOG_INFO << "OpenXR stereo sample ready";

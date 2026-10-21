@@ -10,7 +10,14 @@
 
 #include <array>
 #include <cstdint>
+#include <memory>
 #include <vector>
+
+#ifdef VNE_XR_WITH_RHI
+namespace vne::rhi {
+class IDevice;
+}
+#endif
 
 namespace vne::xr::samples {
 
