@@ -85,7 +85,11 @@ function(xr_configure_vnemath_dep)
     _xr_force_global_build_flags_off()
     vne_use_dep(TARGET vne::math SUBDIR "${VNE_DEPS_INTERNAL_DIR}/vnemath"
         BINARY_DIR "${CMAKE_BINARY_DIR}/deps/internal/vnemath"
-        CACHE_VARS BUILD_TESTS OFF BUILD_EXAMPLES OFF)
+        CACHE_VARS
+            BUILD_TESTS OFF
+            BUILD_EXAMPLES OFF
+            VNE_MATH_LIB_TYPE "${VNE_XR_LIB_TYPE}"
+            VNE_LOGGING_LIB_TYPE "${VNE_XR_LIB_TYPE}")
     _xr_restore_global_build_flags(_saved_tests _saved_examples)
 endfunction()
 
@@ -127,6 +131,9 @@ endfunction()
 function(xr_configure_rhi_deps)
     include("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/VneXrRhi.cmake")
     xr_configure_vnerhi_options()
+    # Align nested lib kinds before vnerhi pulls vnemath (ASan requires static .a).
+    set(VNE_MATH_LIB_TYPE "${VNE_XR_LIB_TYPE}" CACHE STRING "" FORCE)
+    set(VNE_LOGGING_LIB_TYPE "${VNE_XR_LIB_TYPE}" CACHE STRING "" FORCE)
     xr_configure_vnerhi_dep()
     xr_configure_vnemath_dep()
     xr_configure_vneevents_dep()

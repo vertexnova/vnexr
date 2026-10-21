@@ -15,6 +15,7 @@
 #include "vertexnova/logging/logging.h"
 #include "vertexnova/xr/xr_error.h"
 
+#include <cstddef>
 #include <cstring>
 #include <string>
 #include <string_view>
@@ -150,14 +151,59 @@ namespace vne::xr::OpenXrUtil {
         if (isExtensionAvailable(name, available)) {
             enabled.push_back(name.c_str());
         } else {
-            VNE_LOG_WARN << "OpenXR extension not available: " << name;
+            // Header TU may not define CREATE_VNE_LOGGER_CATEGORY — use explicit category.
+            VNE_LOG_WARN_LC(::vne::log::kDefaultLoggerName, "vne.xr.openxr")
+                << "OpenXR extension not available: " << name;
         }
     }
     return enabled;
 }
 
+/** @brief Convert path string to XrPath (XR_NULL_PATH on failure). */
+[[nodiscard]] inline XrPath stringToPath(XrInstance instance, const char* path_string) {
+    XrPath path = XR_NULL_PATH;
+    if (instance == XR_NULL_HANDLE || path_string == nullptr) {
+        return XR_NULL_PATH;
+    }
+    if (XR_FAILED(xrStringToPath(instance, path_string, &path))) {
+        return XR_NULL_PATH;
+    }
+    return path;
+}
+
+/** @brief Resolve an OpenXR function pointer; returns nullptr on failure. */
+template<typename Pfn>
+[[nodiscard]] inline Pfn loadXrProc(XrInstance instance, PFN_xrGetInstanceProcAddr get_proc, const char* name) {
+    if (get_proc == nullptr || name == nullptr) {
+        return nullptr;
+    }
+    PFN_xrVoidFunction pfn = nullptr;
+    if (XR_FAILED(get_proc(instance, name, &pfn)) || pfn == nullptr) {
+        return nullptr;
+    }
+    return reinterpret_cast<Pfn>(pfn);
+}
+
+/** @brief Null-terminated copy into OpenXR fixed-size name buffers (MSVC-safe). */
+inline void copyXrFixedString(char* dest, std::size_t dest_size, const char* src) {
+    if (dest == nullptr || dest_size == 0) {
+        return;
+    }
+    if (src == nullptr) {
+        dest[0] = '\0';
+        return;
+    }
+#if defined(_MSC_VER)
+    strncpy_s(dest, dest_size, src, _TRUNCATE);
+#else
+    std::strncpy(dest, src, dest_size - 1);
+    dest[dest_size - 1] = '\0';
+#endif
+}
+
 }  // namespace vne::xr::OpenXrUtil
 
+// OPENXR_CHECK* expand at the call site — defining TU must call CREATE_VNE_LOGGER_CATEGORY.
 #define OPENXR_CHECK(expr)                                                                                             \
     do {                                                                                                               \
         const XrResult _openxr_result = (expr);                                                                        \

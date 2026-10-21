@@ -10,11 +10,13 @@ set -euo pipefail
 
 if ! command -v apt-get >/dev/null 2>&1; then
   echo "This script supports apt-based distros (Debian/Ubuntu)."
-  echo "Install manually: cmake, g++ or clang, libvulkan-dev, libx11-dev, libxrandr-dev, libxxf86vm-dev"
+  echo "Install manually: cmake, g++ or clang, libvulkan-dev, libx11-dev,"
+  echo "  libx11-xcb-dev, libxrandr-dev, libxxf86vm-dev, libxcb1-dev, libxcb-glx0-dev"
   exit 1
 fi
 
 echo ">> Installing Linux OpenXR + Vulkan build dependencies (sudo required)"
+# Khronos OpenXR-SDK loader includes <xcb/glx.h> via xr_dependencies.h on Linux.
 sudo apt-get update -qq
 sudo apt-get install -y \
   build-essential \
@@ -24,9 +26,12 @@ sudo apt-get install -y \
   libvulkan-dev \
   vulkan-tools \
   libx11-dev \
+  libx11-xcb-dev \
   libxrandr-dev \
   libxxf86vm-dev \
-  libgl1-mesa-dev
+  libgl1-mesa-dev \
+  libxcb1-dev \
+  libxcb-glx0-dev
 
 echo ">> Done. Verify Vulkan:"
 if command -v vulkaninfo >/dev/null 2>&1; then

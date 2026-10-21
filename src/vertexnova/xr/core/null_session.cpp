@@ -19,9 +19,21 @@
 
 namespace vne::xr {
 
+namespace {
+
+void setIdentityMat4(float* matrix) {
+    std::memset(matrix, 0, sizeof(float) * kMat4FloatCount);
+    constexpr std::uint32_t kDim = 4;
+    for (std::uint32_t i = 0; i < kDim; ++i) {
+        matrix[i * kDim + i] = 1.f;
+    }
+}
+
+}  // namespace
+
 NullSession::NullSession(SessionConfig config)
-    : config_(std::move(config)) {
-    state_ = SessionState::eReady;
+    : config_(std::move(config))
+    , state_(SessionState::eReady) {
 #ifdef VNE_XR_WITH_RHI
     const auto backend = vne::rhi::GraphicsFactory::getDefaultBackend();
     (void)vne::rhi::GraphicsFactory::createPhysicalDevice(backend);
@@ -56,12 +68,8 @@ bool NullSession::beginFrame(Frame& out_frame) {
     out_frame.surfaces.views[0].view_index = 0;
     out_frame.surfaces.views[0].width = 1;
     out_frame.surfaces.views[0].height = 1;
-    std::memset(out_frame.views[0].view_matrix, 0, sizeof(out_frame.views[0].view_matrix));
-    out_frame.views[0].view_matrix[0] = out_frame.views[0].view_matrix[5] = out_frame.views[0].view_matrix[10] =
-        out_frame.views[0].view_matrix[15] = 1.f;
-    std::memset(out_frame.views[0].projection_matrix, 0, sizeof(out_frame.views[0].projection_matrix));
-    out_frame.views[0].projection_matrix[0] = out_frame.views[0].projection_matrix[5] =
-        out_frame.views[0].projection_matrix[10] = out_frame.views[0].projection_matrix[15] = 1.f;
+    setIdentityMat4(out_frame.views[0].view_matrix);
+    setIdentityMat4(out_frame.views[0].projection_matrix);
     return true;
 }
 

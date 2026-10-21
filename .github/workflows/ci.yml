@@ -7,10 +7,13 @@
 #
 # Description: CI pipeline — staged, gated, with concurrency cancellation.
 # Stage 1 — Pre-checks  : clang-format (fail-fast gate), commit-lint (warning only)
-# Stage 2+3 — Build+Test: Linux GCC/Clang/ASan, macOS, Windows (parallel)
+# Stage 2+3 — Build+Test: Linux GCC/Clang/ASan (Null), OpenXR on Linux/Windows/Android
 # Stage 4 — Analysis    : clang-tidy (reuses Clang build cache)
 # Stage 5 — CI Gate     : single required status check for branch protection
 # Branch protection: require only "CI Gate" — not individual job names.
+#
+# OpenXR runs only on Linux, Windows, and Android (not macOS / iOS / Web).
+# Private deps/internal/vnerhi requires REPO_ACCESS_TOKEN (see init_submodules.sh).
 #
 # Autodoc:   yes
 # ----------------------------------------------------------------------
@@ -186,7 +189,7 @@ jobs:
 
   # ====================================================================
   # STAGE 2+3: BUILD + TEST (parallel across platforms)
-  # All jobs delegate to build-reusable.yml to eliminate boilerplate.
+  # Headless Linux jobs: Null-session (no OpenXR). OpenXR: Linux / Windows / Android.
   # ====================================================================
 
   build-linux-gcc:
@@ -204,6 +207,7 @@ jobs:
       warnings_as_errors: true
     secrets:
       codecov_token: ${{ secrets.CODECOV_TOKEN }}
+      REPO_ACCESS_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
 
   build-linux-clang:
     name: "Build+Test / Linux Clang"
@@ -218,37 +222,8 @@ jobs:
       build_type:         Release
       enable_coverage:    false
       warnings_as_errors: true
-    secrets: inherit
-
-  build-macos:
-    name: "Build+Test / macOS"
-    needs: [detect-release, pre-checks-gate]
-    if: needs.pre-checks-gate.result == 'success' && needs.detect-release.outputs.is_release != 'true'
-    uses: ./.github/workflows/build-reusable.yml
-    with:
-      runner:             macos-latest
-      c_compiler:         ""
-      cpp_compiler:       ""
-      platform:           macos
-      build_type:         Release
-      enable_coverage:    false
-      warnings_as_errors: true
-    secrets: inherit
-
-  build-windows:
-    name: "Build+Test / Windows"
-    needs: [detect-release, pre-checks-gate]
-    if: needs.pre-checks-gate.result == 'success' && needs.detect-release.outputs.is_release != 'true'
-    uses: ./.github/workflows/build-reusable.yml
-    with:
-      runner:             windows-latest
-      c_compiler:         ""
-      cpp_compiler:       ""
-      platform:           windows
-      build_type:         Release
-      enable_coverage:    false
-      warnings_as_errors: true
-    secrets: inherit
+    secrets:
+      REPO_ACCESS_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
 
   build-linux-clang-static:
     name: "Build+Test / Linux Clang (static)"
@@ -264,7 +239,8 @@ jobs:
       enable_coverage:    false
       warnings_as_errors: true
       lib_type:           static
-    secrets: inherit
+    secrets:
+      REPO_ACCESS_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
 
   build-linux-openxr:
     name: "Build / Linux OpenXR + Vulkan"
@@ -272,20 +248,20 @@ jobs:
     if: needs.pre-checks-gate.result == 'success' && needs.detect-release.outputs.is_release != 'true'
     runs-on: ubuntu-latest
     steps:
-      - name: Use HTTPS for GitHub (CI runners have no SSH key)
-        run: git config --global url."https://github.com/".insteadOf "git@github.com:"
-
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false
+          token: ${{ secrets.REPO_ACCESS_TOKEN || github.token }}
+          persist-credentials: false
+
+      - name: Init submodules (full — includes private vnerhi)
+        env:
+          GITHUB_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN || github.token }}
+          REPO_ACCESS_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
+        run: bash scripts/init_submodules.sh full
 
       - name: Install OpenXR + Vulkan build dependencies
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y \
-            build-essential cmake ninja-build pkg-config \
-            libvulkan-dev vulkan-tools \
-            libx11-dev libxrandr-dev libxxf86vm-dev libgl1-mesa-dev
+        run: bash scripts/install_linux_openxr_deps.sh
 
       - name: Configure CMake (OpenXR)
         run: |
@@ -303,81 +279,71 @@ jobs:
       - name: Build
         run: cmake --build build/shared --parallel
 
-  build-web:
-    name: "Build / Web (Emscripten)"
+  build-windows-openxr:
+    name: "Build / Windows OpenXR + Vulkan"
     needs: [detect-release, pre-checks-gate]
     if: needs.pre-checks-gate.result == 'success' && needs.detect-release.outputs.is_release != 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
+    runs-on: windows-latest
     steps:
-      - name: Use HTTPS for GitHub (CI runners have no SSH key)
-        run: git config --global url."https://github.com/".insteadOf "git@github.com:"
-
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false
+          token: ${{ secrets.REPO_ACCESS_TOKEN || github.token }}
+          persist-credentials: false
 
-      - name: Install Emscripten
-        uses: mymindstorm/setup-emscripten@v14
+      - name: Init submodules (full — includes private vnerhi)
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN || github.token }}
+          REPO_ACCESS_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
+        run: bash scripts/init_submodules.sh full
 
-      - name: Configure CMake (Emscripten)
+      - name: Set up Vulkan SDK
+        uses: humbletim/setup-vulkan-sdk@v1.2.1
+        with:
+          vulkan-query-version: 1.3.296.0
+          vulkan-components: Vulkan-Headers, Vulkan-Loader
+          vulkan-use-cache: true
+
+      - name: Configure CMake (OpenXR)
+        shell: bash
         run: |
           cmake -B build/shared -S . \
-            -DCMAKE_TOOLCHAIN_FILE="$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake" \
             -DCMAKE_BUILD_TYPE=Release \
             -DVNE_XR_CI=ON \
             -DVNE_XR_LIB_TYPE=shared \
-            -DVNE_XR_TESTS=OFF   # wasm cannot link -lpthread or run natively; build-only check
+            -DVNE_XR_WITH_RHI=ON \
+            -DVNE_XR_WITH_OPENXR=ON \
+            -DVNE_XR_BACKEND_VULKAN=ON \
+            -DVNE_XR_EXAMPLES=ON \
+            -DVNE_XR_TESTS=OFF \
+            -DWARNINGS_AS_ERRORS=ON
 
       - name: Build
-        run: cmake --build build/shared --parallel
-
-  build-ios:
-    name: "Build / iOS"
-    needs: [detect-release, pre-checks-gate]
-    if: needs.pre-checks-gate.result == 'success' && needs.detect-release.outputs.is_release != 'true'
-    runs-on: macos-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Use HTTPS for GitHub (CI runners have no SSH key)
-        run: git config --global url."https://github.com/".insteadOf "git@github.com:"
-
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Configure CMake (iOS)
-        run: |
-          cmake -B build/static -S . \
-            -G Xcode \
-            -DCMAKE_SYSTEM_NAME=iOS \
-            -DCMAKE_OSX_ARCHITECTURES=arm64 \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DVNE_XR_CI=ON \
-            -DVNE_XR_LIB_TYPE=static \
-            -DVNE_XR_TESTS=OFF   # Xcode requires bundle ID for test targets; build-only check
-
-      - name: Build
-        run: cmake --build build/static --config Release --parallel
+        shell: bash
+        run: cmake --build build/shared --config Release --parallel
 
   build-android:
-    name: "Build / Android (arm64-v8a)"
+    name: "Build / Android OpenXR (arm64-v8a)"
     needs: [detect-release, pre-checks-gate]
     if: needs.pre-checks-gate.result == 'success' && needs.detect-release.outputs.is_release != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
-      - name: Use HTTPS for GitHub (CI runners have no SSH key)
-        run: git config --global url."https://github.com/".insteadOf "git@github.com:"
-
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false
+          token: ${{ secrets.REPO_ACCESS_TOKEN || github.token }}
+          persist-credentials: false
 
-      - name: Configure CMake (Android)
+      - name: Init submodules (full — includes private vnerhi)
+        env:
+          GITHUB_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN || github.token }}
+          REPO_ACCESS_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
+        run: bash scripts/init_submodules.sh full
+
+      - name: Configure CMake (Android OpenXR)
         run: |
           cmake -B build/shared -S . \
             -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK/build/cmake/android.toolchain.cmake" \
@@ -386,6 +352,9 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DVNE_XR_CI=ON \
             -DVNE_XR_LIB_TYPE=shared \
+            -DVNE_XR_WITH_RHI=ON \
+            -DVNE_XR_WITH_OPENXR=ON \
+            -DVNE_XR_BACKEND_VULKAN=ON \
             -DVNE_XR_TESTS=OFF   # Android binaries cannot run on the host runner; build-only check
 
       - name: Build
@@ -404,8 +373,11 @@ jobs:
       build_type:         Debug
       enable_coverage:    false
       warnings_as_errors: true
+      # Static: ASan + nested shared vnerhi/vnemath leaves unresolved __asan_* at link.
+      lib_type:           static
       extra_cmake_flags:  "-DENABLE_ASAN=ON"
-    secrets: inherit
+    secrets:
+      REPO_ACCESS_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
 
   # ====================================================================
   # STAGE 4: STATIC ANALYSIS
@@ -422,13 +394,17 @@ jobs:
       contents: read
 
     steps:
-      - name: Use HTTPS for GitHub (CI runners have no SSH key)
-        run: git config --global url."https://github.com/".insteadOf "git@github.com:"
-
-      # Submodules fetched here; not cached (cache after checkout would not reduce fetch cost).
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false
+          token: ${{ secrets.REPO_ACCESS_TOKEN || github.token }}
+          persist-credentials: false
+
+      - name: Init submodules (full — includes private vnerhi)
+        env:
+          GITHUB_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN || github.token }}
+          REPO_ACCESS_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
+        run: bash scripts/init_submodules.sh full
 
       # Restore the Clang Release/shared build cache written by build-linux-clang.
       # Same key as build-reusable.yml for linux-clang/Release/shared.
@@ -461,15 +437,50 @@ jobs:
 
       - name: Run clang-tidy
         run: |
-          find src -type f \( -name '*.cpp' -o -name '*.h' \) -print0 \
-            | xargs -0 -r clang-tidy -p build/shared \
-                --warnings-as-errors='*'
+          python3 - <<'PY'
+          import json
+          import os
+          import shlex
+          import subprocess
+          import sys
+
+          compile_db_path = "build/shared/compile_commands.json"
+          repo_root = os.path.abspath(".")
+          src_root = os.path.join(repo_root, "src") + os.sep
+          with open(compile_db_path, "r", encoding="utf-8") as f:
+              commands = json.load(f)
+
+          files = []
+          seen = set()
+          for entry in commands:
+              file_path = os.path.abspath(os.path.normpath(entry.get("file", "")))
+              if not file_path:
+                  continue
+              if not (file_path.endswith(".cpp") or file_path.endswith(".cc") or file_path.endswith(".cxx")):
+                  continue
+              if not file_path.startswith(src_root):
+                  continue
+              if file_path in seen:
+                  continue
+              seen.add(file_path)
+              files.append(file_path)
+
+          if not files:
+              print("No translation units found in compile_commands.json", file=sys.stderr)
+              sys.exit(1)
+
+          print(f"Running clang-tidy on {len(files)} translation units from compile_commands.json")
+          cmd = ["clang-tidy", "-p", "build/shared", "--warnings-as-errors=*"] + files
+          print("Command:", " ".join(shlex.quote(x) for x in cmd))
+          result = subprocess.run(cmd, check=False)
+          sys.exit(result.returncode)
+          PY
 
       - name: Write clang-tidy summary
         if: always()
         run: |
           echo "## clang-tidy" >> "$GITHUB_STEP_SUMMARY"
-          echo "Analyzed \`src/\` using Clang compile database (\`build/shared/compile_commands.json\`)" >> "$GITHUB_STEP_SUMMARY"
+          echo "Analyzed \`src/\` translation units from Clang compile database (\`build/shared/compile_commands.json\`)" >> "$GITHUB_STEP_SUMMARY"
 
   # ====================================================================
   # STAGE 5: CI GATE
@@ -489,11 +500,8 @@ jobs:
       - build-linux-clang
       - build-linux-clang-static
       - build-linux-openxr
+      - build-windows-openxr
       - build-linux-asan
-      - build-macos
-      - build-windows
-      - build-web
-      - build-ios
       - build-android
       - clang-tidy
 
@@ -506,11 +514,8 @@ jobs:
             "build-linux-clang=${{ needs.build-linux-clang.result }}"
             "build-linux-clang-static=${{ needs.build-linux-clang-static.result }}"
             "build-linux-openxr=${{ needs.build-linux-openxr.result }}"
+            "build-windows-openxr=${{ needs.build-windows-openxr.result }}"
             "build-linux-asan=${{ needs.build-linux-asan.result }}"
-            "build-macos=${{ needs.build-macos.result }}"
-            "build-windows=${{ needs.build-windows.result }}"
-            "build-web=${{ needs.build-web.result }}"
-            "build-ios=${{ needs.build-ios.result }}"
             "build-android=${{ needs.build-android.result }}"
             "clang-tidy=${{ needs.clang-tidy.result }}"
           )
@@ -535,15 +540,12 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "| Job | Result |" >> "$GITHUB_STEP_SUMMARY"
           echo "|-----|--------|" >> "$GITHUB_STEP_SUMMARY"
-          echo "| pre-checks-gate   | ${{ needs.pre-checks-gate.result }}   |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| build-linux-gcc   | ${{ needs.build-linux-gcc.result }}   |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| build-linux-clang | ${{ needs.build-linux-clang.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| pre-checks-gate       | ${{ needs.pre-checks-gate.result }}       |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| build-linux-gcc       | ${{ needs.build-linux-gcc.result }}       |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| build-linux-clang     | ${{ needs.build-linux-clang.result }}     |" >> "$GITHUB_STEP_SUMMARY"
           echo "| build-linux-clang-static | ${{ needs.build-linux-clang-static.result }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| build-linux-openxr | ${{ needs.build-linux-openxr.result }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| build-linux-asan  | ${{ needs.build-linux-asan.result }}  |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| build-macos       | ${{ needs.build-macos.result }}       |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| build-windows     | ${{ needs.build-windows.result }}     |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| build-web         | ${{ needs.build-web.result }}         |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| build-ios         | ${{ needs.build-ios.result }}         |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| build-android     | ${{ needs.build-android.result }}     |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| clang-tidy        | ${{ needs.clang-tidy.result }}        |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| build-linux-openxr    | ${{ needs.build-linux-openxr.result }}    |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| build-windows-openxr  | ${{ needs.build-windows-openxr.result }}  |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| build-linux-asan      | ${{ needs.build-linux-asan.result }}      |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| build-android         | ${{ needs.build-android.result }}         |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| clang-tidy            | ${{ needs.clang-tidy.result }}            |" >> "$GITHUB_STEP_SUMMARY"

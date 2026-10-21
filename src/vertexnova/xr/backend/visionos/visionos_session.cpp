@@ -19,9 +19,24 @@
 
 namespace vne::xr {
 
+namespace {
+
+constexpr std::uint32_t kStubViewWidth = 1920;
+constexpr std::uint32_t kStubViewHeight = 1080;
+
+void setIdentityMat4(float* matrix) {
+    std::memset(matrix, 0, sizeof(float) * kMat4FloatCount);
+    constexpr std::uint32_t kDim = 4;
+    for (std::uint32_t i = 0; i < kDim; ++i) {
+        matrix[i * kDim + i] = 1.f;
+    }
+}
+
+}  // namespace
+
 VisionOsSession::VisionOsSession(SessionConfig config)
-    : config_(std::move(config)) {
-    state_ = SessionState::eReady;
+    : config_(std::move(config))
+    , state_(SessionState::eReady) {
 #ifdef VNE_XR_WITH_RHI
     const auto backend = vne::rhi::GraphicsFactory::getDefaultBackend();
     (void)vne::rhi::GraphicsFactory::createPhysicalDevice(backend);
@@ -50,19 +65,15 @@ bool VisionOsSession::beginFrame(Frame& out_frame) {
     out_frame = {};
     out_frame.frame_index = frame_index_++;
     out_frame.should_render = true;
-    out_frame.view_count = 2;
-    out_frame.surfaces.view_count = 2;
-    for (std::uint32_t i = 0; i < 2; ++i) {
+    out_frame.view_count = Frame::kMaxViews;
+    out_frame.surfaces.view_count = Frame::kMaxViews;
+    for (std::uint32_t i = 0; i < Frame::kMaxViews; ++i) {
         out_frame.views[i].view_index = i;
         out_frame.surfaces.views[i].view_index = i;
-        out_frame.surfaces.views[i].width = 1920;
-        out_frame.surfaces.views[i].height = 1080;
-        std::memset(out_frame.views[i].view_matrix, 0, sizeof(out_frame.views[i].view_matrix));
-        out_frame.views[i].view_matrix[0] = out_frame.views[i].view_matrix[5] = out_frame.views[i].view_matrix[10] =
-            out_frame.views[i].view_matrix[15] = 1.f;
-        std::memset(out_frame.views[i].projection_matrix, 0, sizeof(out_frame.views[i].projection_matrix));
-        out_frame.views[i].projection_matrix[0] = out_frame.views[i].projection_matrix[5] =
-            out_frame.views[i].projection_matrix[10] = out_frame.views[i].projection_matrix[15] = 1.f;
+        out_frame.surfaces.views[i].width = kStubViewWidth;
+        out_frame.surfaces.views[i].height = kStubViewHeight;
+        setIdentityMat4(out_frame.views[i].view_matrix);
+        setIdentityMat4(out_frame.views[i].projection_matrix);
     }
     return true;
 }

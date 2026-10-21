@@ -173,11 +173,14 @@ endif()
 option(VNE_XR_TESTS "Build vnexr test suite (turn OFF when used as submodule)" ON)
 option(VNE_XR_SAMPLES "Build vnexr sample programs (turn OFF when used as submodule)" OFF)
 option(VNE_XR_EXAMPLES "Deprecated alias for VNE_XR_SAMPLES (scripts pass -DVNE_XR_EXAMPLES=ON)" OFF)
+# Canonical cache is VNE_XR_SAMPLES. Apply -DVNE_XR_EXAMPLES=ON as a one-shot enable,
+# then drop the alias from cache so a later -DVNE_XR_SAMPLES=OFF is not overridden by a
+# stale EXAMPLES=ON on reconfigure.
 if(VNE_XR_EXAMPLES)
-    set(VNE_XR_SAMPLES ON CACHE BOOL "" FORCE)
-elseif(VNE_XR_SAMPLES)
-    set(VNE_XR_EXAMPLES ON CACHE BOOL "" FORCE)
+    set(VNE_XR_SAMPLES ON CACHE BOOL "Build vnexr sample programs (turn OFF when used as submodule)" FORCE)
 endif()
+unset(VNE_XR_EXAMPLES CACHE)
+set(VNE_XR_EXAMPLES ${VNE_XR_SAMPLES})
 set(VNE_XR_LIB_TYPE "shared" CACHE STRING "Library type for vnexr: static or shared (one per build)")
 set_property(CACHE VNE_XR_LIB_TYPE PROPERTY STRINGS "static" "shared")
 if(NOT VNE_XR_LIB_TYPE STREQUAL "static" AND NOT VNE_XR_LIB_TYPE STREQUAL "shared")
@@ -188,6 +191,34 @@ option(ENABLE_DOXYGEN "Enable Doxygen documentation builds" OFF)
 option(ENABLE_COVERAGE "Enable code coverage reporting" OFF)
 option(ENABLE_ASAN "Enable AddressSanitizer + UndefinedBehaviorSanitizer (Clang/GCC, Linux/macOS only)" OFF)
 option(WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
+
+# Coverage and ASan/UBSan must not both be enabled (--coverage + -fsanitize=... together
+# produce noisy/incorrect results). Checked before deps so nested builds see a consistent tree.
+if(ENABLE_COVERAGE AND ENABLE_ASAN)
+    message(FATAL_ERROR
+        "ENABLE_COVERAGE and ENABLE_ASAN cannot both be ON. "
+        "Choose one: coverage (gcov/lcov) or ASan/UBSan. "
+        "Reconfigure with -DENABLE_COVERAGE=OFF or -DENABLE_ASAN=OFF.")
+endif()
+
+# Apply ASan before nested deps: they also read ENABLE_ASAN from the cache. Shared
+# instrumented deps leave unresolved __asan_* / __ubsan_* in .so files and the final
+# test link fails; force static so sanitizer runtime is linked into the executable.
+if(ENABLE_ASAN)
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang" AND NOT WIN32)
+        if(NOT VNE_XR_LIB_TYPE STREQUAL "static")
+            message(STATUS
+                "ENABLE_ASAN=ON: forcing VNE_XR_LIB_TYPE=static "
+                "(ASan with nested shared vnerhi/vnemath is unsupported)")
+            set(VNE_XR_LIB_TYPE "static" CACHE STRING
+                "Library type for vnexr: static or shared (one per build)" FORCE)
+        endif()
+        add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
+        add_link_options(-fsanitize=address,undefined)
+    else()
+        message(WARNING "ENABLE_ASAN is only supported with GCC/Clang on Linux/macOS — ignoring.")
+    endif()
+endif()
 
 #==============================================================================
 # XR framework options
@@ -246,17 +277,6 @@ if(VNE_XR_WITH_GFX_SAMPLE)
 endif()
 
 #==============================================================================
-# Incompatible options: coverage and ASan/UBSan must not both be enabled
-# (--coverage + -fsanitize=... together produce noisy/incorrect results).
-#==============================================================================
-if(ENABLE_COVERAGE AND ENABLE_ASAN)
-    message(FATAL_ERROR
-        "ENABLE_COVERAGE and ENABLE_ASAN cannot both be ON. "
-        "Choose one: coverage (gcov/lcov) or ASan/UBSan. "
-        "Reconfigure with -DENABLE_COVERAGE=OFF or -DENABLE_ASAN=OFF.")
-endif()
-
-#==============================================================================
 # Coverage Support (gcov/lcov for CI; .gcda files generated when tests run)
 #==============================================================================
 if(ENABLE_COVERAGE)
@@ -269,32 +289,20 @@ if(ENABLE_COVERAGE)
     endif()
 endif()
 
-#==============================================================================
-# AddressSanitizer + UndefinedBehaviorSanitizer
-# Linux/macOS only; incompatible with coverage (--coverage + ASan = noise).
-#==============================================================================
-if(ENABLE_ASAN)
-    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang" AND NOT WIN32)
-        add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
-        add_link_options(-fsanitize=address,undefined)
-    else()
-        message(WARNING "ENABLE_ASAN is only supported with GCC/Clang on Linux/macOS — ignoring.")
-    endif()
-endif()
-
 if(VNE_XR_CI)
     # CI enables tests by default, but allow explicit -DVNE_XR_TESTS=OFF to override
-    # (e.g. iOS/Android cross-compile builds: Xcode requires bundle ID for test targets).
+    # (e.g. Android cross-compile builds: binaries cannot run on the host runner).
     if(NOT DEFINED VNE_XR_TESTS OR VNE_XR_TESTS)
         set(VNE_XR_TESTS ON CACHE BOOL "" FORCE)
     endif()
-    set(VNE_XR_SAMPLES OFF CACHE BOOL "" FORCE)
-    set(VNE_XR_EXAMPLES OFF CACHE BOOL "" FORCE)
-    message(STATUS "VneXR: CI build -> VNE_XR_TESTS=${VNE_XR_TESTS}, VNE_XR_SAMPLES=OFF")
+    # Samples follow canonical VNE_XR_SAMPLES (alias already applied above). Default OFF
+    # in CI unless -DVNE_XR_SAMPLES=ON or -DVNE_XR_EXAMPLES=ON was passed this configure.
+    set(VNE_XR_EXAMPLES ${VNE_XR_SAMPLES})
+    message(STATUS "VneXR: CI build -> VNE_XR_TESTS=${VNE_XR_TESTS}, VNE_XR_SAMPLES=${VNE_XR_SAMPLES}")
 elseif(VNE_XR_DEV)
     set(VNE_XR_TESTS ON CACHE BOOL "" FORCE)
-    set(VNE_XR_SAMPLES ON CACHE BOOL "" FORCE)
-    set(VNE_XR_EXAMPLES ON CACHE BOOL "" FORCE)
+    set(VNE_XR_SAMPLES ON CACHE BOOL "Build vnexr sample programs (turn OFF when used as submodule)" FORCE)
+    set(VNE_XR_EXAMPLES ON)
     message(STATUS "VneXR: DEV build -> VNE_XR_TESTS=ON, VNE_XR_SAMPLES=ON")
 endif()
 

@@ -12,11 +12,15 @@
 #include "vertexnova/xr/backend/openxr/platform/openxr_android.h"
 
 #if defined(__ANDROID__)
-#include <openxr/openxr_platform.h>
+#include "vertexnova/xr/backend/openxr/openxr_platform_prelude.h"
 #endif
 
 #include "vertexnova/logging/logging.h"
 #include "vertexnova/xr/backend/openxr/openxr_util.h"
+
+namespace {
+CREATE_VNE_LOGGER_CATEGORY("vne.xr.openxr.android");
+}
 
 namespace vne::xr {
 
@@ -42,7 +46,7 @@ Result initializeOpenXrLoaderAndroid(void* application_vm, void* application_con
         VNE_LOG_ERROR << "xrInitializeLoaderKHR not available";
         return Result::eErrorOpenXrFailed;
     }
-    OPENXR_CHECK(pfn_init(reinterpret_cast<const XrLoaderInitInfoBaseHeader*>(&loader_info)));
+    OPENXR_CHECK(pfn_init(reinterpret_cast<const XrLoaderInitInfoBaseHeaderKHR*>(&loader_info)));
     VNE_LOG_INFO << "OpenXR Android loader initialized";
     return Result::eSuccess;
 #endif

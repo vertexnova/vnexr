@@ -124,7 +124,7 @@ flowchart LR
   release --> end[xrEndFrame]
 ```
 
-`beginFrame` only runs `xrWaitFrame` / `xrBeginFrame` when session is running (`SYNCHRONIZED`, `VISIBLE`, or `FOCUSED`).
+`beginFrame` only runs `xrWaitFrame` / `xrBeginFrame` when `session_running_` is true. That flag is set immediately after a successful `xrBeginSession()` in `XR_SESSION_STATE_READY`, and stays set through `SYNCHRONIZED`, `VISIBLE`, and `FOCUSED`. `running_` stays true on `STOPPING` so the run loop can still observe `IDLE` and ends on `EXITING`.
 
 ## Platform bridges
 

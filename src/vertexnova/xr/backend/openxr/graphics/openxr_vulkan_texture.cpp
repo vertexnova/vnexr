@@ -14,15 +14,13 @@
 namespace vne::xr {
 
 OpenXrVulkanTexture::OpenXrVulkanTexture(void* vk_image, std::uint32_t width, std::uint32_t height, bool is_depth)
-    : vk_image_(vk_image)
-    , is_depth_(is_depth) {
+    : vk_image_(vk_image) {
     descriptor_.name = is_depth ? "openxr_depth" : "openxr_color";
     descriptor_.type = vne::rhi::TextureType::eTexture2d;
-    descriptor_.format = is_depth ? vne::rhi::TextureFormat::eDepth32Float : vne::rhi::TextureFormat::eRgba8;
+    descriptor_.format = is_depth ? vne::rhi::TextureFormat::eDepth32f : vne::rhi::TextureFormat::eRgba8;
     descriptor_.width = width;
     descriptor_.height = height;
-    descriptor_.usage =
-        is_depth ? vne::rhi::TextureUsage::eDepthStencilAttachment : vne::rhi::TextureUsage::eColorAttachment;
+    descriptor_.usage = is_depth ? vne::rhi::TextureUsage::eDepthStencil : vne::rhi::TextureUsage::eRenderTarget;
 }
 
 bool OpenXrVulkanTexture::initialize(const vne::rhi::TextureDescriptor& desc) {

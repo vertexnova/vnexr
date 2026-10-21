@@ -1,0 +1,113 @@
+<mxfile host="65bd71144e">
+    <diagram name="OpenXR bootstrap sequence" id="openxr_bootstrap">
+        <mxGraphModel dx="1520" dy="937" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="900" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="title" value="OpenXrSession::initOpenXr() &#8212; ordered bootstrap" style="text;html=1;align=left;verticalAlign=middle;fontSize=15;fontStyle=1;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="70" y="40" width="600" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="subtitle" value="Steps 8&#8211;9 are the target, not-yet-implemented two-phase graphics initialization. createDevice() currently selects a default device before querying requirements." style="text;html=1;align=left;verticalAlign=middle;fontSize=11;fontStyle=2;fontColor=#c2185b;" parent="1" vertex="1">
+                    <mxGeometry x="70" y="68" width="1060" height="34" as="geometry"/>
+                </mxCell>
+                <mxCell id="s1" value="1. initializeOpenXrLoaderAndroid()&#10;xrInitializeLoaderKHR &#8212; Android only, before anything else" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;dashed=1;" parent="1" vertex="1">
+                    <mxGeometry x="70" y="110" width="440" height="55" as="geometry"/>
+                </mxCell>
+                <mxCell id="s2" value="2. enumerateInstanceExtensions()&#10;prefer XR_KHR_vulkan_enable2; fall back to _enable (never on Apple)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="70" y="180" width="440" height="55" as="geometry"/>
+                </mxCell>
+                <mxCell id="s3" value="3. xrCreateInstance()&#10;then OpenXrInstanceLifetime::registerInstanceUser()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="70" y="250" width="440" height="55" as="geometry"/>
+                </mxCell>
+                <mxCell id="s4" value="4. xrGetSystem()&#10;XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY &#8594; XrSystemId" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="70" y="320" width="440" height="55" as="geometry"/>
+                </mxCell>
+                <mxCell id="s5" value="5. xrEnumerateViewConfigurations()&#10;prefer PRIMARY_STEREO; else first reported" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="70" y="390" width="440" height="55" as="geometry"/>
+                </mxCell>
+                <mxCell id="s6" value="6. xrEnumerateViewConfigurationViews()&#10;per-eye recommended width / height / sample count" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="70" y="460" width="440" height="55" as="geometry"/>
+                </mxCell>
+                <mxCell id="s7" value="7. xrEnumerateEnvironmentBlendModes()&#10;prefer OPAQUE; else first reported" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="70" y="530" width="440" height="55" as="geometry"/>
+                </mxCell>
+                <mxCell id="s8" value="8. IOpenXrGraphics::queryRequirements()&#10;enable2: xrGetVulkanGraphicsRequirements2KHR + xrGetVulkanGraphicsDevice2KHR&#10;enable: xrGetVulkanGraphicsRequirementsKHR + xrGetVulkanGraphicsDeviceKHR&#10;Metal:  xrGetMetalGraphicsRequirementsKHR &#8594; MTLDevice" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=3;fontSize=11;align=left;spacingLeft=10;fontStyle=1;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="620" y="110" width="500" height="96" as="geometry"/>
+                </mxCell>
+                <mxCell id="s9" value="9. IOpenXrGraphics::createDevice()&#10;ADOPT the runtime-mandated device &#8212; do not pick a default&#10;Metal: wrap in MetalPlatformHandle so vnerhi adopts it" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=3;fontSize=11;align=left;spacingLeft=10;fontStyle=1;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="620" y="220" width="500" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="s10" value="10. xrCreateSession()&#10;graphics binding passed via XrSessionCreateInfo::next" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="620" y="305" width="500" height="55" as="geometry"/>
+                </mxCell>
+                <mxCell id="s11" value="11. xrCreateReferenceSpace()&#10;XR_REFERENCE_SPACE_TYPE_LOCAL, identity pose" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="620" y="375" width="500" height="55" as="geometry"/>
+                </mxCell>
+                <mxCell id="s12" value="12. OpenXrInput::create()&#10;action sets, actions, suggested bindings, action spaces&#10;non-fatal: session continues without actions on failure" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="620" y="445" width="500" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="s13" value="13. xrEnumerateSwapchainFormats()&#10;choose colour format; scan same list for a depth format" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="620" y="530" width="500" height="55" as="geometry"/>
+                </mxCell>
+                <mxCell id="s14" value="14. state = SessionState::eIdle &#8212; bootstrap complete" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;strokeWidth=2;fontSize=11;align=left;spacingLeft=10;fontStyle=1;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="620" y="600" width="500" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="deferred" value="Not created during bootstrap&#10;&#10;xrBeginSession(primaryViewConfigurationType)&#10;Swapchains are created lazily by ensureSwapchains() during the first rendered frame, via beginFrame() after shouldRender is checked&#10;&#8594; OpenXrSwapchainBridge::create() per eye, colour + depth" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1565c0;strokeWidth=2;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
+                    <mxGeometry x="70" y="665" width="1050" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="c1" style="endArrow=blockThin;endFill=1;html=1;strokeWidth=1;strokeColor=#616161;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="s1" target="s2" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="c2" style="endArrow=blockThin;endFill=1;html=1;strokeWidth=1;strokeColor=#616161;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="s2" target="s3" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="c3" style="endArrow=blockThin;endFill=1;html=1;strokeWidth=1;strokeColor=#616161;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="s3" target="s4" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="c4" style="endArrow=blockThin;endFill=1;html=1;strokeWidth=1;strokeColor=#616161;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="s4" target="s5" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="c5" style="endArrow=blockThin;endFill=1;html=1;strokeWidth=1;strokeColor=#616161;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="s5" target="s6" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="c6" style="endArrow=blockThin;endFill=1;html=1;strokeWidth=1;strokeColor=#616161;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="s6" target="s7" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="c7" style="endArrow=blockThin;endFill=1;html=1;strokeWidth=3;strokeColor=#c2185b;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="s7" target="s8" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="560" y="558"/>
+                            <mxPoint x="560" y="158"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="c8" style="endArrow=blockThin;endFill=1;html=1;strokeWidth=3;strokeColor=#c2185b;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="s8" target="s9" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="c8lbl" value="must precede" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontStyle=1;fontColor=#c2185b;backgroundColor=#ffffff;" parent="c8" connectable="0" vertex="1">
+                    <mxGeometry x="-0.1" y="1" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="c9" style="endArrow=blockThin;endFill=1;html=1;strokeWidth=1;strokeColor=#616161;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="s9" target="s10" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="c10" style="endArrow=blockThin;endFill=1;html=1;strokeWidth=1;strokeColor=#616161;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="s10" target="s11" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="c11" style="endArrow=blockThin;endFill=1;html=1;strokeWidth=1;strokeColor=#616161;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="s11" target="s12" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="c12" style="endArrow=blockThin;endFill=1;html=1;strokeWidth=1;strokeColor=#616161;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="s12" target="s13" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="c13" style="endArrow=blockThin;endFill=1;html=1;strokeWidth=1;strokeColor=#616161;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="s13" target="s14" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="c14" style="endArrow=blockThin;endFill=1;html=1;strokeWidth=2;strokeColor=#1565c0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.75;entryY=0;entryDx=0;entryDy=0;dashed=1;" parent="1" source="s14" target="deferred" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

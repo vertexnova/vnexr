@@ -13,10 +13,6 @@
 
 #include <openxr/openxr.h>
 
-#if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
-#include <vulkan/vulkan.hpp>
-#endif
-
 #include <algorithm>
 #include <array>
 #include <cstring>
@@ -24,7 +20,7 @@
 #include <vector>
 
 #include "vertexnova/logging/logging.h"
-#include "vertexnova/rhi/backend/vulkan/vulkan_device.h"
+#include "vertexnova/rhi/device.h"
 #include "vertexnova/xr/backend/openxr/math/openxr_math.h"
 #include "vertexnova/xr/backend/openxr/openxr_instance_lifetime.h"
 #include "vertexnova/xr/backend/openxr/openxr_util.h"
@@ -75,7 +71,7 @@ OpenXrSession::OpenXrSession(SessionConfig config)
         }
     }
 #endif
-    if (running_ && isError(initOpenXr())) {
+    if (running_ && !initOpenXr()) {
         state_ = SessionState::eExiting;
         running_ = false;
     }
@@ -127,9 +123,9 @@ bool OpenXrSession::initOpenXr() {
 
     XrInstanceCreateInfo create_info{XR_TYPE_INSTANCE_CREATE_INFO};
     create_info.applicationInfo.apiVersion = XR_CURRENT_API_VERSION;
-    std::strncpy(create_info.applicationInfo.applicationName,
-                 config_.application_name.c_str(),
-                 XR_MAX_APPLICATION_NAME_SIZE - 1);
+    OpenXrUtil::copyXrFixedString(create_info.applicationInfo.applicationName,
+                                  XR_MAX_APPLICATION_NAME_SIZE,
+                                  config_.application_name.c_str());
     create_info.enabledExtensionCount = static_cast<std::uint32_t>(enabled_ptrs.size());
     create_info.enabledExtensionNames = enabled_ptrs.data();
 
@@ -137,7 +133,9 @@ bool OpenXrSession::initOpenXr() {
     OpenXrInstanceLifetime::registerInstanceUser(instance_);
 
     OpenXrDebugMessenger debug;
-    debug.create(instance_, &xrGetInstanceProcAddr);
+    if (!debug.create(instance_, &xrGetInstanceProcAddr)) {
+        VNE_LOG_WARN << "OpenXR debug messenger not available";
+    }
 
     XrSystemGetInfo system_info{XR_TYPE_SYSTEM_GET_INFO};
     system_info.formFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
@@ -278,6 +276,7 @@ void OpenXrSession::handleSessionStateChanged(XrSessionState xr_state) {
                 begin.primaryViewConfigurationType = view_configuration_;
                 if (XR_SUCCEEDED(xrBeginSession(session_, &begin))) {
                     session_begun_ = true;
+                    session_running_ = true;
                 }
             }
             break;
@@ -303,7 +302,6 @@ void OpenXrSession::handleSessionStateChanged(XrSessionState xr_state) {
             }
             swapchain_bridge_.destroy();
             swapchains_ready_ = false;
-            running_ = false;
             break;
         case XR_SESSION_STATE_LOSS_PENDING:
             state_ = SessionState::eLossPending;
@@ -335,12 +333,10 @@ bool OpenXrSession::ensureSwapchains() {
 
 void OpenXrSession::flushGpu() {
     if (auto device = graphics_.getDevice()) {
-        if (auto* vk_device = dynamic_cast<vne::rhi::VulkanDevice*>(device.get())) {
-            const vk::Device dev = vk_device->getVulkanDevice();
-            if (dev) {
-                dev.waitIdle();
-            }
-        }
+        // IDevice::waitIdle() is implemented in vnerhi. Calling vk::Device::waitIdle()
+        // from this DLL references vk::detail::defaultDispatchLoaderDynamic, which is
+        // defined only in the RHI library.
+        device->waitIdle();
     }
 }
 

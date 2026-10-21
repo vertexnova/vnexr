@@ -11,8 +11,7 @@
  */
 
 #include "vertexnova/xr/xr_error.h"
-
-#include <openxr/openxr.h>
+#include "vertexnova/xr/backend/openxr/openxr_platform_prelude.h"
 
 #include <memory>
 

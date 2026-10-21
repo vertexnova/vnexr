@@ -64,6 +64,9 @@ on:
       codecov_token:
         description: "Codecov upload token (required when enable_coverage is true)"
         required: false
+      REPO_ACCESS_TOKEN:
+        description: "Optional PAT used by scripts/init_submodules.sh when GITHUB_TOKEN lacks cross-repo access"
+        required: false
 
 permissions:
   contents: read
@@ -75,14 +78,19 @@ jobs:
     runs-on: ${{ inputs.runner }}
 
     steps:
-      - name: Use HTTPS for GitHub (CI runners have no SSH key)
-        run: git config --global url."https://github.com/".insteadOf "git@github.com:"
-
-      # Submodules are fetched here; we do not cache them (a cache restored
-      # after checkout would not reduce fetch cost). We rely on the build cache only.
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false
+          # Prefer org PAT for private vnerhi HTTPS rewrite; else job token.
+          token: ${{ secrets.REPO_ACCESS_TOKEN || github.token }}
+          persist-credentials: false
+
+      - name: Init submodules (full — includes private vnerhi)
+        env:
+          # init_submodules.sh uses REPO_ACCESS_TOKEN, else GITHUB_TOKEN, for HTTPS auth.
+          GITHUB_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN || github.token }}
+          REPO_ACCESS_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
+        run: bash scripts/init_submodules.sh full
 
       # ------------------------------------------------------------------
       # Single effective build type: always inputs.build_type (CI runs Release only).
@@ -115,10 +123,10 @@ jobs:
           echo "CACHE_LIB_TYPE=$EFFECTIVE_LIB_TYPE" >> "$GITHUB_ENV"
           echo "BUILD_DIR=build/$EFFECTIVE_LIB_TYPE" >> "$GITHUB_ENV"
 
-      # Skip cache for coverage: we clean build/ right after to force instrumented rebuild,
-      # so restore would be discarded and would waste time/bandwidth.
+      # Skip cache for coverage / ASan: instrumented (or sanitizer) rebuilds must not
+      # reuse uninstrumented or shared-lib artifacts from a prior run.
       - name: Cache CMake build
-        if: ${{ !inputs.enable_coverage }}
+        if: ${{ !inputs.enable_coverage && inputs.platform != 'linux-asan' }}
         uses: actions/cache@v4
         with:
           path: ${{ env.BUILD_DIR }}
@@ -127,6 +135,11 @@ jobs:
             build-${{ inputs.platform }}-${{ env.CACHE_BUILD_TYPE }}-${{ env.CACHE_LIB_TYPE }}-
             build-${{ inputs.platform }}-${{ env.CACHE_BUILD_TYPE }}-
             build-${{ inputs.platform }}-
+
+      - name: Clean build directory (ASan only)
+        if: inputs.platform == 'linux-asan'
+        shell: bash
+        run: rm -rf ${{ env.BUILD_DIR }}
 
       - name: Install Linux build dependencies
         if: runner.os == 'Linux'
@@ -193,7 +206,8 @@ jobs:
         shell: bash
         run: |
           echo "--- .gcno files (produced at compile time) ---"
-          find "$BUILD_DIR" -name "*.gcno" | head -20
+          # head closes the pipe early; with pipefail that makes find exit 141 (broken pipe).
+          find "$BUILD_DIR" -name "*.gcno" | head -20 || true
           GCNO_COUNT=$(find "$BUILD_DIR" -name "*.gcno" | wc -l)
           echo "Total .gcno files: $GCNO_COUNT"
           if [[ "$GCNO_COUNT" -eq 0 ]]; then
@@ -219,7 +233,8 @@ jobs:
         shell: bash
         run: |
           echo "--- .gcda files (produced at test runtime) ---"
-          find "$BUILD_DIR" -name "*.gcda" | head -20
+          # head closes the pipe early; with pipefail that makes find exit 141 (broken pipe).
+          find "$BUILD_DIR" -name "*.gcda" | head -20 || true
           GCDA_COUNT=$(find "$BUILD_DIR" -name "*.gcda" | wc -l)
           echo "Total .gcda files: $GCDA_COUNT"
           if [[ "$GCDA_COUNT" -eq 0 ]]; then

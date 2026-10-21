@@ -21,7 +21,15 @@
 #include "vertexnova/xr/backend/visionos/visionos_session.h"
 #endif
 
+#include <chrono>
+#include <thread>
+
 namespace vne::xr {
+
+namespace {
+constexpr int kIdlePollIntervalMs = 10;
+constexpr auto kIdlePollInterval = std::chrono::milliseconds(kIdlePollIntervalMs);
+}  // namespace
 
 void ISession::run(IRenderSession& app_session) {
     app_session.onSessionReady();
@@ -30,6 +38,12 @@ void ISession::run(IRenderSession& app_session) {
     InputState input{};
     while (pollEvents()) {
         if (!beginFrame(frame)) {
+            // Session not yet running (e.g. waiting for READY): bound the spin so we
+            // keep polling events without burning a core. When the session is running,
+            // beginFrame failure is transient — retry immediately.
+            if (!isSessionRunning()) {
+                std::this_thread::sleep_for(kIdlePollInterval);
+            }
             continue;
         }
         pollInput(input);

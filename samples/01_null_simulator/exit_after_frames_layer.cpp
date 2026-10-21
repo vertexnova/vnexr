@@ -7,6 +7,10 @@
 
 #include "vertexnova/logging/logging.h"
 
+namespace {
+CREATE_VNE_LOGGER_CATEGORY("vne.xr.samples.null_simulator");
+}
+
 namespace vne::xr::samples {
 
 ExitAfterFramesLayer::ExitAfterFramesLayer(std::uint64_t max_frames)

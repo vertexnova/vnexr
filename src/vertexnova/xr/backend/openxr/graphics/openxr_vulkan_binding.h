@@ -11,14 +11,9 @@
  */
 
 #include "vertexnova/xr/xr_error.h"
-
-#include <openxr/openxr.h>
+#include "vertexnova/xr/backend/openxr/openxr_platform_prelude.h"
 
 #include <cstdint>
-
-#if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
-#include <vulkan/vulkan.h>
-#endif
 
 namespace vne::xr {
 
