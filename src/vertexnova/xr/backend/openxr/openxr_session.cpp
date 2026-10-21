@@ -75,7 +75,7 @@ OpenXrSession::OpenXrSession(SessionConfig config)
         }
     }
 #endif
-    if (running_ && isError(initOpenXr())) {
+    if (running_ && !initOpenXr()) {
         state_ = SessionState::eExiting;
         running_ = false;
     }
@@ -127,9 +127,9 @@ bool OpenXrSession::initOpenXr() {
 
     XrInstanceCreateInfo create_info{XR_TYPE_INSTANCE_CREATE_INFO};
     create_info.applicationInfo.apiVersion = XR_CURRENT_API_VERSION;
-    std::strncpy(create_info.applicationInfo.applicationName,
-                 config_.application_name.c_str(),
-                 XR_MAX_APPLICATION_NAME_SIZE - 1);
+    OpenXrUtil::copyXrFixedString(create_info.applicationInfo.applicationName,
+                                  XR_MAX_APPLICATION_NAME_SIZE,
+                                  config_.application_name.c_str());
     create_info.enabledExtensionCount = static_cast<std::uint32_t>(enabled_ptrs.size());
     create_info.enabledExtensionNames = enabled_ptrs.data();
 
@@ -137,7 +137,9 @@ bool OpenXrSession::initOpenXr() {
     OpenXrInstanceLifetime::registerInstanceUser(instance_);
 
     OpenXrDebugMessenger debug;
-    debug.create(instance_, &xrGetInstanceProcAddr);
+    if (!debug.create(instance_, &xrGetInstanceProcAddr)) {
+        VNE_LOG_WARN << "OpenXR debug messenger not available";
+    }
 
     XrSystemGetInfo system_info{XR_TYPE_SYSTEM_GET_INFO};
     system_info.formFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;

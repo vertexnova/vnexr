@@ -68,14 +68,22 @@ if(VNE_XR_WITH_OPENXR)
     target_compile_definitions(vnexr PUBLIC VNE_XR_WITH_OPENXR=1)
     if(VNE_XR_BACKEND_OPENXR_GRAPHICS STREQUAL "vulkan")
         # OpenXR platform headers gate Vulkan structs behind this define.
+        # Do not set XR_USE_PLATFORM_WIN32 unless Win32/D3D OpenXR types are needed —
+        # that path requires windows.h + COM headers and is unused for Vulkan-only.
         target_compile_definitions(vnexr PUBLIC
             VNE_XR_OPENXR_GRAPHICS_VULKAN=1
             XR_USE_GRAPHICS_API_VULKAN=1
         )
-        # vnerhi links Vulkan headers PRIVATE. vnexr TUs still need vulkan.h /
-        # vulkan.hpp (openxr_platform.h, vulkan_device.h). On Windows/Linux the
-        # SDK path is used; on Android NDK, fall back to nested Vulkan-Headers.
+        # vnerhi links Vulkan headers PRIVATE; vnexr still needs vulkan.h / vulkan.hpp
+        # for openxr_platform_prelude.h and vulkan_device.h. Always attach nested
+        # Vulkan-Headers when present (reliable on Android NDK + Windows SDK CI).
+        set(_vne_xr_vk_nested
+            "${CMAKE_SOURCE_DIR}/deps/internal/vnerhi/deps/external/vulkan-headers/include")
         set(_vne_xr_vk_includes_ok FALSE)
+        if(EXISTS "${_vne_xr_vk_nested}/vulkan/vulkan.h")
+            target_include_directories(vnexr SYSTEM PRIVATE "${_vne_xr_vk_nested}")
+            set(_vne_xr_vk_includes_ok TRUE)
+        endif()
         if(TARGET vne_vulkan_headers)
             target_link_libraries(vnexr PRIVATE vne_vulkan_headers)
             set(_vne_xr_vk_includes_ok TRUE)
@@ -83,22 +91,20 @@ if(VNE_XR_WITH_OPENXR)
             target_link_libraries(vnexr PRIVATE vne::vulkan_headers)
             set(_vne_xr_vk_includes_ok TRUE)
         endif()
-        if(NOT _vne_xr_vk_includes_ok)
-            find_package(Vulkan QUIET)
-            if(TARGET Vulkan::Headers)
-                target_link_libraries(vnexr PRIVATE Vulkan::Headers)
-                set(_vne_xr_vk_includes_ok TRUE)
-            endif()
-            if(Vulkan_INCLUDE_DIRS)
-                target_include_directories(vnexr SYSTEM PRIVATE ${Vulkan_INCLUDE_DIRS})
-                set(_vne_xr_vk_includes_ok TRUE)
-            endif()
+        find_package(Vulkan QUIET)
+        if(TARGET Vulkan::Headers)
+            target_link_libraries(vnexr PRIVATE Vulkan::Headers)
+            set(_vne_xr_vk_includes_ok TRUE)
         endif()
-        if(NOT _vne_xr_vk_includes_ok AND DEFINED ENV{VULKAN_SDK})
+        if(Vulkan_INCLUDE_DIRS)
+            target_include_directories(vnexr SYSTEM PRIVATE ${Vulkan_INCLUDE_DIRS})
+            set(_vne_xr_vk_includes_ok TRUE)
+        endif()
+        if(DEFINED ENV{VULKAN_SDK})
             foreach(_vne_xr_vk_cand
                     "$ENV{VULKAN_SDK}/Include"
                     "$ENV{VULKAN_SDK}/include")
-                if(EXISTS "${_vne_xr_vk_cand}/vulkan/vulkan.hpp")
+                if(EXISTS "${_vne_xr_vk_cand}/vulkan/vulkan.h")
                     target_include_directories(vnexr SYSTEM PRIVATE "${_vne_xr_vk_cand}")
                     set(_vne_xr_vk_includes_ok TRUE)
                     break()
@@ -106,24 +112,13 @@ if(VNE_XR_WITH_OPENXR)
             endforeach()
         endif()
         if(NOT _vne_xr_vk_includes_ok)
-            set(_vne_xr_vk_hpp
-                "${CMAKE_SOURCE_DIR}/deps/internal/vnerhi/deps/external/vulkan-headers/include")
-            if(EXISTS "${_vne_xr_vk_hpp}/vulkan/vulkan.hpp")
-                target_include_directories(vnexr SYSTEM PRIVATE "${_vne_xr_vk_hpp}")
-                set(_vne_xr_vk_includes_ok TRUE)
-            endif()
-        endif()
-        if(NOT _vne_xr_vk_includes_ok)
             message(FATAL_ERROR
-                "vulkan/vulkan.hpp not found for vnexr OpenXR/Vulkan.\n"
+                "vulkan/vulkan.h not found for vnexr OpenXR/Vulkan.\n"
                 "  Install a Vulkan SDK, or run: ./scripts/init_submodules.sh full")
         endif()
     endif()
     if(ANDROID)
         target_compile_definitions(vnexr PUBLIC XR_USE_PLATFORM_ANDROID=1)
-    endif()
-    if(WIN32)
-        target_compile_definitions(vnexr PUBLIC XR_USE_PLATFORM_WIN32=1)
     endif()
     target_link_libraries(vnexr PRIVATE OpenXR::openxr_loader)
     add_subdirectory(vertexnova/xr/backend/openxr)

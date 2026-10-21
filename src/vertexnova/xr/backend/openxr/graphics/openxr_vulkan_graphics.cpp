@@ -51,14 +51,14 @@ Result OpenXrVulkanGraphics::createDevice() {
     }
 
     vne::rhi::PhysicalDeviceDescriptor phys_desc{};
-    const auto device_info = physical->getDefaultDevice(phys_desc);
-    if (device_info.name.empty()) {
+    const auto device_info = physical->selectBestDevice(phys_desc);
+    if (!device_info.isValid()) {
         VNE_LOG_ERROR << "OpenXR: no suitable Vulkan device";
         return Result::eErrorInitializationFailed;
     }
 
     vne::rhi::DeviceDescriptor dev_desc{};
-    dev_desc.debug_name = "openxr_vulkan";
+    dev_desc.name = "openxr_vulkan";
     device_ = physical->createDevice(device_info, dev_desc);
     if (!device_ || !device_->isValid()) {
         VNE_LOG_ERROR << "OpenXR: failed to create Vulkan logical device";
@@ -105,7 +105,7 @@ XrGraphicsBindingVulkanKHR OpenXrVulkanGraphics::getGraphicsBinding() const {
             binding.physicalDevice = static_cast<VkPhysicalDevice>(vk_device->getVulkanPhysicalDevice());
             binding.device = static_cast<VkDevice>(vk_device->getVulkanDevice());
             binding.queueFamilyIndex = vk_device->getVulkanGraphicsQueueFamily();
-            binding.queueIndex = 0;
+            binding.queueIndex = 0U;
         }
     }
 #endif

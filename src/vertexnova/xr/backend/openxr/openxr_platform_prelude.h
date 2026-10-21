@@ -29,7 +29,7 @@
 #include <jni.h>
 #endif
 
-#if defined(XR_USE_PLATFORM_WIN32) || defined(_WIN32)
+#if defined(XR_USE_PLATFORM_WIN32)
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -37,6 +37,7 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
+#include <unknwn.h>
 #endif
 
 #include <openxr/openxr_platform.h>
