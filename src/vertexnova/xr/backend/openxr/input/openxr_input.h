@@ -48,6 +48,8 @@ class OpenXrInput final {
     XrActionSet action_set_ = XR_NULL_HANDLE;
     XrAction grab_action_ = XR_NULL_HANDLE;
     XrAction spawn_action_ = XR_NULL_HANDLE;
+    /** @brief Float pinch for XR_EXT_hand_interaction (maps to select_pressed). */
+    XrAction pinch_action_ = XR_NULL_HANDLE;
     XrAction change_color_action_ = XR_NULL_HANDLE;
     XrAction palm_pose_action_ = XR_NULL_HANDLE;
     XrAction buzz_action_ = XR_NULL_HANDLE;

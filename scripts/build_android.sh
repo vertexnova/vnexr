@@ -1,95 +1,301 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 #==============================================================================
 # VneXR Android Build Script
+#
+# Configure with the NDK, generate an Android Studio Gradle project from
+# registered OpenXR samples, then build / install APKs (Galaxy XR: arm64-v8a).
 #==============================================================================
 
-set -e
-trap 'echo "ERROR: command failed at line $LINENO"; exit 1' ERR
-
-usage() {
-  echo "Usage: $0 [-t Debug|Release] [-a configure|build|configure_and_build] [-abi arm64-v8a|x86_64] [-api 24] [-l static|shared] [-clean] [-j N] [--dev] [--with-tests] [--with-examples] [--no-tests] [--no-examples]"
-  echo ""
-  echo "Environment: ANDROID_HOME (or ANDROID_SDK_ROOT), ANDROID_NDK_ROOT (or ANDROID_NDK_HOME)"
-  exit 1
-}
+set -Eeuo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
+enable_error_trap
 
 BUILD_TYPE="Debug"
 ACTION="configure_and_build"
-ABI="x86_64"
-API_LEVEL="24"
-LIB_TYPE="shared"
-CLEAN=false
+LIB_TYPE="static"
 JOBS=10
+CLEAN=false
+ABI="arm64-v8a"
+API_LEVEL="24"
+SAMPLE="all"
 WITH_DEV=true
-WITH_EXAMPLES=false
 WITH_TESTS=false
+WITH_SAMPLES=true
+
+usage() {
+    echo "Usage: $0 [-t Debug|Release] [-a configure|build|configure_and_build|apk|install|studio|clean]"
+    echo "          [-abi arm64-v8a|x86_64] [-api 24] [-sample <target>|all] [-l static|shared]"
+    echo "          [-clean] [-j N] [--dev] [--with-tests] [--no-samples]"
+    echo ""
+    echo "Defaults: OpenXR+Vulkan ON, samples ON, ABI arm64-v8a (Galaxy XR)."
+    echo ""
+    echo "Environment: ANDROID_HOME / ANDROID_SDK_ROOT, ANDROID_NDK_ROOT / ANDROID_NDK_HOME"
+    echo ""
+    echo "Examples:"
+    echo "  $0 -a studio --dev -abi arm64-v8a"
+    echo "  $0 -t Debug -a install -sample sample_02_openxr_stereo -abi arm64-v8a"
+    exit 1
+}
 
 while [[ $# -gt 0 ]]; do
-  case $1 in
-    -t|--type|--build-type) BUILD_TYPE="$2"; shift 2 ;;
-    -a|--action) ACTION="$2"; shift 2 ;;
-    -abi|--abi) ABI="$2"; shift 2 ;;
-    -api|--api) API_LEVEL="$2"; shift 2 ;;
-    -l|--lib-type) LIB_TYPE="$2"; shift 2 ;;
-    -clean|--clean) CLEAN=true; shift ;;
-    -j|--jobs) JOBS="$2"; shift 2 ;;
-    --dev) WITH_DEV=true; shift ;;
-    --with-examples|--with-samples) WITH_EXAMPLES=true; shift ;;
-    --with-tests) WITH_TESTS=true; shift ;;
-    --no-examples|--no-samples) WITH_EXAMPLES=false; shift ;;
-    --no-tests) WITH_TESTS=false; shift ;;
-    -h|--help) usage ;;
-    *) echo "Unknown option: $1"; usage ;;
-  esac
+    case "$1" in
+        -t | --type | --build-type) require_value "$1" "${2:-}"; BUILD_TYPE="$2"; shift 2 ;;
+        -a | --action) require_value "$1" "${2:-}"; ACTION="$2"; shift 2 ;;
+        -l | --lib-type) require_value "$1" "${2:-}"; LIB_TYPE="$2"; shift 2 ;;
+        -j | --jobs) require_value "$1" "${2:-}"; set_jobs "$2"; shift 2 ;;
+        -j*) set_jobs "${1#-j}"; shift ;;
+        -abi | --abi) require_value "$1" "${2:-}"; ABI="$2"; shift 2 ;;
+        -api | --api) require_value "$1" "${2:-}"; API_LEVEL="$2"; shift 2 ;;
+        -sample | --sample) require_value "$1" "${2:-}"; SAMPLE="$2"; shift 2 ;;
+        -clean | --clean) CLEAN=true; shift ;;
+        --dev) WITH_DEV=true; WITH_SAMPLES=true; shift ;;
+        --with-samples | --with-examples) WITH_SAMPLES=true; shift ;;
+        --with-tests) WITH_TESTS=true; shift ;;
+        --no-samples | --no-examples) WITH_SAMPLES=false; shift ;;
+        --no-tests) WITH_TESTS=false; shift ;;
+        -h | --help) usage ;;
+        *) log_error "Unknown option: $1"; usage ;;
+    esac
 done
 
-[ "$WITH_DEV" = true ] && { WITH_TESTS=true; WITH_EXAMPLES=true; }
+if [[ "$ACTION" == studio || "$ACTION" == apk || "$ACTION" == install ]] && [[ "$WITH_SAMPLES" != true ]]; then
+    die "action '$ACTION' requires samples (omit --no-samples)"
+fi
+if [[ "$ABI" != arm64-v8a && "$ABI" != x86_64 ]]; then
+    die "unsupported ABI '$ABI' (expected arm64-v8a or x86_64)"
+fi
+validate_lib_type "$LIB_TYPE"
 
-ANDROID_SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
-ANDROID_NDK="${ANDROID_NDK_ROOT:-${ANDROID_NDK_HOME:-}}"
-[ -z "$ANDROID_SDK" ] && { echo "ERROR: Set ANDROID_HOME or ANDROID_SDK_ROOT"; exit 1; }
-[ -z "$ANDROID_NDK" ] && { echo "ERROR: Set ANDROID_NDK_ROOT or ANDROID_NDK_HOME"; exit 1; }
+resolve_sdk_root() {
+    if [[ -n "${ANDROID_HOME:-}" ]]; then echo "$ANDROID_HOME"; return 0; fi
+    if [[ -n "${ANDROID_SDK_ROOT:-}" ]]; then echo "$ANDROID_SDK_ROOT"; return 0; fi
+    if [[ -d "$HOME/Android/Sdk" ]]; then echo "$HOME/Android/Sdk"; return 0; fi
+    return 1
+}
 
-PROJECT_ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-NDK_REV=$(basename "$ANDROID_NDK")
-BUILD_DIR="$PROJECT_ROOT/build/${LIB_TYPE}/${BUILD_TYPE}/build-android-ndk-${NDK_REV}-${ABI}"
+resolve_ndk_root() {
+    local root
+    for root in "${ANDROID_NDK_ROOT:-}" "${ANDROID_NDK_HOME:-}"; do
+        if [[ -n "$root" && -f "${root}/build/cmake/android.toolchain.cmake" ]]; then
+            echo "$root"
+            return 0
+        fi
+    done
+    local sdk_root latest_ndk
+    sdk_root="$(resolve_sdk_root || true)"
+    if [[ -n "$sdk_root" ]]; then
+        latest_ndk="$(ls -1d "${sdk_root}/ndk/"* 2>/dev/null | sort -V | tail -n 1 || true)"
+        if [[ -n "$latest_ndk" && -f "${latest_ndk}/build/cmake/android.toolchain.cmake" ]]; then
+            echo "$latest_ndk"
+            return 0
+        fi
+    fi
+    return 1
+}
 
-[ "$CLEAN" = true ] && rm -rf "$BUILD_DIR"
-mkdir -p "$BUILD_DIR"
+resolve_gradle() {
+    if [[ -n "${GRADLE_DIR:-}" && -x "${GRADLE_DIR}/gradlew" ]]; then echo "${GRADLE_DIR}/gradlew"; return 0; fi
+    if command -v gradle >/dev/null 2>&1; then echo "gradle"; return 0; fi
+    local wrapper_gradle
+    wrapper_gradle="$(find "${HOME}/.gradle/wrapper/dists" -path "*/gradle-*/bin/gradle" -type f 2>/dev/null | sort -V | tail -n 1 || true)"
+    if [[ -n "$wrapper_gradle" && -x "$wrapper_gradle" ]]; then echo "$wrapper_gradle"; return 0; fi
+    return 1
+}
 
-VNE_XR_DEV_VAL=OFF
-[ "$WITH_DEV" = true ] && VNE_XR_DEV_VAL=ON
+resolve_java_home() {
+    if [[ -n "${JAVA_HOME:-}" && -x "${JAVA_HOME}/bin/javac" ]]; then echo "$JAVA_HOME"; return 0; fi
+    local studio_jbr
+    for studio_jbr in \
+        /snap/android-studio/current/jbr \
+        "$HOME/android-studio/jbr" \
+        /opt/android-studio/jbr \
+        "/Applications/Android Studio.app/Contents/jbr/Contents/Home"; do
+        if [[ -d "$studio_jbr" && -x "${studio_jbr}/bin/javac" ]]; then
+            echo "$studio_jbr"
+            return 0
+        fi
+    done
+    if command -v javac >/dev/null 2>&1; then dirname "$(dirname "$(command -v javac)")"; return 0; fi
+    return 1
+}
+
+resolve_adb() {
+    if command -v adb >/dev/null 2>&1; then command -v adb; return 0; fi
+    local sdk_root
+    sdk_root="$(resolve_sdk_root || true)"
+    if [[ -n "$sdk_root" && -x "${sdk_root}/platform-tools/adb" ]]; then
+        echo "${sdk_root}/platform-tools/adb"
+        return 0
+    fi
+    return 1
+}
+
+resolve_studio() {
+    if command -v android-studio >/dev/null 2>&1; then echo "android-studio"; return 0; fi
+    if [[ -x "/opt/android-studio/bin/studio.sh" ]]; then echo "/opt/android-studio/bin/studio.sh"; return 0; fi
+    if [[ -x "$HOME/android-studio/bin/studio.sh" ]]; then echo "$HOME/android-studio/bin/studio.sh"; return 0; fi
+    return 1
+}
+
+capitalize() {
+    echo "$(tr '[:lower:]' '[:upper:]' <<<"${1:0:1}")${1:1}"
+}
+
+lowercase() {
+    tr '[:upper:]' '[:lower:]' <<<"$1"
+}
+
+SDK_ROOT="$(resolve_sdk_root || true)"
+NDK_ROOT="$(resolve_ndk_root || true)"
+
+if [[ -z "$NDK_ROOT" ]]; then
+    die "Android NDK not found. Set ANDROID_NDK_ROOT or install via sdkmanager."
+fi
+
+NDK_VERSION="$(basename "$NDK_ROOT")"
+BUILD_DIR="$PROJECT_ROOT/build/${LIB_TYPE}/${BUILD_TYPE}/build-android-ndk-${NDK_VERSION}-${ABI}"
+GRADLE_DIR="${BUILD_DIR}/android-studio"
+SAMPLE_MANIFEST="${GRADLE_DIR}/vne_samples.txt"
+TOOLCHAIN_FILE="${NDK_ROOT}/build/cmake/android.toolchain.cmake"
 
 CMAKE_ARGS=(
-  "-DCMAKE_BUILD_TYPE=$BUILD_TYPE"
-  "-DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK/build/cmake/android.toolchain.cmake"
-  "-DANDROID_ABI=$ABI"
-  "-DANDROID_PLATFORM=android-$API_LEVEL"
-  "-DVNE_XR_LIB_TYPE=$LIB_TYPE"
-  "-DVNE_XR_CI=OFF"
-  "-DVNE_XR_DEV=$VNE_XR_DEV_VAL"
-  "-DVNE_XR_TESTS=$( [ "$WITH_TESTS" = true ] && echo ON || echo OFF )"
-  "-DVNE_XR_EXAMPLES=$( [ "$WITH_EXAMPLES" = true ] && echo ON || echo OFF )"
-  "-DVNE_TARGET_PLATFORM=Android"
-  "-DVNE_XR_WITH_OPENXR=ON"
-  "-DVNE_XR_BACKEND_VULKAN=ON"
+    "-DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE}"
+    "-DANDROID_ABI=${ABI}"
+    "-DANDROID_PLATFORM=android-${API_LEVEL}"
+    "-DANDROID_STL=c++_shared"
+    "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON"
+    "-DCMAKE_BUILD_TYPE=${BUILD_TYPE}"
+    "-DVNE_XR_LIB_TYPE=${LIB_TYPE}"
+    "-DVNE_XR_DEV=$(on_off "$WITH_DEV")"
+    "-DVNE_XR_TESTS=$(on_off "$WITH_TESTS")"
+    "-DVNE_XR_SAMPLES=$(on_off "$WITH_SAMPLES")"
+    "-DVNE_XR_EXAMPLES=$(on_off "$WITH_SAMPLES")"
+    "-DVNE_TARGET_PLATFORM=Android"
+    "-DVNE_XR_WITH_OPENXR=ON"
+    "-DVNE_XR_WITH_RHI=ON"
+    "-DVNE_XR_BACKEND_VULKAN=ON"
+    "-DVNE_XR_GENERATE_ANDROID_GRADLE=ON"
+    "-DCMAKE_CXX_STANDARD=20"
+    "-DCMAKE_CXX_STANDARD_REQUIRED=ON"
 )
 
-run_configure() {
-  cmake -S "$PROJECT_ROOT" -B "$BUILD_DIR" "${CMAKE_ARGS[@]}"
+load_sample_entries() {
+    if [[ ! -f "$SAMPLE_MANIFEST" ]]; then
+        die "sample manifest not found at $SAMPLE_MANIFEST. Re-run configure so CMake can generate Android Studio files."
+    fi
+    local entries line name flavor
+    entries="$(awk -F, 'NF >= 4 && $1 !~ /^#/ {print $1","$2","$3","$4}' "$SAMPLE_MANIFEST")"
+    if [[ "$SAMPLE" == all ]]; then
+        SAMPLE_ENTRIES="$entries"
+        return 0
+    fi
+    while IFS= read -r line; do
+        if [[ -z "$line" ]]; then continue; fi
+        IFS=',' read -r name flavor _ _ <<<"$line"
+        if [[ "$name" == "$SAMPLE" || "$flavor" == "$SAMPLE" ]]; then
+            SAMPLE_ENTRIES="$line"
+            return 0
+        fi
+    done <<<"$entries"
+    die "sample '$SAMPLE' not found in $SAMPLE_MANIFEST"
 }
 
-run_build() {
-  cmake --build "$BUILD_DIR" --parallel "$JOBS"
+write_local_properties() {
+    if [[ -z "$SDK_ROOT" ]]; then
+        log_warn "Android SDK not found; Android Studio may prompt for SDK path"
+        return 0
+    fi
+    echo "sdk.dir=${SDK_ROOT}" >"${GRADLE_DIR}/local.properties"
 }
 
-case $ACTION in
-  configure) run_configure ;;
-  build) run_build ;;
-  configure_and_build) run_configure; run_build ;;
-  *) usage ;;
+configure_cmake() {
+    if [[ "$CLEAN" == true ]]; then
+        rm -rf "$BUILD_DIR"
+    fi
+    mkdir -p "$BUILD_DIR"
+    cmake_configure "$BUILD_DIR" "" "${CMAKE_ARGS[@]}"
+}
+
+build_native() {
+    cmake_build "$BUILD_DIR"
+}
+
+build_apk() {
+    local gradle java_home
+    gradle="$(resolve_gradle || true)"
+    [[ -n "$gradle" ]] || die "Gradle not found. Use -a studio or install Gradle."
+    java_home="$(resolve_java_home || true)"
+    [[ -n "$java_home" ]] || die "JDK with javac not found. Set JAVA_HOME."
+
+    write_local_properties
+    local variant_suffix build_type_lower
+    variant_suffix="$(capitalize "$BUILD_TYPE")"
+    build_type_lower="$(lowercase "$BUILD_TYPE")"
+
+    if [[ "$SAMPLE" == all ]]; then
+        (cd "$GRADLE_DIR" && JAVA_HOME="$java_home" PATH="$java_home/bin:$PATH" "$gradle" "assemble${variant_suffix}")
+        return 0
+    fi
+    load_sample_entries
+    local flavor
+    IFS=',' read -r _ flavor _ _ <<<"$SAMPLE_ENTRIES"
+    (cd "$GRADLE_DIR" && JAVA_HOME="$java_home" PATH="$java_home/bin:$PATH" "$gradle" ":app:assemble$(capitalize "$flavor")${variant_suffix}")
+    echo "APK: ${GRADLE_DIR}/app/build/outputs/apk/${flavor}/${build_type_lower}/app-${flavor}-${build_type_lower}.apk"
+}
+
+install_apk() {
+    local adb_bin
+    adb_bin="$(resolve_adb || true)"
+    [[ -n "$adb_bin" ]] || die "adb not found. Install Android SDK platform-tools."
+    if ! "$adb_bin" devices | awk 'NR>1 && $2=="device" {found=1} END {exit !found}'; then
+        die "No Android device connected (Galaxy XR in developer mode)."
+    fi
+    build_apk
+    load_sample_entries
+    local line name flavor package label build_type_lower apk
+    build_type_lower="$(lowercase "$BUILD_TYPE")"
+    while IFS= read -r line; do
+        [[ -z "$line" ]] && continue
+        IFS=',' read -r name flavor package label <<<"$line"
+        apk="${GRADLE_DIR}/app/build/outputs/apk/${flavor}/${build_type_lower}/app-${flavor}-${build_type_lower}.apk"
+        [[ -f "$apk" ]] || die "APK missing: $apk"
+        echo "Installing $label ($package)"
+        "$adb_bin" install -r "$apk"
+    done <<<"$SAMPLE_ENTRIES"
+    echo "Installed. Launch from the headset library, then: adb logcat -s vne.xr:* OpenXR:*"
+}
+
+open_studio() {
+    configure_cmake
+    write_local_properties
+    local studio
+    studio="$(resolve_studio || true)"
+    if [[ -n "$studio" ]]; then
+        "$studio" "$GRADLE_DIR" &
+    else
+        log_ok "Gradle project ready at $GRADLE_DIR — open it in Android Studio."
+    fi
+}
+
+case "$ACTION" in
+    configure) configure_cmake ;;
+    build) build_native ;;
+    configure_and_build) configure_cmake; build_native ;;
+    apk) configure_cmake; build_apk ;;
+    install) configure_cmake; install_apk ;;
+    studio) open_studio ;;
+    clean)
+        if [[ -d "$BUILD_DIR" ]]; then
+            cmake --build "$BUILD_DIR" --target clean 2>/dev/null || true
+            log_ok "Cleaned $BUILD_DIR"
+        else
+            echo "Nothing to clean"
+        fi
+        ;;
+    *) usage ;;
 esac
 
-echo "=== Build completed successfully ==="
-echo "Build directory: $BUILD_DIR"
+echo "=== Build completed ==="
+echo "Native build: $BUILD_DIR"
+echo "Gradle project: $GRADLE_DIR"

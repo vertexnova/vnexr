@@ -21,7 +21,7 @@
 
 # VneXR
 
-Minimal VertexNova-standard C++ template: CMake, deps (external + internal), tests, examples, and documentation. Use it as a starting point for new libraries or apps in the [VertexNova](https://github.com/vertexnova) stack.
+VertexNova **XR session / compositor** library (OpenXR + vnerhi). Learning path (Ubuntu 24.04 -> Monado -> Galaxy XR): [docs/vertexnova/xr/learning_path.md](docs/vertexnova/xr/learning_path.md). Agent playbooks: [skills/](skills/).
 
 ## Directory layout
 

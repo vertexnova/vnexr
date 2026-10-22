@@ -107,6 +107,12 @@ bool OpenXrSession::initOpenXr() {
 #if defined(__ANDROID__)
     requested.emplace_back(XR_KHR_ANDROID_CREATE_INSTANCE_EXTENSION_NAME);
 #endif
+#ifndef XR_EXT_HAND_INTERACTION_EXTENSION_NAME
+#define XR_EXT_HAND_INTERACTION_EXTENSION_NAME "XR_EXT_hand_interaction"
+#endif
+    if (OpenXrUtil::isExtensionAvailable(XR_EXT_HAND_INTERACTION_EXTENSION_NAME, available)) {
+        requested.emplace_back(XR_EXT_HAND_INTERACTION_EXTENSION_NAME);
+    }
     requested.emplace_back(XR_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
     auto enabled = OpenXrUtil::filterEnabledExtensions(requested, available);

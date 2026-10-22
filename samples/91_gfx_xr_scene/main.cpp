@@ -32,11 +32,11 @@ class GfxXrSceneApp final : public vne::xr::IRenderSession {
 }  // namespace
 
 int main() {
-    vne::xr::examples::LoggingGuard logging_guard;
+    vne::xr::samples::LoggingGuard logging_guard;
 
     vne::xr::SessionConfig config;
     config.backend = vne::xr::BackendType::eNull;
-    config.application_name = "06_gfx_xr_scene";
+    config.application_name = "91_gfx_xr_scene";
 
     auto session = vne::xr::createSession(config);
     GfxXrSceneApp app;

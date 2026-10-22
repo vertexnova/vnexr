@@ -228,6 +228,7 @@ option(VNE_XR_WITH_EVENTS "Link vneevents for XR input routing" OFF)
 option(VNE_XR_WITH_OPENXR "Build OpenXR backend (Android/Windows/Linux; not Apple)" OFF)
 option(VNE_XR_WITH_VISIONOS "Build CompositorServices backend (visionOS)" OFF)
 option(VNE_XR_WITH_GFX_SAMPLE "Build optional vnegfx integration example" OFF)
+option(VNE_XR_GENERATE_ANDROID_GRADLE "Generate Android Studio Gradle project under the build tree" OFF)
 set(VNE_XR_BACKEND_OPENXR_GRAPHICS "vulkan" CACHE STRING "OpenXR graphics binding: vulkan or d3d12")
 set_property(CACHE VNE_XR_BACKEND_OPENXR_GRAPHICS PROPERTY STRINGS "vulkan" "d3d12")
 

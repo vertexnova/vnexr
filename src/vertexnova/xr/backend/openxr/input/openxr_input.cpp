@@ -81,6 +81,24 @@ Result OpenXrInput::suggestBindings(XrInstance instance) {
     if (XR_FAILED(xrSuggestInteractionProfileBindings(instance, &suggested))) {
         VNE_LOG_WARN << "Oculus Touch bindings failed; continuing";
     }
+
+    // XR_EXT_hand_interaction: bare-hand pinch/grasp on Galaxy XR and similar HMDs.
+    // pinch_ext is float (spawn); grasp_ext is float (grab); grip/pose is palm.
+    const XrActionSuggestedBinding hand_bindings[] = {
+        {grab_action_, OpenXrUtil::stringToPath(instance, "/user/hand/left/input/grasp_ext/value")},
+        {grab_action_, OpenXrUtil::stringToPath(instance, "/user/hand/right/input/grasp_ext/value")},
+        {pinch_action_, OpenXrUtil::stringToPath(instance, "/user/hand/left/input/pinch_ext/value")},
+        {pinch_action_, OpenXrUtil::stringToPath(instance, "/user/hand/right/input/pinch_ext/value")},
+        {palm_pose_action_, OpenXrUtil::stringToPath(instance, "/user/hand/left/input/grip/pose")},
+        {palm_pose_action_, OpenXrUtil::stringToPath(instance, "/user/hand/right/input/grip/pose")},
+    };
+    suggested.interactionProfile =
+        OpenXrUtil::stringToPath(instance, "/interaction_profiles/ext/hand_interaction_ext");
+    suggested.countSuggestedBindings = static_cast<std::uint32_t>(std::size(hand_bindings));
+    suggested.suggestedBindings = hand_bindings;
+    if (XR_FAILED(xrSuggestInteractionProfileBindings(instance, &suggested))) {
+        VNE_LOG_WARN << "EXT hand_interaction bindings failed; continuing (controllers still work)";
+    }
     return Result::eSuccess;
 }
 
@@ -98,6 +116,7 @@ Result OpenXrInput::create(XrInstance instance, XrSession session, XrSpace refer
 
     VNE_XR_CHECK(createAction(action_set_, "grab", XR_ACTION_TYPE_FLOAT_INPUT, grab_action_));
     VNE_XR_CHECK(createAction(action_set_, "spawn", XR_ACTION_TYPE_BOOLEAN_INPUT, spawn_action_));
+    VNE_XR_CHECK(createAction(action_set_, "pinch", XR_ACTION_TYPE_FLOAT_INPUT, pinch_action_));
     VNE_XR_CHECK(createAction(action_set_, "change_color", XR_ACTION_TYPE_BOOLEAN_INPUT, change_color_action_));
     VNE_XR_CHECK(createAction(action_set_, "palm_pose", XR_ACTION_TYPE_POSE_INPUT, palm_pose_action_));
     VNE_XR_CHECK(createAction(action_set_, "buzz", XR_ACTION_TYPE_VIBRATION_OUTPUT, buzz_action_));
@@ -166,9 +185,20 @@ Result OpenXrInput::poll(XrTime predicted_time, InputState& out_input) {
 
         get_info.action = spawn_action_;
         XrActionStateBoolean spawn_state{XR_TYPE_ACTION_STATE_BOOLEAN};
+        bool spawn_pressed = false;
         if (XR_SUCCEEDED(xrGetActionStateBoolean(session_, &get_info, &spawn_state))) {
-            out_input.select_pressed[i] = spawn_state.currentState == XR_TRUE;
+            spawn_pressed = spawn_state.currentState == XR_TRUE;
         }
+
+        get_info.action = pinch_action_;
+        XrActionStateFloat pinch_state{XR_TYPE_ACTION_STATE_FLOAT};
+        if (XR_SUCCEEDED(xrGetActionStateFloat(session_, &get_info, &pinch_state))) {
+            constexpr float kPinchSpawnThreshold = 0.7f;
+            if (pinch_state.isActive == XR_TRUE && pinch_state.currentState > kPinchSpawnThreshold) {
+                spawn_pressed = true;
+            }
+        }
+        out_input.select_pressed[i] = spawn_pressed;
 
         get_info.action = change_color_action_;
         XrActionStateBoolean color_state{XR_TYPE_ACTION_STATE_BOOLEAN};

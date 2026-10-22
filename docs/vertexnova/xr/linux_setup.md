@@ -2,6 +2,28 @@
 
 Use a **Linux** machine (or VM) to build and run the OpenXR backend. macOS cannot compile OpenXR in vnexr (use visionOS path instead).
 
+## Ubuntu 24.04 (recommended host)
+
+Primary demo and packaging machine for Monado + Galaxy XR `adb`.
+
+```bash
+chmod +x scripts/*.sh
+./scripts/install_linux_openxr_deps.sh
+# installs: build-essential, cmake, Vulkan, X11/xcb, monado-service, libopenxr-loader1
+```
+
+Monado without a headset:
+
+```bash
+systemctl --user start monado.service
+# or: monado-service &
+export XR_RUNTIME_JSON=/usr/share/openxr/1/openxr_monado.json
+# If the file is missing, check /etc/xdg/openxr/1/active_runtime.json
+```
+
+Monado's simulated HMD + qwerty driver gives keyboard/mouse controller poses in a
+desktop window. Exact package names can vary; `apt-cache search monado` helps.
+
 ## Prerequisites
 
 | Package | Purpose |
@@ -9,7 +31,8 @@ Use a **Linux** machine (or VM) to build and run the OpenXR backend. macOS canno
 | GCC 10+ or Clang 10+ | C++20 |
 | CMake 3.26+ | vnerhi requirement |
 | `libvulkan-dev` | Vulkan + OpenXR graphics binding |
-| X11 dev headers | Khronos OpenXR loader WSI on Linux |
+| X11 / xcb headers | Khronos OpenXR loader WSI on Linux |
+| Monado | Desktop OpenXR runtime |
 
 Quick install (Debian/Ubuntu):
 

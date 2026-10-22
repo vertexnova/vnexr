@@ -115,16 +115,23 @@ CMake minimum: **3.26** (vnerhi requirement).
 
 See [samples/README.md](../../../samples/README.md) for the getting-started path and layer architecture.
 
-Android build:
+**Learning by doing (Ubuntu 24.04):** [learning_path.md](learning_path.md)
+
+Android build (Galaxy XR, arm64):
 
 ```bash
-./scripts/build_android.sh --dev --with-examples
+./scripts/build_android.sh -t Debug -a install \
+  -sample sample_02_openxr_stereo -abi arm64-v8a
 ```
 
 ## Further reading
 
+- [Learning path](learning_path.md)
+- [Demo rehearsal](demo_rehearsal.md)
 - [Linux OpenXR setup](linux_setup.md)
 - [OpenXR backend design](openxr_design.md)
 - [Coordinate conventions](conventions.md)
+- [Sample platforms](../../samples/platforms.md)
 - [Diagrams](diagrams/README.md)
+- Skills under [skills/](../../../skills/)
 - Root [README.md](../../../README.md)

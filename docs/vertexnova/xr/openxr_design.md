@@ -16,7 +16,7 @@ Canonical architecture for the OpenXR session/compositor backend on **Android, W
 - Vendoring Khronos `GraphicsAPI_*`, Diligent `OpenXRUtilities.h`, or monolithic tutorial classes.
 - OpenXR on Apple (visionOS uses CompositorServices).
 - D3D11/D3D12/OpenGL graphics bindings.
-- `XR_FB_passthrough`, hand-tracking mesh (later phase).
+- `XR_FB_passthrough`, hand mesh visualization (later phase). Bare-hand **action** bindings via `XR_EXT_hand_interaction` are supported for grab/spawn.
 
 ## Layering
 
@@ -146,10 +146,14 @@ Portable logic stays in `.cpp`; platform files expose small `noexcept` init func
 
 - **CI**: `NullSession` backend (no OpenXR runtime).
 - **Optional**: `tests/backend/openxr/` gated on `VNE_XR_WITH_OPENXR`.
-- **Manual**: `samples/02_openxr_stereo` (Linux Monado, Windows SteamVR/Meta sim, Android Quest) — draws interactive stereo cubes on the session device.
+- **Manual**: `samples/02_openxr_stereo` (Linux Monado, Windows OpenXR runtimes, Android Galaxy XR / Quest-class) — interactive stereo cubes on the session device. Hand interaction uses `XR_EXT_hand_interaction` when available.
+
+## Session-module rule (samples)
+
+Samples never own the XR graphics device or swapchains. They call `ISession::graphicsDevice()` and draw into `Frame.surfaces` only. See [learning_path.md](learning_path.md) step 3 and skill `vne-xr-session`.
 
 ## References
 
 - Khronos OpenXR tutorial Ch.4 (input, haptics, block interaction patterns).
-- Diligent T28 HelloOpenXR (bootstrap order, per-eye swapchains, `XrCreateProjectionFov`, WinMain loop).
+- Khronos `XR_EXT_hand_interaction` / `XR_KHR_vulkan_enable2` specifications.
 - vnerhi `backend/vulkan/` module layout and `rhi_error.h`.
