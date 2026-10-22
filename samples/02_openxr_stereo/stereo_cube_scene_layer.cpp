@@ -475,7 +475,15 @@ void StereoCubeSceneLayer::renderEye(
         cmd->endRenderPass(encoder);
     }
 
-    cmd->end();
+    if (!cmd->end()) {
+        VNE_LOG_ERROR << "OpenXR stereo sample: failed to end command buffer";
+        device_->destroyResource(render_target.handle());
+        if (depth_view.handle().isValid()) {
+            device_->destroyResource(depth_view.handle());
+        }
+        device_->destroyResource(color_view.handle());
+        return;
+    }
     (void)queue_->submit(*cmd);
 
     device_->destroyResource(render_target.handle());
