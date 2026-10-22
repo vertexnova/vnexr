@@ -10,22 +10,26 @@
  * ----------------------------------------------------------------------
  */
 
-#include "vertexnova/rhi/physical_device.h"
+#include "vertexnova/rhi/device.h"
 #include "vertexnova/xr/xr_error.h"
 
 #include <openxr/openxr.h>
 
 #include <cstdint>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 namespace vne::xr {
 
 /**
- * @brief Resolves OpenXR Vulkan enable2 (or enable) entry points into vnerhi `VulkanCreateHooks`.
+ * @brief Resolves OpenXR Vulkan enable2 (or legacy enable) entry points for vnerhi device creation.
  *
- * @details Does not create a Vulkan device itself. vnerhi builds queue/feature info and calls these
- * hooks instead of `vkCreateInstance` / `vkCreateDevice`.
+ * @details Does not own the Vulkan device. When the linked vnerhi descriptors expose `vulkan_hooks`,
+ * those hooks are filled here. `XR_KHR_vulkan_enable2` forwards to `xrCreateVulkanInstanceKHR` /
+ * `xrCreateVulkanDeviceKHR`. Legacy `XR_KHR_vulkan_enable` calls `vkCreateInstance` /
+ * `vkCreateDevice` after the names from `collectExtraExtensions()` are added to those create infos,
+ * and selects the GPU with `xrGetVulkanGraphicsDeviceKHR`.
  */
 class OpenXrVulkanBinding final {
    public:
@@ -40,8 +44,12 @@ class OpenXrVulkanBinding final {
                                  PFN_xrGetInstanceProcAddr get_proc,
                                  bool use_enable2);
 
-    /** @brief Hooks for `PhysicalDeviceDescriptor` / `DeviceDescriptor` (valid until next prepare). */
-    [[nodiscard]] vne::rhi::VulkanCreateHooks hooks() const;
+    /**
+     * @brief Copy create hooks onto the descriptors when this vnerhi exposes `vulkan_hooks`.
+     * @return `false` when the RHI has hook fields but they were not prepared.
+     */
+    [[nodiscard]] bool configureDeviceCreation(vne::rhi::PhysicalDeviceDescriptor& physical,
+                                               vne::rhi::DeviceDescriptor& device) const;
 
     [[nodiscard]] bool usesEnable2() const { return use_enable2_; }
 
@@ -55,6 +63,15 @@ class OpenXrVulkanBinding final {
                                          void** out_device);
 
     void collectExtraExtensions();
+
+    template<typename PhysDesc, typename DevDesc>
+    [[nodiscard]] bool applyCreateHooks(PhysDesc& physical, DevDesc& device, std::true_type) const;
+
+    template<typename PhysDesc, typename DevDesc>
+    [[nodiscard]] bool applyCreateHooks(PhysDesc& physical, DevDesc& device, std::false_type) const;
+
+    template<typename PhysDesc, typename DevDesc>
+    [[nodiscard]] bool applyCreateHooks(PhysDesc& physical, DevDesc& device) const;
 #endif
 
     XrInstance xr_instance_ = XR_NULL_HANDLE;

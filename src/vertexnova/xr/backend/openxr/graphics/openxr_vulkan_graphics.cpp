@@ -73,12 +73,6 @@ Result OpenXrVulkanGraphics::createDevice() {
         }
     }
 
-    const auto hooks = binding_.hooks();
-    if (!hooks.hasInstanceHooks() || !hooks.hasDeviceHooks()) {
-        VNE_LOG_ERROR << "OpenXR: Vulkan create hooks are not prepared";
-        return Result::eErrorBadState;
-    }
-
     const auto backend = vne::rhi::GraphicsFactory::getDefaultBackend();
     auto physical = vne::rhi::GraphicsFactory::createPhysicalDevice(backend);
     if (!physical) {
@@ -87,17 +81,19 @@ Result OpenXrVulkanGraphics::createDevice() {
     }
 
     vne::rhi::PhysicalDeviceDescriptor phys_desc{};
-    phys_desc.vulkan_hooks = hooks;
+    vne::rhi::DeviceDescriptor dev_desc{};
+    dev_desc.name = "openxr_vulkan";
+    // Same hook context for instance and device (extra extensions + create callbacks).
+    if (!binding_.configureDeviceCreation(phys_desc, dev_desc)) {
+        VNE_LOG_ERROR << "OpenXR: Vulkan create hooks are not prepared";
+        return Result::eErrorBadState;
+    }
+
     const auto device_info = physical->selectBestDevice(phys_desc);
     if (!device_info.isValid()) {
         VNE_LOG_ERROR << "OpenXR: no suitable Vulkan device from runtime selection";
         return Result::eErrorInitializationFailed;
     }
-
-    vne::rhi::DeviceDescriptor dev_desc{};
-    dev_desc.name = "openxr_vulkan";
-    // Device creation must reuse the same hook context (extra device extensions + create_device).
-    dev_desc.vulkan_hooks = hooks;
     device_ = physical->createDevice(device_info, dev_desc);
     if (!device_ || !device_->isValid()) {
         VNE_LOG_ERROR << "OpenXR: failed to create Vulkan logical device via enable hooks";

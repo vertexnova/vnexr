@@ -15,10 +15,13 @@
 #include "vertexnova/xr/backend/openxr/openxr_util.h"
 
 #if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
-#include <openxr/openxr_platform.h>
-#include <vulkan/vulkan.h>
+#include "vertexnova/xr/backend/openxr/openxr_platform_prelude.h"
 
+#include <algorithm>
+#include <cstring>
 #include <sstream>
+#include <type_traits>
+#include <utility>
 #endif
 
 namespace {
@@ -47,6 +50,27 @@ void splitExtensionString(const char* extensions,
     out_ptrs.reserve(out_storage.size());
     for (const auto& name : out_storage) {
         out_ptrs.push_back(name.c_str());
+    }
+}
+
+void appendMissingExtensions(const char* const* existing,
+                             uint32_t existing_count,
+                             const std::vector<const char*>& extra,
+                             std::vector<const char*>& out) {
+    out.clear();
+    if (existing != nullptr && existing_count > 0) {
+        out.assign(existing, existing + existing_count);
+    }
+    for (const char* name : extra) {
+        if (name == nullptr) {
+            continue;
+        }
+        const bool present = std::any_of(out.begin(), out.end(), [name](const char* current) {
+            return current != nullptr && std::strcmp(current, name) == 0;
+        });
+        if (!present) {
+            out.push_back(name);
+        }
     }
 }
 
@@ -94,6 +118,26 @@ std::int32_t OpenXrVulkanBinding::createInstanceHook(void* user_data,
     auto* self = static_cast<OpenXrVulkanBinding*>(user_data);
     if (self == nullptr || out_instance == nullptr || vk_instance_create_info == nullptr) {
         return static_cast<std::int32_t>(VK_ERROR_INITIALIZATION_FAILED);
+    }
+
+    if (!self->use_enable2_) {
+        const auto* create_info = static_cast<const VkInstanceCreateInfo*>(vk_instance_create_info);
+        std::vector<const char*> extensions;
+        appendMissingExtensions(create_info->ppEnabledExtensionNames,
+                                create_info->enabledExtensionCount,
+                                self->extra_instance_extensions_,
+                                extensions);
+        VkInstanceCreateInfo merged = *create_info;
+        merged.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+        merged.ppEnabledExtensionNames = extensions.empty() ? nullptr : extensions.data();
+
+        VkInstance vk_instance = VK_NULL_HANDLE;
+        const VkResult vk_result = vkCreateInstance(&merged, nullptr, &vk_instance);
+        if (vk_result != VK_SUCCESS || vk_instance == VK_NULL_HANDLE) {
+            return static_cast<std::int32_t>(vk_result != VK_SUCCESS ? vk_result : VK_ERROR_INITIALIZATION_FAILED);
+        }
+        *out_instance = vk_instance;
+        return static_cast<std::int32_t>(VK_SUCCESS);
     }
 
     auto pfn = OpenXrUtil::loadXrProc<PFN_xrCreateVulkanInstanceKHR>(self->xr_instance_,
@@ -166,6 +210,27 @@ std::int32_t OpenXrVulkanBinding::createDeviceHook(void* user_data,
         return static_cast<std::int32_t>(VK_ERROR_INITIALIZATION_FAILED);
     }
 
+    if (!self->use_enable2_) {
+        const auto* create_info = static_cast<const VkDeviceCreateInfo*>(vk_device_create_info);
+        std::vector<const char*> extensions;
+        appendMissingExtensions(create_info->ppEnabledExtensionNames,
+                                create_info->enabledExtensionCount,
+                                self->extra_device_extensions_,
+                                extensions);
+        VkDeviceCreateInfo merged = *create_info;
+        merged.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+        merged.ppEnabledExtensionNames = extensions.empty() ? nullptr : extensions.data();
+
+        VkDevice vk_device = VK_NULL_HANDLE;
+        const VkResult vk_result =
+            vkCreateDevice(static_cast<VkPhysicalDevice>(vk_physical_device), &merged, nullptr, &vk_device);
+        if (vk_result != VK_SUCCESS || vk_device == VK_NULL_HANDLE) {
+            return static_cast<std::int32_t>(vk_result != VK_SUCCESS ? vk_result : VK_ERROR_INITIALIZATION_FAILED);
+        }
+        *out_device = vk_device;
+        return static_cast<std::int32_t>(VK_SUCCESS);
+    }
+
     auto pfn = OpenXrUtil::loadXrProc<PFN_xrCreateVulkanDeviceKHR>(self->xr_instance_,
                                                                    self->get_proc_,
                                                                    "xrCreateVulkanDeviceKHR");
@@ -212,13 +277,15 @@ Result OpenXrVulkanBinding::prepare(XrInstance instance,
     get_proc_ = get_proc;
     use_enable2_ = use_enable2;
 
-    auto pfn_create_instance =
-        OpenXrUtil::loadXrProc<PFN_xrCreateVulkanInstanceKHR>(instance, get_proc, "xrCreateVulkanInstanceKHR");
-    auto pfn_create_device =
-        OpenXrUtil::loadXrProc<PFN_xrCreateVulkanDeviceKHR>(instance, get_proc, "xrCreateVulkanDeviceKHR");
-    if (pfn_create_instance == nullptr || pfn_create_device == nullptr) {
-        VNE_LOG_ERROR << "OpenXR Vulkan create instance/device entry points missing";
-        return Result::eErrorNotSupported;
+    if (use_enable2) {
+        auto pfn_create_instance =
+            OpenXrUtil::loadXrProc<PFN_xrCreateVulkanInstanceKHR>(instance, get_proc, "xrCreateVulkanInstanceKHR");
+        auto pfn_create_device =
+            OpenXrUtil::loadXrProc<PFN_xrCreateVulkanDeviceKHR>(instance, get_proc, "xrCreateVulkanDeviceKHR");
+        if (pfn_create_instance == nullptr || pfn_create_device == nullptr) {
+            VNE_LOG_ERROR << "OpenXR Vulkan create instance/device entry points missing";
+            return Result::eErrorNotSupported;
+        }
     }
 
     if (use_enable2) {
@@ -249,26 +316,79 @@ Result OpenXrVulkanBinding::prepare(XrInstance instance,
 #endif
 }
 
-vne::rhi::VulkanCreateHooks OpenXrVulkanBinding::hooks() const {
-    vne::rhi::VulkanCreateHooks result{};
 #if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
-    if (!prepared_) {
-        return result;
-    }
-    result.create_instance = &OpenXrVulkanBinding::createInstanceHook;
-    result.select_physical_device = &OpenXrVulkanBinding::selectPhysicalDeviceHook;
-    result.create_device = &OpenXrVulkanBinding::createDeviceHook;
-    result.user_data = const_cast<OpenXrVulkanBinding*>(this);
-    if (!extra_instance_extensions_.empty()) {
-        result.extra_instance_extensions = extra_instance_extensions_.data();
-        result.extra_instance_extension_count = static_cast<std::uint32_t>(extra_instance_extensions_.size());
-    }
-    if (!extra_device_extensions_.empty()) {
-        result.extra_device_extensions = extra_device_extensions_.data();
-        result.extra_device_extension_count = static_cast<std::uint32_t>(extra_device_extensions_.size());
-    }
+namespace {
+
+template<typename T, typename = void>
+struct HasInstanceCreateHooks : std::false_type {};
+
+template<typename T>
+struct HasInstanceCreateHooks<T,
+                              std::void_t<decltype(std::declval<T&>().vulkan_hooks.create_instance),
+                                          decltype(std::declval<T&>().vulkan_hooks.hasInstanceHooks()),
+                                          decltype(std::declval<T&>().vulkan_hooks.extra_instance_extensions)>>
+    : std::true_type {};
+
+template<typename T, typename = void>
+struct HasDeviceCreateHooks : std::false_type {};
+
+template<typename T>
+struct HasDeviceCreateHooks<T,
+                            std::void_t<decltype(std::declval<T&>().vulkan_hooks.create_device),
+                                        decltype(std::declval<T&>().vulkan_hooks.hasDeviceHooks()),
+                                        decltype(std::declval<T&>().vulkan_hooks.extra_device_extensions)>>
+    : std::true_type {};
+
+}  // namespace
+
+template<typename PhysDesc, typename DevDesc>
+bool OpenXrVulkanBinding::applyCreateHooks(PhysDesc& physical, DevDesc& device, std::true_type) const {
+    auto fill = [this](auto& hooks) {
+        if (!prepared_) {
+            return;
+        }
+        hooks.create_instance = &OpenXrVulkanBinding::createInstanceHook;
+        hooks.select_physical_device = &OpenXrVulkanBinding::selectPhysicalDeviceHook;
+        hooks.create_device = &OpenXrVulkanBinding::createDeviceHook;
+        hooks.user_data = const_cast<OpenXrVulkanBinding*>(this);
+        if (!extra_instance_extensions_.empty()) {
+            hooks.extra_instance_extensions = extra_instance_extensions_.data();
+            hooks.extra_instance_extension_count = static_cast<std::uint32_t>(extra_instance_extensions_.size());
+        }
+        if (!extra_device_extensions_.empty()) {
+            hooks.extra_device_extensions = extra_device_extensions_.data();
+            hooks.extra_device_extension_count = static_cast<std::uint32_t>(extra_device_extensions_.size());
+        }
+    };
+    fill(physical.vulkan_hooks);
+    fill(device.vulkan_hooks);
+    return physical.vulkan_hooks.hasInstanceHooks() && device.vulkan_hooks.hasDeviceHooks();
+}
+
+template<typename PhysDesc, typename DevDesc>
+bool OpenXrVulkanBinding::applyCreateHooks(PhysDesc& physical, DevDesc& device, std::false_type) const {
+    (void)physical;
+    (void)device;
+    VNE_LOG_WARN << "OpenXR: this vnerhi has no Vulkan create hooks; the runtime GPU is not selected";
+    return true;
+}
+
+template<typename PhysDesc, typename DevDesc>
+bool OpenXrVulkanBinding::applyCreateHooks(PhysDesc& physical, DevDesc& device) const {
+    constexpr bool has_hooks = HasInstanceCreateHooks<PhysDesc>::value && HasDeviceCreateHooks<DevDesc>::value;
+    return applyCreateHooks(physical, device, std::bool_constant<has_hooks>{});
+}
 #endif
-    return result;
+
+bool OpenXrVulkanBinding::configureDeviceCreation(vne::rhi::PhysicalDeviceDescriptor& physical,
+                                                  vne::rhi::DeviceDescriptor& device) const {
+#if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
+    return applyCreateHooks(physical, device);
+#else
+    (void)physical;
+    (void)device;
+    return false;
+#endif
 }
 
 }  // namespace vne::xr

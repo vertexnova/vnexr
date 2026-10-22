@@ -9,8 +9,8 @@ Backends may differ in handedness, depth range, and NDC Z. Applications should u
 | `Pose.position` | Meters, runtime world space |
 | `Pose.orientation` | Quaternion `(x, y, z, w)` |
 | `FieldOfView` | Radians: left/right/up/down from center |
-| `View.view_matrix` | Row-major 4×4, world → eye |
-| `View.projection_matrix` | Row-major 4×4, eye → clip |
+| `View.view_matrix` | Column-major 4×4, world → eye |
+| `View.projection_matrix` | Column-major 4×4, eye → clip |
 | `LayerParams.near_z` / `far_z` | App hint for depth submission |
 
 ## OpenXR (Android / Windows / Linux)

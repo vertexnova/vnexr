@@ -25,9 +25,9 @@ struct View {
     std::uint32_t view_index = 0;
     Pose pose{};
     FieldOfView fov{};
-    /** @brief Row-major 4x4 view matrix (world → eye). */
+    /** @brief Column-major 4x4 view matrix (world → eye). */
     float view_matrix[kMat4FloatCount]{};
-    /** @brief Row-major 4x4 projection matrix. */
+    /** @brief Column-major 4x4 projection matrix. */
     float projection_matrix[kMat4FloatCount]{};
 };
 

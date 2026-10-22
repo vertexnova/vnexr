@@ -15,9 +15,10 @@
 #include "vertexnova/xr/backend/openxr/openxr_platform_prelude.h"
 
 #include <algorithm>
+#include <type_traits>
+#include <utility>
 
 #if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
-#include "vertexnova/rhi/backend/vulkan/resources/vulkan_format_map.h"
 #include "vertexnova/rhi/backend/vulkan/vulkan_device.h"
 #include "vertexnova/rhi/texture.h"
 #endif
@@ -78,11 +79,60 @@ bool createSwapchain(XrSession session,
 
 #if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
 [[nodiscard]] vne::rhi::TextureFormat textureFormatFromNative(std::int64_t native_format, bool is_depth) {
-    const auto mapped = vne::rhi::mapVulkanTextureFormatToRhi(static_cast<vk::Format>(native_format));
-    if (mapped.has_value()) {
-        return *mapped;
+    switch (static_cast<vk::Format>(native_format)) {
+        case vk::Format::eR8G8B8A8Unorm:
+            return vne::rhi::TextureFormat::eRgba8;
+        case vk::Format::eR8G8B8A8Srgb:
+        case vk::Format::eB8G8R8A8Srgb:
+            return vne::rhi::TextureFormat::eSrgb8Alpha8;
+        case vk::Format::eB8G8R8A8Unorm:
+            return vne::rhi::TextureFormat::eBgra8;
+        case vk::Format::eR16G16B16A16Sfloat:
+            return vne::rhi::TextureFormat::eRgba16f;
+        case vk::Format::eR32G32B32A32Sfloat:
+            return vne::rhi::TextureFormat::eRgba32f;
+        case vk::Format::eD16Unorm:
+            return vne::rhi::TextureFormat::eDepth16;
+        case vk::Format::eD32Sfloat:
+            return vne::rhi::TextureFormat::eDepth32f;
+        case vk::Format::eD24UnormS8Uint:
+            return vne::rhi::TextureFormat::eDepth24Stencil8;
+        case vk::Format::eD32SfloatS8Uint:
+            return vne::rhi::TextureFormat::eDepth32fStencil8;
+        default:
+            return is_depth ? vne::rhi::TextureFormat::eDepth32f : vne::rhi::TextureFormat::eRgba8;
     }
-    return is_depth ? vne::rhi::TextureFormat::eDepth32f : vne::rhi::TextureFormat::eRgba8;
+}
+
+template<typename Device, typename = void>
+struct CanWrapExternalImage : std::false_type {};
+
+template<typename Device>
+struct CanWrapExternalImage<Device,
+                            std::void_t<decltype(std::declval<Device&>().wrapExternalImage(
+                                vk::Image{}, std::declval<const vne::rhi::TextureDescriptor&>(), vk::ImageLayout{}))>>
+    : std::true_type {};
+
+template<typename Device>
+[[nodiscard]] std::shared_ptr<vne::rhi::ITexture> adoptExternalImage(Device& device,
+                                                                     vk::Image image,
+                                                                     const vne::rhi::TextureDescriptor& desc,
+                                                                     vk::ImageLayout initial_layout,
+                                                                     std::true_type) {
+    return device.wrapExternalImage(image, desc, initial_layout);
+}
+
+template<typename Device>
+[[nodiscard]] std::shared_ptr<vne::rhi::ITexture> adoptExternalImage(Device& device,
+                                                                     vk::Image image,
+                                                                     const vne::rhi::TextureDescriptor& desc,
+                                                                     vk::ImageLayout initial_layout,
+                                                                     std::false_type) {
+    (void)device;
+    (void)image;
+    (void)desc;
+    (void)initial_layout;
+    return nullptr;
 }
 
 [[nodiscard]] bool wrapSwapchainImages(vne::rhi::VulkanDevice& device,
@@ -109,9 +159,15 @@ bool createSwapchain(XrSession session,
     const vk::ImageLayout initial_layout =
         is_depth ? vk::ImageLayout::eDepthStencilAttachmentOptimal : vk::ImageLayout::eColorAttachmentOptimal;
 
+    if constexpr (!CanWrapExternalImage<vne::rhi::VulkanDevice>::value) {
+        VNE_LOG_ERROR << "OpenXR: this vnerhi cannot adopt compositor VkImages";
+        return false;
+    }
+
     for (std::size_t i = 0; i < vk_images.size(); ++i) {
         const auto image = vk::Image(reinterpret_cast<VkImage>(vk_images[i]));
-        auto texture = device.wrapExternalImage(image, desc, initial_layout);
+        auto texture =
+            adoptExternalImage(device, image, desc, initial_layout, CanWrapExternalImage<vne::rhi::VulkanDevice>{});
         if (!texture) {
             VNE_LOG_ERROR << "Failed to wrap OpenXR swapchain image " << i;
             out_textures.clear();
