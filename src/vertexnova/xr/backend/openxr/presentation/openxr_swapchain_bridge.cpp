@@ -11,11 +11,20 @@
 
 #include "vertexnova/xr/backend/openxr/presentation/openxr_swapchain_bridge.h"
 
+#include "vertexnova/logging/logging.h"
 #include "vertexnova/xr/backend/openxr/openxr_platform_prelude.h"
 
 #include <algorithm>
 
-#include "vertexnova/xr/backend/openxr/graphics/openxr_vulkan_texture.h"
+#if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
+#include "vertexnova/rhi/backend/vulkan/resources/vulkan_format_map.h"
+#include "vertexnova/rhi/backend/vulkan/vulkan_device.h"
+#include "vertexnova/rhi/texture.h"
+#endif
+
+namespace {
+CREATE_VNE_LOGGER_CATEGORY("vne.xr.openxr.swapchain");
+}
 
 namespace vne::xr {
 
@@ -67,6 +76,53 @@ bool createSwapchain(XrSession session,
     return true;
 }
 
+#if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
+[[nodiscard]] vne::rhi::TextureFormat textureFormatFromNative(std::int64_t native_format, bool is_depth) {
+    const auto mapped = vne::rhi::mapVulkanTextureFormatToRhi(static_cast<vk::Format>(native_format));
+    if (mapped.has_value()) {
+        return *mapped;
+    }
+    return is_depth ? vne::rhi::TextureFormat::eDepth32f : vne::rhi::TextureFormat::eRgba8;
+}
+
+[[nodiscard]] bool wrapSwapchainImages(vne::rhi::VulkanDevice& device,
+                                       std::uint32_t width,
+                                       std::uint32_t height,
+                                       std::int64_t native_format,
+                                       bool is_depth,
+                                       const std::vector<std::uint64_t>& vk_images,
+                                       std::vector<std::shared_ptr<vne::rhi::ITexture>>& out_textures) {
+    out_textures.clear();
+    out_textures.reserve(vk_images.size());
+
+    vne::rhi::TextureDescriptor desc{};
+    desc.name = is_depth ? "openxr_depth" : "openxr_color";
+    desc.type = vne::rhi::TextureType::eTexture2d;
+    desc.format = textureFormatFromNative(native_format, is_depth);
+    desc.width = width;
+    desc.height = height;
+    desc.mip_levels = 1;
+    desc.array_layers = 1;
+    desc.usage = is_depth ? (vne::rhi::TextureUsage::eDepthStencil | vne::rhi::TextureUsage::eSampled)
+                          : (vne::rhi::TextureUsage::eRenderTarget | vne::rhi::TextureUsage::eSampled);
+
+    const vk::ImageLayout initial_layout =
+        is_depth ? vk::ImageLayout::eDepthStencilAttachmentOptimal : vk::ImageLayout::eColorAttachmentOptimal;
+
+    for (std::size_t i = 0; i < vk_images.size(); ++i) {
+        const auto image = vk::Image(reinterpret_cast<VkImage>(vk_images[i]));
+        auto texture = device.wrapExternalImage(image, desc, initial_layout);
+        if (!texture) {
+            VNE_LOG_ERROR << "Failed to wrap OpenXR swapchain image " << i;
+            out_textures.clear();
+            return false;
+        }
+        out_textures.push_back(std::move(texture));
+    }
+    return true;
+}
+#endif
+
 }  // namespace
 
 OpenXrSwapchainBridge::~OpenXrSwapchainBridge() {
@@ -76,13 +132,26 @@ OpenXrSwapchainBridge::~OpenXrSwapchainBridge() {
 bool OpenXrSwapchainBridge::create(XrSession session,
                                    const std::vector<XrViewConfigurationView>& view_configs,
                                    std::int64_t color_format,
-                                   std::int64_t depth_format) {
+                                   std::int64_t depth_format,
+                                   const std::shared_ptr<vne::rhi::IDevice>& device) {
     destroy();
-    if (session == XR_NULL_HANDLE || view_configs.empty()) {
+    if (session == XR_NULL_HANDLE || view_configs.empty() || !device) {
         return false;
     }
     session_ = session;
+    device_ = device;
+    color_format_ = color_format;
+    depth_format_ = depth_format;
     views_.resize(view_configs.size());
+
+#if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
+    auto* vk_device = dynamic_cast<vne::rhi::VulkanDevice*>(device_.get());
+    if (vk_device == nullptr) {
+        VNE_LOG_ERROR << "OpenXR swapchain bridge requires VulkanDevice";
+        destroy();
+        return false;
+    }
+#endif
 
     for (std::size_t i = 0; i < view_configs.size(); ++i) {
         auto& view = views_[i];
@@ -103,6 +172,19 @@ bool OpenXrSwapchainBridge::create(XrSession session,
             return false;
         }
 
+#if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
+        if (!wrapSwapchainImages(*vk_device,
+                                 view.width,
+                                 view.height,
+                                 color_format,
+                                 false,
+                                 view.color_vk_images,
+                                 view.color_textures)) {
+            destroy();
+            return false;
+        }
+#endif
+
         if (depth_format != 0) {
             if (!createSwapchain(session_,
                                  depth_format,
@@ -115,6 +197,18 @@ bool OpenXrSwapchainBridge::create(XrSession session,
                 destroy();
                 return false;
             }
+#if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
+            if (!wrapSwapchainImages(*vk_device,
+                                     view.width,
+                                     view.height,
+                                     depth_format,
+                                     true,
+                                     view.depth_vk_images,
+                                     view.depth_textures)) {
+                destroy();
+                return false;
+            }
+#endif
         }
     }
     return true;
@@ -132,9 +226,12 @@ void OpenXrSwapchainBridge::destroy() {
         }
         view.color_vk_images.clear();
         view.depth_vk_images.clear();
+        view.color_textures.clear();
+        view.depth_textures.clear();
     }
     views_.clear();
     session_ = XR_NULL_HANDLE;
+    device_.reset();
     cached_view_count_ = 0;
 }
 
@@ -174,20 +271,17 @@ bool OpenXrSwapchainBridge::acquireForFrame(Frame& in_out_frame) {
             if (XR_FAILED(xrWaitSwapchainImage(view.depth_swapchain, &wait_info))) {
                 return false;
             }
-            if (depth_index < view.depth_vk_images.size()) {
-                void* depth_image = reinterpret_cast<void*>(view.depth_vk_images[depth_index]);
-                in_out_frame.surfaces.views[i].depth_texture =
-                    makeOpenXrVulkanTexture(depth_image, view.width, view.height, true);
+            view.acquired_depth_index = depth_index;
+            if (depth_index < view.depth_textures.size()) {
+                in_out_frame.surfaces.views[i].depth_texture = view.depth_textures[depth_index];
             }
         }
 
         in_out_frame.surfaces.views[i].view_index = i;
         in_out_frame.surfaces.views[i].width = view.width;
         in_out_frame.surfaces.views[i].height = view.height;
-        if (index < view.color_vk_images.size()) {
-            void* vk_image = reinterpret_cast<void*>(view.color_vk_images[index]);
-            in_out_frame.surfaces.views[i].color_texture =
-                makeOpenXrVulkanTexture(vk_image, view.width, view.height, false);
+        if (index < view.color_textures.size()) {
+            in_out_frame.surfaces.views[i].color_texture = view.color_textures[index];
         }
     }
     return true;

@@ -38,6 +38,7 @@ void android_main(struct android_app* android_app) {
         return;
     }
 
+    app.bindSession(session.get());
     app.onSessionReady();
 
     vne::xr::Frame frame{};

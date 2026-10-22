@@ -34,12 +34,18 @@ class XrSampleApp final : public IRenderSession {
 
     int run();
 
+    /** @brief Bind an externally owned session (Android custom loop). */
+    void bindSession(ISession* session);
+
     void onSessionReady() override;
     void update(const FrameParams& params, LayerParams& out_layers) override;
 
    private:
+    [[nodiscard]] ISession* activeSession() const;
+
     SessionConfig config_;
     std::unique_ptr<ISession> session_;
+    ISession* external_session_ = nullptr;
     XrLayerStack stack_;
     std::function<void()> on_ready_;
 };

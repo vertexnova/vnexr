@@ -15,10 +15,7 @@
  */
 
 #include "vertexnova/xr/types.h"
-
-#ifdef VNE_XR_WITH_RHI
 #include "vertexnova/rhi/texture.h"
-#endif
 
 #include <cstdint>
 #include <memory>
@@ -30,10 +27,8 @@ struct ViewSurface {
     std::uint32_t view_index = 0;
     std::uint32_t width = 0;
     std::uint32_t height = 0;
-#ifdef VNE_XR_WITH_RHI
     std::shared_ptr<vne::rhi::ITexture> color_texture;
     std::shared_ptr<vne::rhi::ITexture> depth_texture;
-#endif
 };
 
 /** @brief All swapchain-backed surfaces for the current frame. */

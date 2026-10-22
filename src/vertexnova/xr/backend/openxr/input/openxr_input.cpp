@@ -84,10 +84,11 @@ Result OpenXrInput::suggestBindings(XrInstance instance) {
     return Result::eSuccess;
 }
 
-Result OpenXrInput::create(XrInstance instance, XrSession session) {
+Result OpenXrInput::create(XrInstance instance, XrSession session, XrSpace reference_space) {
     destroy();
     instance_ = instance;
     session_ = session;
+    reference_space_ = reference_space;
 
     XrActionSetCreateInfo set_info{XR_TYPE_ACTION_SET_CREATE_INFO};
     OpenXrUtil::copyXrFixedString(set_info.actionSetName, XR_MAX_ACTION_SET_NAME_SIZE, "gameplay");
@@ -132,6 +133,7 @@ void OpenXrInput::destroy() {
     }
     session_ = XR_NULL_HANDLE;
     instance_ = XR_NULL_HANDLE;
+    reference_space_ = XR_NULL_HANDLE;
 }
 
 Result OpenXrInput::poll(XrTime predicted_time, InputState& out_input) {
@@ -180,7 +182,8 @@ Result OpenXrInput::poll(XrTime predicted_time, InputState& out_input) {
             out_input.pose_valid[i] = pose_state.isActive == XR_TRUE;
             if (pose_state.isActive == XR_TRUE && palm_spaces_[i] != XR_NULL_HANDLE) {
                 XrSpaceLocation location{XR_TYPE_SPACE_LOCATION};
-                if (XR_SUCCEEDED(xrLocateSpace(palm_spaces_[i], XR_NULL_HANDLE, predicted_time, &location))) {
+                if (reference_space_ != XR_NULL_HANDLE
+                    && XR_SUCCEEDED(xrLocateSpace(palm_spaces_[i], reference_space_, predicted_time, &location))) {
                     out_input.controller_poses[i].position[0] = location.pose.position.x;
                     out_input.controller_poses[i].position[1] = location.pose.position.y;
                     out_input.controller_poses[i].position[2] = location.pose.position.z;

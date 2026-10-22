@@ -29,7 +29,7 @@ class OpenXrInput final {
     OpenXrInput(const OpenXrInput&) = delete;
     OpenXrInput& operator=(const OpenXrInput&) = delete;
 
-    [[nodiscard]] Result create(XrInstance instance, XrSession session);
+    [[nodiscard]] Result create(XrInstance instance, XrSession session, XrSpace reference_space);
     void destroy();
 
     [[nodiscard]] Result poll(XrTime predicted_time, InputState& out_input);
@@ -44,6 +44,7 @@ class OpenXrInput final {
 
     XrInstance instance_ = XR_NULL_HANDLE;
     XrSession session_ = XR_NULL_HANDLE;
+    XrSpace reference_space_ = XR_NULL_HANDLE;
     XrActionSet action_set_ = XR_NULL_HANDLE;
     XrAction grab_action_ = XR_NULL_HANDLE;
     XrAction spawn_action_ = XR_NULL_HANDLE;

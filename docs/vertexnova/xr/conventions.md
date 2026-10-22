@@ -19,7 +19,7 @@ Backends may differ in handedness, depth range, and NDC Z. Applications should u
 |-------|------------|
 | Reference space | `XR_REFERENCE_SPACE_TYPE_LOCAL` at session start |
 | Graphics | Vulkan via `XR_KHR_vulkan_enable2` (preferred) or `XR_KHR_vulkan_enable` |
-| Swapchain images | Per-eye color + depth; compositor-owned; wrapped as `vne::rhi::ITexture` |
+| Swapchain images | Per-eye color + depth; compositor-owned; wrapped via `VulkanDevice::wrapExternalImage` |
 | Depth | Depth swapchain for rendering; composition layer depth deferred |
 | Module layout | See [openxr_design.md](openxr_design.md) |
 | Samsung Galaxy XR | Same path as Quest: Android + OpenXR + Vulkan |

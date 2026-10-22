@@ -59,10 +59,7 @@ if(TARGET vne::logging)
     target_link_libraries(vnexr PUBLIC vne::logging)
 endif()
 
-if(VNE_XR_WITH_RHI)
-    target_compile_definitions(vnexr PUBLIC VNE_XR_WITH_RHI=1)
-    target_link_libraries(vnexr PUBLIC vne::rhi vne::math)
-endif()
+target_link_libraries(vnexr PUBLIC vne::rhi vne::math)
 
 if(VNE_XR_WITH_OPENXR)
     target_compile_definitions(vnexr PUBLIC VNE_XR_WITH_OPENXR=1)

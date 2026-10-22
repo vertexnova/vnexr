@@ -207,7 +207,7 @@ bool OpenXrSession::initOpenXr() {
     space_info.poseInReferenceSpace = identityPose();
     OPENXR_CHECK_BOOL(xrCreateReferenceSpace(session_, &space_info, &reference_space_));
 
-    if (isError(input_.create(instance_, session_))) {
+    if (isError(input_.create(instance_, session_, reference_space_))) {
         VNE_LOG_WARN << "OpenXR input setup failed; continuing without actions";
     }
 
@@ -324,11 +324,15 @@ bool OpenXrSession::ensureSwapchains() {
     if (view_configs_.empty() || color_format_ == 0) {
         return false;
     }
-    if (!swapchain_bridge_.create(session_, view_configs_, color_format_, depth_format_)) {
+    if (!swapchain_bridge_.create(session_, view_configs_, color_format_, depth_format_, graphics_.getDevice())) {
         return false;
     }
     swapchains_ready_ = true;
     return true;
+}
+
+std::shared_ptr<vne::rhi::IDevice> OpenXrSession::graphicsDevice() const {
+    return graphics_.getDevice();
 }
 
 void OpenXrSession::flushGpu() {

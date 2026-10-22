@@ -35,8 +35,16 @@ int XrSampleApp::run() {
     return 0;
 }
 
+void XrSampleApp::bindSession(ISession* session) {
+    external_session_ = session;
+}
+
+ISession* XrSampleApp::activeSession() const {
+    return external_session_ != nullptr ? external_session_ : session_.get();
+}
+
 void XrSampleApp::onSessionReady() {
-    stack_.onAttach();
+    stack_.onAttach(activeSession());
     if (on_ready_) {
         on_ready_();
     }

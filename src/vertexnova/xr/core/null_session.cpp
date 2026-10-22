@@ -11,9 +11,7 @@
 
 #include "vertexnova/xr/core/null_session.h"
 
-#ifdef VNE_XR_WITH_RHI
 #include "vertexnova/rhi/graphics_factory.h"
-#endif
 
 #include <cstring>
 
@@ -34,10 +32,8 @@ void setIdentityMat4(float* matrix) {
 NullSession::NullSession(SessionConfig config)
     : config_(std::move(config))
     , state_(SessionState::eReady) {
-#ifdef VNE_XR_WITH_RHI
     const auto backend = vne::rhi::GraphicsFactory::getDefaultBackend();
     (void)vne::rhi::GraphicsFactory::createPhysicalDevice(backend);
-#endif
 }
 
 NullSession::~NullSession() = default;

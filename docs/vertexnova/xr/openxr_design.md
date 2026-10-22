@@ -63,6 +63,7 @@ sequenceDiagram
   participant Life as InstanceLifetime
   participant XR as OpenXR
   participant Gfx as VulkanGraphics
+  participant Bind as VulkanBindingHooks
   participant RHI as vnerhi
   participant Sess as OpenXrSession
 
@@ -71,16 +72,21 @@ sequenceDiagram
   Sess->>Life: createInstance extensions
   Sess->>XR: xrGetSystem view config blend mode
   Sess->>Gfx: initialize attribs
-  Gfx->>RHI: createPhysicalDevice createDevice
-  Gfx->>XR: xrGetVulkanGraphicsRequirementsKHR
-  Sess->>XR: xrCreateSession graphics binding
+  Gfx->>Bind: prepare enable2 hooks
+  Gfx->>XR: xrGetVulkanGraphicsRequirements2KHR
+  Gfx->>RHI: createPhysicalDevice with VulkanCreateHooks
+  RHI->>XR: xrCreateVulkanInstanceKHR
+  RHI->>XR: xrGetVulkanGraphicsDevice2KHR
+  RHI->>XR: xrCreateVulkanDeviceKHR
+  Sess->>XR: xrCreateSession graphics binding from that device
   Sess->>XR: xrCreateReferenceSpace LOCAL
   Note over Sess: On SESSION_STATE_READY
   Sess->>XR: xrBeginSession primaryViewConfigurationType
   Sess->>Sess: create per-eye color+depth swapchains
+  Sess->>RHI: wrapExternalImage for each swapchain VkImage
 ```
 
-Prefer `XR_KHR_vulkan_enable2` when available; fall back to `XR_KHR_vulkan_enable`. Graphics binding is filled from `VulkanDevice::getVulkanInstance()`, `getVulkanPhysicalDevice()`, `getVulkanDevice()`, `getVulkanGraphicsQueueFamily()`.
+Prefer `XR_KHR_vulkan_enable2` when available; fall back to `XR_KHR_vulkan_enable`. vnerhi builds the Vulkan instance and device; OpenXR only supplies create hooks (`VulkanCreateHooks` on `PhysicalDeviceDescriptor` / `DeviceDescriptor`). Graphics binding is filled from `VulkanDevice::getVulkanInstance()`, `getVulkanPhysicalDevice()`, `getVulkanDevice()`, `getVulkanGraphicsQueueFamily()`.
 
 ## Ownership and RAII
 
@@ -97,7 +103,8 @@ Shutdown order: `xrEndSession` → destroy swapchains → destroy input → dest
 
 ## vnerhi interop
 
-- Swapchain images are compositor-owned `VkImage` handles wrapped by `OpenXrVulkanTexture` (`isWrappedImage() == true`).
+- Swapchain images are compositor-owned `VkImage` handles wrapped by `VulkanDevice::wrapExternalImage` (`isWrappedImage() == true`).
+- Apps must use `ISession::graphicsDevice()` — the same device that owns the binding and wrapped textures.
 - Apps render via `Frame::surfaces.views[i].color_texture` / `depth_texture`.
 - Before `xrReleaseSwapchainImage`, call `OpenXrSession::flushGpu()` (queue wait idle / finish frame).
 - Depth swapchains are created for rendering; depth composition layer submission is deferred.
@@ -139,7 +146,7 @@ Portable logic stays in `.cpp`; platform files expose small `noexcept` init func
 
 - **CI**: `NullSession` backend (no OpenXR runtime).
 - **Optional**: `tests/backend/openxr/` gated on `VNE_XR_WITH_OPENXR`.
-- **Manual**: `03_hello_openxr` (Android, Linux), `04_openxr_windows` (Win32 loop).
+- **Manual**: `samples/02_openxr_stereo` (Linux Monado, Windows SteamVR/Meta sim, Android Quest) — draws interactive stereo cubes on the session device.
 
 ## References
 
