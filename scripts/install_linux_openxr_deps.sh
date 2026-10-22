@@ -35,18 +35,20 @@ sudo apt-get install -y \
   libxcb1-dev \
   libxcb-glx0-dev
 
-echo ">> Installing OpenXR runtime packages (Ubuntu 24.04 names)"
+echo ">> Installing required OpenXR runtime packages (Ubuntu 24.04 names)"
 # On Noble these packages provide the Monado service and a system OpenXR loader.
 # Build-time loader still comes from FetchContent (cmake/VneXrOpenXR.cmake).
-sudo apt-get install -y \
-  monado-service \
-  libopenxr-loader1 \
-  openxr-layer-corevalidation \
-  || {
-    echo "WARNING: Monado/OpenXR runtime packages missing or renamed on this distro."
-    echo "  Try: apt-cache search monado | head"
-    echo "  Or build Monado from https://monado.freedesktop.org/"
-  }
+if ! sudo apt-get install -y monado-service libopenxr-loader1; then
+  echo "ERROR: required Monado/OpenXR runtime packages missing or renamed on this distro."
+  echo "  Try: apt-cache search monado | head"
+  echo "  Or build Monado from https://monado.freedesktop.org/"
+  exit 1
+fi
+
+echo ">> Installing optional OpenXR validation layer (non-fatal if missing)"
+sudo apt-get install -y openxr-layer-corevalidation || {
+  echo "WARNING: openxr-layer-corevalidation not installed; continuing without it."
+}
 
 echo ">> Done. Verify Vulkan:"
 if command -v vulkaninfo >/dev/null 2>&1; then
@@ -57,8 +59,11 @@ fi
 
 echo ""
 echo "Monado desktop simulation (no headset):"
-echo "  1. Start the service:  systemctl --user start monado.service"
-echo "     (or: monado-service &)"
+echo "  1. Start with qwerty + debug GUI:"
+echo "       export QWERTY_ENABLE=1"
+echo "       export XRT_DEBUG_GUI=1"
+echo "       systemctl --user start monado.service"
+echo "       # or: QWERTY_ENABLE=1 XRT_DEBUG_GUI=1 monado-service &"
 echo "  2. Point the active runtime at Monado, then run the sample:"
 echo "       export XR_RUNTIME_JSON=/usr/share/openxr/1/openxr_monado.json"
 echo "       # path may be /etc/xdg/openxr/1/active_runtime.json on some installs"

@@ -155,8 +155,8 @@ fi
 
 NDK_VERSION="$(basename "$NDK_ROOT")"
 BUILD_DIR="$PROJECT_ROOT/build/${LIB_TYPE}/${BUILD_TYPE}/build-android-ndk-${NDK_VERSION}-${ABI}"
-GRADLE_DIR="${BUILD_DIR}/android-studio"
-SAMPLE_MANIFEST="${GRADLE_DIR}/vne_samples.txt"
+GRADLE_PROJECT_DIR="${BUILD_DIR}/android-studio"
+SAMPLE_MANIFEST="${GRADLE_PROJECT_DIR}/vne_samples.txt"
 TOOLCHAIN_FILE="${NDK_ROOT}/build/cmake/android.toolchain.cmake"
 
 CMAKE_ARGS=(
@@ -206,7 +206,7 @@ write_local_properties() {
         log_warn "Android SDK not found; Android Studio may prompt for SDK path"
         return 0
     fi
-    echo "sdk.dir=${SDK_ROOT}" >"${GRADLE_DIR}/local.properties"
+    echo "sdk.dir=${SDK_ROOT}" >"${GRADLE_PROJECT_DIR}/local.properties"
 }
 
 configure_cmake() {
@@ -234,14 +234,14 @@ build_apk() {
     build_type_lower="$(lowercase "$BUILD_TYPE")"
 
     if [[ "$SAMPLE" == all ]]; then
-        (cd "$GRADLE_DIR" && JAVA_HOME="$java_home" PATH="$java_home/bin:$PATH" "$gradle" "assemble${variant_suffix}")
+        (cd "$GRADLE_PROJECT_DIR" && JAVA_HOME="$java_home" PATH="$java_home/bin:$PATH" "$gradle" "assemble${variant_suffix}")
         return 0
     fi
     load_sample_entries
     local flavor
     IFS=',' read -r _ flavor _ _ <<<"$SAMPLE_ENTRIES"
-    (cd "$GRADLE_DIR" && JAVA_HOME="$java_home" PATH="$java_home/bin:$PATH" "$gradle" ":app:assemble$(capitalize "$flavor")${variant_suffix}")
-    echo "APK: ${GRADLE_DIR}/app/build/outputs/apk/${flavor}/${build_type_lower}/app-${flavor}-${build_type_lower}.apk"
+    (cd "$GRADLE_PROJECT_DIR" && JAVA_HOME="$java_home" PATH="$java_home/bin:$PATH" "$gradle" ":app:assemble$(capitalize "$flavor")${variant_suffix}")
+    echo "APK: ${GRADLE_PROJECT_DIR}/app/build/outputs/apk/${flavor}/${build_type_lower}/app-${flavor}-${build_type_lower}.apk"
 }
 
 install_apk() {
@@ -258,7 +258,7 @@ install_apk() {
     while IFS= read -r line; do
         [[ -z "$line" ]] && continue
         IFS=',' read -r name flavor package label <<<"$line"
-        apk="${GRADLE_DIR}/app/build/outputs/apk/${flavor}/${build_type_lower}/app-${flavor}-${build_type_lower}.apk"
+        apk="${GRADLE_PROJECT_DIR}/app/build/outputs/apk/${flavor}/${build_type_lower}/app-${flavor}-${build_type_lower}.apk"
         [[ -f "$apk" ]] || die "APK missing: $apk"
         echo "Installing $label ($package)"
         "$adb_bin" install -r "$apk"
@@ -272,9 +272,9 @@ open_studio() {
     local studio
     studio="$(resolve_studio || true)"
     if [[ -n "$studio" ]]; then
-        "$studio" "$GRADLE_DIR" &
+        "$studio" "$GRADLE_PROJECT_DIR" &
     else
-        log_ok "Gradle project ready at $GRADLE_DIR — open it in Android Studio."
+        log_ok "Gradle project ready at $GRADLE_PROJECT_DIR - open it in Android Studio."
     fi
 }
 
@@ -298,4 +298,4 @@ esac
 
 echo "=== Build completed ==="
 echo "Native build: $BUILD_DIR"
-echo "Gradle project: $GRADLE_DIR"
+echo "Gradle project: $GRADLE_PROJECT_DIR"

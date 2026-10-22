@@ -35,9 +35,10 @@ reference to apply while editing. C++ standard is C++20.
 
 ## 2. Files and headers
 
-- `#pragma once` for every header (never include guards).
-- Start each file with the project copyright banner block (see any existing
-  header, e.g. the block in the Header File Structure section of the guideline).
+- Header layout order (matches [vne-header-hygiene](../vne-header-hygiene/SKILL.md)):
+  1. `#pragma once` first (never include guards).
+  2. Copyright banner block immediately after `#pragma once`.
+  3. Includes, then forward declarations, then `namespace` and types.
 - Include ordering and self-containment: see [vne-header-hygiene](../vne-header-hygiene/SKILL.md).
   `.clang-format` sets `SortIncludes: false`, so include order is hand-maintained.
 

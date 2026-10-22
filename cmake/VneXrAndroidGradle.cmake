@@ -10,9 +10,10 @@ define_property(GLOBAL PROPERTY VNE_XR_ANDROID_SAMPLE_NAMES
 )
 
 function(vne_xr_android_sample_flavor_from_name SAMPLE_NAME OUT_VAR)
-    string(REGEX REPLACE "^[0-9]+" "" _suffix "${SAMPLE_NAME}")
+    # sample_02_openxr_stereo -> openxr_stereo (strip sample_ before digits).
+    string(REGEX REPLACE "^sample_" "" _suffix "${SAMPLE_NAME}")
+    string(REGEX REPLACE "^[0-9]+" "" _suffix "${_suffix}")
     string(REGEX REPLACE "^_+" "" _suffix "${_suffix}")
-    string(REGEX REPLACE "^sample_" "" _suffix "${_suffix}")
     if(_suffix STREQUAL "")
         set(_suffix "sample")
     endif()

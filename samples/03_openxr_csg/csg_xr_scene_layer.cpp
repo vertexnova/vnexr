@@ -54,18 +54,13 @@ void CsgXrSceneLayer::onUpdate(const FrameParams& params, LayerParams& out_layer
         return;
     }
 
-    // Stretch implementation hook:
-    // 1. Preferred: build IRenderTarget from color_texture/depth_texture per eye and
-    //    render a primitive CSG expression (vnegfx samples 23/24 helpers).
-    // 2. Fallback: render into a gfx-owned offscreen RT on the same device, then copy
-    //    into each eye's swapchain image.
-    // Until that bridge lands, clear path is intentionally a no-op draw so the
-    // session still presents (stereo sample remains the management demo).
-    (void)out_layers;
+    // No rendering yet: do not present acquired color/depth images.
+    // When CSG draw is wired, set submit_projection = true after writing eyes.
+    out_layers.submit_projection = false;
     ++frames_;
     if (frames_ == 1) {
-        VNE_LOG_INFO << "CSG XR sample: frame loop live; wire CSG operands next "
-                        "(GfxSession ready on session device)";
+        VNE_LOG_INFO << "CSG XR sample: frame loop live (zero projection layers); "
+                        "stereo CSG draw is future work";
     }
     if (frames_ >= 3600) {
         out_layers.request_exit = true;

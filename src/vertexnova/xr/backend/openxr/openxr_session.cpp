@@ -476,7 +476,7 @@ void OpenXrSession::endFrame(const Frame& frame, const LayerParams& layers) {
 
     XrCompositionLayerProjection layer{XR_TYPE_COMPOSITION_LAYER_PROJECTION};
     std::array<XrCompositionLayerProjectionView, 2> projection_views{};
-    if (frame.should_render && frame.view_count > 0 && swapchains_ready_) {
+    if (frame.should_render && frame.view_count > 0 && swapchains_ready_ && layers.submit_projection) {
         composition_layer_.buildProjectionLayer(reference_space_,
                                                 swapchain_bridge_,
                                                 frame.view_count,

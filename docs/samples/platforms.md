@@ -5,7 +5,7 @@
 | `00_hello_xr` | yes | yes | NDK link | yes |
 | `01_null_simulator` | yes | yes | NDK | yes |
 | `02_openxr_stereo` | Monado | OpenXR runtime | APK arm64 | no (OpenXR blocked) |
-| `03_openxr_csg` | Monado + gfx | optional | stretch | no |
+| `03_openxr_csg` | Monado + gfx | optional | no | no |
 | `90_visionos_immersive` | no | no | no | visionOS |
 | `91_gfx_xr_scene` | Null + gfx | optional | no | Null + gfx |
 

@@ -29,10 +29,16 @@ blocked on Apple; use visionOS for that platform).
 ```bash
 ./scripts/install_linux_openxr_deps.sh
 ./scripts/build_linux.sh -t Debug -a configure_and_build --with-openxr --with-examples
-systemctl --user start monado.service   # or: monado-service &
 export XR_RUNTIME_JSON=/usr/share/openxr/1/openxr_monado.json
+export QWERTY_ENABLE=1
+export XRT_DEBUG_GUI=1
+systemctl --user start monado.service
+# or: QWERTY_ENABLE=1 XRT_DEBUG_GUI=1 monado-service &
 ./build/shared/Debug/build-linux-gcc-*/bin/samples/sample_02_openxr_stereo
 ```
+
+`QWERTY_ENABLE=1` and `XRT_DEBUG_GUI=1` start the virtual HMD window and
+keyboard/mouse controllers for a no-headset run.
 
 **Expect:** windowed compositor shows stereo views; grab/spawn with Monado qwerty bindings.
 
@@ -60,9 +66,11 @@ Read:
 
 **Goal:** same sample on the headset with bare-hand pinch/grasp.
 
+Pick an installed NDK under `$ANDROID_HOME/ndk/` (example: `27.2.12479018`), then:
+
 ```bash
 export ANDROID_HOME=$HOME/Android/Sdk
-export ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/<version>
+export ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/$(ls "$ANDROID_HOME/ndk" | sort -V | tail -1)
 ./scripts/build_android.sh -t Debug -a install \
   -sample sample_02_openxr_stereo -abi arm64-v8a
 ```
@@ -88,19 +96,21 @@ scrcpy --video-codec=h264 --max-size 1280
 
 Record a fallback video of a clean run for the management demo.
 
-## Step 6 -- Stretch: CSG on Monado
+## Step 6 -- Stretch: CSG session scaffold (Monado)
 
-**Goal (optional):** vnegfx CSG into XR views on the desktop runtime.
+**Goal (optional):** exercise `GfxSession` on the XR session device. Stereo CSG
+solids are **future work**; today `sample_03_openxr_csg` attaches the gfx
+session, counts frames, and submits **zero** projection layers (no solids drawn).
 
 ```bash
 # Requires vnegfx beside vnexr and matching vnerhi pin
 cmake -B build/csg -DVNE_XR_WITH_OPENXR=ON -DVNE_XR_WITH_GFX_SAMPLE=ON \
   -DVNE_XR_SAMPLES=ON -DVNE_XR_DEV=ON
 cmake --build build/csg -j$(nproc)
-# Run sample_03_openxr_csg when present (see samples/03_openxr_csg)
+./build/csg/.../bin/samples/sample_03_openxr_csg
 ```
 
-**Expect:** boolean solids visible in stereo on Monado.
+**Expect:** process runs under Monado; logs say frame loop live with zero projection layers.
 
 **Stop if:** gfx and XR disagree on the device. Use `GfxSession(IDevice&)` with
 `session->graphicsDevice()` only -- never the C offscreen API (it owns its own device).
@@ -110,4 +120,4 @@ cmake --build build/csg -j$(nproc)
 1. Null -- "session and layers without a headset" (10 s)
 2. Monado -- "same code path as the device, desktop backup" (60 s)
 3. Galaxy XR -- "production OpenXR + hand input" (90 s)
-4. Optional CSG -- "vnegfx content on the session device" (30 s)
+4. Optional CSG scaffold -- "GfxSession on the session device; solids TBD" (30 s)

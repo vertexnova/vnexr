@@ -16,6 +16,7 @@
 #include <openxr/openxr.h>
 
 #include <array>
+#include <cstdint>
 #include <cstring>
 
 namespace vne::xr {
@@ -39,7 +40,9 @@ class OpenXrInput final {
     [[nodiscard]] Result createAction(XrActionSet action_set,
                                       const char* name,
                                       XrActionType type,
-                                      XrAction& out_action);
+                                      XrAction& out_action,
+                                      const XrPath* subaction_paths = nullptr,
+                                      std::uint32_t subaction_path_count = 0);
     [[nodiscard]] Result suggestBindings(XrInstance instance);
 
     XrInstance instance_ = XR_NULL_HANDLE;

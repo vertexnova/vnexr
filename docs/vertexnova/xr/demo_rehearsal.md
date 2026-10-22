@@ -17,7 +17,8 @@ Target length: **3 minutes** live, with a recorded fallback.
 1. **Null (10 s)** -- session and layers without hardware.
 2. **Monado (60 s)** -- same OpenXR + Vulkan path as the device; backup if USB fails.
 3. **Galaxy XR (90 s)** -- production target; bare-hand grab/spawn; mirror via scrcpy.
-4. **Optional CSG (30 s)** -- vnegfx content on the session-owned device (Monado).
+4. **Optional CSG scaffold (30 s)** -- GfxSession on the session device (Monado);
+   frame loop only today; stereo CSG solids are future work.
 
 ## Failure plan
 

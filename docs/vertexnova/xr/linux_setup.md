@@ -86,12 +86,16 @@ cmake --build build -j$(nproc)
 Install an OpenXR runtime (e.g. [Monado](https://monado.freedesktop.org/)):
 
 ```bash
-# Example after Monado install
+# After Monado install: virtual HMD + keyboard/mouse controllers (no headset)
 export XR_RUNTIME_JSON=/usr/share/openxr/1/openxr_monado.json   # path varies by distro
+export QWERTY_ENABLE=1
+export XRT_DEBUG_GUI=1
+systemctl --user start monado.service
+# or: QWERTY_ENABLE=1 XRT_DEBUG_GUI=1 monado-service &
 ./build/shared/Debug/build-linux-gcc-*/bin/samples/sample_02_openxr_stereo
 ```
 
-Without a runtime, session creation may fail at startup — that is expected on a headless CI machine; the **compile** is still validated.
+Without a runtime, session creation may fail at startup -- that is expected on a headless CI machine; the **compile** is still validated.
 
 ## Platform notes
 

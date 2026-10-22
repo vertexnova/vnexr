@@ -80,7 +80,7 @@ bool createSwapchain(XrSession session,
 
 #if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
 [[nodiscard]] std::optional<vne::rhi::TextureFormat> textureFormatFromNative(std::int64_t native_format,
-                                                                              bool is_depth) {
+                                                                             bool is_depth) {
     (void)is_depth;
     switch (static_cast<vk::Format>(native_format)) {
         case vk::Format::eR8G8B8A8Unorm:
