@@ -55,8 +55,7 @@ constexpr std::array<CubeVertex, 8> kCubeVertices = {{
 }};
 
 constexpr std::array<std::uint16_t, 36> kCubeIndices = {{
-    0, 3, 2, 0, 2, 1, 4, 5, 6, 4, 6, 7, 0, 4, 7, 0, 7, 3,
-    1, 2, 6, 1, 6, 5, 3, 7, 6, 3, 6, 2, 0, 1, 5, 0, 5, 4,
+    0, 3, 2, 0, 2, 1, 4, 5, 6, 4, 6, 7, 0, 4, 7, 0, 7, 3, 1, 2, 6, 1, 6, 5, 3, 7, 6, 3, 6, 2, 0, 1, 5, 0, 5, 4,
 }};
 
 struct alignas(16) PushConstants {
@@ -307,8 +306,7 @@ bool StereoCubeSceneLayer::ensureGraphics(const ViewSurface& surface) {
         vert.entry_point = "main";
         vne::rhi::ShaderBinaryData bin{};
         bin.bin_type = vne::rhi::ShaderBinary::eSpirv;
-        bin.data.assign(stereo_cube_spirv::kVertSpv,
-                        stereo_cube_spirv::kVertSpv + sizeof(stereo_cube_spirv::kVertSpv));
+        bin.data.assign(stereo_cube_spirv::kVertSpv, stereo_cube_spirv::kVertSpv + sizeof(stereo_cube_spirv::kVertSpv));
         vert.payload = std::move(bin);
         pkg.stages.push_back(std::move(vert));
     }
@@ -318,8 +316,7 @@ bool StereoCubeSceneLayer::ensureGraphics(const ViewSurface& surface) {
         frag.entry_point = "main";
         vne::rhi::ShaderBinaryData bin{};
         bin.bin_type = vne::rhi::ShaderBinary::eSpirv;
-        bin.data.assign(stereo_cube_spirv::kFragSpv,
-                        stereo_cube_spirv::kFragSpv + sizeof(stereo_cube_spirv::kFragSpv));
+        bin.data.assign(stereo_cube_spirv::kFragSpv, stereo_cube_spirv::kFragSpv + sizeof(stereo_cube_spirv::kFragSpv));
         frag.payload = std::move(bin);
         pkg.stages.push_back(std::move(frag));
     }
@@ -332,8 +329,7 @@ bool StereoCubeSceneLayer::ensureGraphics(const ViewSurface& surface) {
 
     vne::rhi::VertexLayoutDescriptor layout_desc{};
     layout_desc.name = "stereo_cube_layout";
-    layout_desc.attributes.push_back(
-        vne::rhi::VertexAttribute{"position", 0, 0, 0, vne::rhi::VertexFormat::eFloat3});
+    layout_desc.attributes.push_back(vne::rhi::VertexAttribute{"position", 0, 0, 0, vne::rhi::VertexFormat::eFloat3});
     layout_desc.bindings.push_back(vne::rhi::VertexBinding{0, sizeof(CubeVertex), 0});
 
     vne::rhi::RenderPipelineDescriptor pipeline_desc{};
@@ -362,7 +358,8 @@ bool StereoCubeSceneLayer::ensureGraphics(const ViewSurface& surface) {
     return true;
 }
 
-void StereoCubeSceneLayer::renderEye(const Frame& frame, std::uint32_t eye_index, float clear_r, float clear_g, float clear_b) {
+void StereoCubeSceneLayer::renderEye(
+    const Frame& frame, std::uint32_t eye_index, float clear_r, float clear_g, float clear_b) {
     if (!graphics_ready_ || eye_index >= frame.surfaces.view_count || eye_index >= frame.view_count) {
         return;
     }
@@ -440,8 +437,12 @@ void StereoCubeSceneLayer::renderEye(const Frame& frame, std::uint32_t eye_index
 
     auto* encoder = cmd->beginRenderPass(pass);
     if (encoder != nullptr) {
-        encoder->setViewport(vne::rhi::Viewport{0.f, 0.f, static_cast<float>(surface.width),
-                                                static_cast<float>(surface.height), 0.f, 1.f});
+        encoder->setViewport(vne::rhi::Viewport{0.f,
+                                                0.f,
+                                                static_cast<float>(surface.width),
+                                                static_cast<float>(surface.height),
+                                                0.f,
+                                                1.f});
         encoder->setScissor(vne::rhi::ScissorRect{0, 0, surface.width, surface.height});
         encoder->bindPipeline(render_pipeline_.get());
         encoder->bindVertexBuffer(0, vertex_buffer_.get(), 0);

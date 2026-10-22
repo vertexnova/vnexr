@@ -47,9 +47,7 @@ class OpenXrVulkanBinding final {
 
    private:
 #if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
-    static std::int32_t createInstanceHook(void* user_data,
-                                           const void* vk_instance_create_info,
-                                           void** out_instance);
+    static std::int32_t createInstanceHook(void* user_data, const void* vk_instance_create_info, void** out_instance);
     static std::int32_t selectPhysicalDeviceHook(void* user_data, void* vk_instance, void** out_physical_device);
     static std::int32_t createDeviceHook(void* user_data,
                                          void* vk_physical_device,

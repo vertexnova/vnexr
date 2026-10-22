@@ -31,7 +31,9 @@ namespace vne::xr {
 
 namespace {
 
-void splitExtensionString(const char* extensions, std::vector<std::string>& out_storage, std::vector<const char*>& out_ptrs) {
+void splitExtensionString(const char* extensions,
+                          std::vector<std::string>& out_storage,
+                          std::vector<const char*>& out_ptrs) {
     out_storage.clear();
     out_ptrs.clear();
     if (extensions == nullptr || extensions[0] == '\0') {
@@ -58,10 +60,13 @@ void OpenXrVulkanBinding::collectExtraExtensions() {
 
     // Legacy enable enumerates required Vulkan extensions as space-separated strings.
     // enable2 merges them inside xrCreateVulkan*KHR; still request them when available.
-    auto pfn_inst_ext = OpenXrUtil::loadXrProc<PFN_xrGetVulkanInstanceExtensionsKHR>(
-        xr_instance_, get_proc_, "xrGetVulkanInstanceExtensionsKHR");
-    auto pfn_dev_ext = OpenXrUtil::loadXrProc<PFN_xrGetVulkanDeviceExtensionsKHR>(
-        xr_instance_, get_proc_, "xrGetVulkanDeviceExtensionsKHR");
+    auto pfn_inst_ext =
+        OpenXrUtil::loadXrProc<PFN_xrGetVulkanInstanceExtensionsKHR>(xr_instance_,
+                                                                     get_proc_,
+                                                                     "xrGetVulkanInstanceExtensionsKHR");
+    auto pfn_dev_ext = OpenXrUtil::loadXrProc<PFN_xrGetVulkanDeviceExtensionsKHR>(xr_instance_,
+                                                                                  get_proc_,
+                                                                                  "xrGetVulkanDeviceExtensionsKHR");
 
     if (pfn_inst_ext != nullptr) {
         uint32_t capacity = 0;
@@ -91,8 +96,9 @@ std::int32_t OpenXrVulkanBinding::createInstanceHook(void* user_data,
         return static_cast<std::int32_t>(VK_ERROR_INITIALIZATION_FAILED);
     }
 
-    auto pfn = OpenXrUtil::loadXrProc<PFN_xrCreateVulkanInstanceKHR>(
-        self->xr_instance_, self->get_proc_, "xrCreateVulkanInstanceKHR");
+    auto pfn = OpenXrUtil::loadXrProc<PFN_xrCreateVulkanInstanceKHR>(self->xr_instance_,
+                                                                     self->get_proc_,
+                                                                     "xrCreateVulkanInstanceKHR");
     if (pfn == nullptr) {
         return static_cast<std::int32_t>(VK_ERROR_EXTENSION_NOT_PRESENT);
     }
@@ -123,8 +129,9 @@ std::int32_t OpenXrVulkanBinding::selectPhysicalDeviceHook(void* user_data,
 
     VkPhysicalDevice physical = VK_NULL_HANDLE;
     if (self->use_enable2_) {
-        auto pfn = OpenXrUtil::loadXrProc<PFN_xrGetVulkanGraphicsDevice2KHR>(
-            self->xr_instance_, self->get_proc_, "xrGetVulkanGraphicsDevice2KHR");
+        auto pfn = OpenXrUtil::loadXrProc<PFN_xrGetVulkanGraphicsDevice2KHR>(self->xr_instance_,
+                                                                             self->get_proc_,
+                                                                             "xrGetVulkanGraphicsDevice2KHR");
         if (pfn == nullptr) {
             return static_cast<std::int32_t>(VK_ERROR_EXTENSION_NOT_PRESENT);
         }
@@ -135,15 +142,13 @@ std::int32_t OpenXrVulkanBinding::selectPhysicalDeviceHook(void* user_data,
             return static_cast<std::int32_t>(VK_ERROR_INITIALIZATION_FAILED);
         }
     } else {
-        auto pfn = OpenXrUtil::loadXrProc<PFN_xrGetVulkanGraphicsDeviceKHR>(
-            self->xr_instance_, self->get_proc_, "xrGetVulkanGraphicsDeviceKHR");
+        auto pfn = OpenXrUtil::loadXrProc<PFN_xrGetVulkanGraphicsDeviceKHR>(self->xr_instance_,
+                                                                            self->get_proc_,
+                                                                            "xrGetVulkanGraphicsDeviceKHR");
         if (pfn == nullptr) {
             return static_cast<std::int32_t>(VK_ERROR_EXTENSION_NOT_PRESENT);
         }
-        if (XR_FAILED(pfn(self->xr_instance_,
-                          self->system_id_,
-                          static_cast<VkInstance>(vk_instance),
-                          &physical))) {
+        if (XR_FAILED(pfn(self->xr_instance_, self->system_id_, static_cast<VkInstance>(vk_instance), &physical))) {
             return static_cast<std::int32_t>(VK_ERROR_INITIALIZATION_FAILED);
         }
     }
@@ -161,8 +166,9 @@ std::int32_t OpenXrVulkanBinding::createDeviceHook(void* user_data,
         return static_cast<std::int32_t>(VK_ERROR_INITIALIZATION_FAILED);
     }
 
-    auto pfn =
-        OpenXrUtil::loadXrProc<PFN_xrCreateVulkanDeviceKHR>(self->xr_instance_, self->get_proc_, "xrCreateVulkanDeviceKHR");
+    auto pfn = OpenXrUtil::loadXrProc<PFN_xrCreateVulkanDeviceKHR>(self->xr_instance_,
+                                                                   self->get_proc_,
+                                                                   "xrCreateVulkanDeviceKHR");
     if (pfn == nullptr) {
         return static_cast<std::int32_t>(VK_ERROR_EXTENSION_NOT_PRESENT);
     }
@@ -217,14 +223,17 @@ Result OpenXrVulkanBinding::prepare(XrInstance instance,
 
     if (use_enable2) {
         auto pfn_get_device =
-            OpenXrUtil::loadXrProc<PFN_xrGetVulkanGraphicsDevice2KHR>(instance, get_proc, "xrGetVulkanGraphicsDevice2KHR");
+            OpenXrUtil::loadXrProc<PFN_xrGetVulkanGraphicsDevice2KHR>(instance,
+                                                                      get_proc,
+                                                                      "xrGetVulkanGraphicsDevice2KHR");
         if (pfn_get_device == nullptr) {
             VNE_LOG_ERROR << "xrGetVulkanGraphicsDevice2KHR missing";
             return Result::eErrorNotSupported;
         }
     } else {
-        auto pfn_get_device =
-            OpenXrUtil::loadXrProc<PFN_xrGetVulkanGraphicsDeviceKHR>(instance, get_proc, "xrGetVulkanGraphicsDeviceKHR");
+        auto pfn_get_device = OpenXrUtil::loadXrProc<PFN_xrGetVulkanGraphicsDeviceKHR>(instance,
+                                                                                       get_proc,
+                                                                                       "xrGetVulkanGraphicsDeviceKHR");
         if (pfn_get_device == nullptr) {
             VNE_LOG_ERROR << "xrGetVulkanGraphicsDeviceKHR missing";
             return Result::eErrorNotSupported;
@@ -233,8 +242,9 @@ Result OpenXrVulkanBinding::prepare(XrInstance instance,
 
     collectExtraExtensions();
     prepared_ = true;
-    VNE_LOG_INFO << "OpenXR Vulkan binding hooks ready (enable2=" << use_enable2_ << ", inst_ext="
-                 << extra_instance_extensions_.size() << ", dev_ext=" << extra_device_extensions_.size() << ")";
+    VNE_LOG_INFO << "OpenXR Vulkan binding hooks ready (enable2=" << use_enable2_
+                 << ", inst_ext=" << extra_instance_extensions_.size()
+                 << ", dev_ext=" << extra_device_extensions_.size() << ")";
     return Result::eSuccess;
 #endif
 }

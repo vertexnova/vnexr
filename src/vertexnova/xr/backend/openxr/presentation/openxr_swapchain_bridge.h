@@ -23,7 +23,7 @@
 namespace vne::rhi {
 class IDevice;
 class ITexture;
-}
+}  // namespace vne::rhi
 
 namespace vne::xr {
 

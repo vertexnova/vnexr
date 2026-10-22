@@ -32,7 +32,10 @@ Result OpenXrVulkanGraphics::initialize(Attribs attribs) {
     }
     attribs_ = attribs;
     use_vulkan_enable2_ = attribs.use_vulkan_enable2;
-    return binding_.prepare(attribs.instance, attribs.system_id, attribs.get_instance_proc_addr, attribs.use_vulkan_enable2);
+    return binding_.prepare(attribs.instance,
+                            attribs.system_id,
+                            attribs.get_instance_proc_addr,
+                            attribs.use_vulkan_enable2);
 }
 
 Result OpenXrVulkanGraphics::createDevice() {
