@@ -223,8 +223,8 @@ bool OpenXrSession::initOpenXr() {
     OPENXR_CHECK_BOOL(xrEnumerateSwapchainFormats(session_, format_count, &format_count, formats.data()));
     if (!formats.empty()) {
 #if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
-        // Prefer explicitly mapped color formats (must match textureFormatFromNative).
-        constexpr int64_t kPreferredColorFormats[] = {
+        // Accept only formats with an exact RHI mapping; keep runtime preference order.
+        constexpr int64_t kSupportedColorFormats[] = {
             static_cast<int64_t>(VK_FORMAT_R8G8B8A8_SRGB),
             static_cast<int64_t>(VK_FORMAT_B8G8R8A8_SRGB),
             static_cast<int64_t>(VK_FORMAT_R8G8B8A8_UNORM),
@@ -233,9 +233,16 @@ bool OpenXrSession::initOpenXr() {
             static_cast<int64_t>(VK_FORMAT_R32G32B32A32_SFLOAT),
         };
         color_format_ = 0;
-        for (const auto preferred : kPreferredColorFormats) {
-            if (std::find(formats.begin(), formats.end(), preferred) != formats.end()) {
-                color_format_ = preferred;
+        for (const auto format : formats) {
+            bool supported = false;
+            for (const auto candidate : kSupportedColorFormats) {
+                if (format == candidate) {
+                    supported = true;
+                    break;
+                }
+            }
+            if (supported) {
+                color_format_ = format;
                 break;
             }
         }

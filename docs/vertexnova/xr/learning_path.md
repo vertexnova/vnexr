@@ -107,7 +107,7 @@ session, counts frames, and submits **zero** projection layers (no solids drawn)
 cmake -B build/csg -DVNE_XR_WITH_OPENXR=ON -DVNE_XR_WITH_GFX_SAMPLE=ON \
   -DVNE_XR_SAMPLES=ON -DVNE_XR_DEV=ON
 cmake --build build/csg -j$(nproc)
-./build/csg/.../bin/samples/sample_03_openxr_csg
+./build/csg/bin/samples/sample_03_openxr_csg
 ```
 
 **Expect:** process runs under Monado; logs say frame loop live with zero projection layers.
