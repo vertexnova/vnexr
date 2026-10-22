@@ -15,6 +15,7 @@
 #include "vertexnova/xr/backend/openxr/openxr_platform_prelude.h"
 
 #include <algorithm>
+#include <optional>
 #include <type_traits>
 #include <utility>
 
@@ -78,7 +79,9 @@ bool createSwapchain(XrSession session,
 }
 
 #if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
-[[nodiscard]] vne::rhi::TextureFormat textureFormatFromNative(std::int64_t native_format, bool is_depth) {
+[[nodiscard]] std::optional<vne::rhi::TextureFormat> textureFormatFromNative(std::int64_t native_format,
+                                                                              bool is_depth) {
+    (void)is_depth;
     switch (static_cast<vk::Format>(native_format)) {
         case vk::Format::eR8G8B8A8Unorm:
             return vne::rhi::TextureFormat::eRgba8;
@@ -100,7 +103,7 @@ bool createSwapchain(XrSession session,
         case vk::Format::eD32SfloatS8Uint:
             return vne::rhi::TextureFormat::eDepth32fStencil8;
         default:
-            return is_depth ? vne::rhi::TextureFormat::eDepth32f : vne::rhi::TextureFormat::eRgba8;
+            return std::nullopt;
     }
 }
 
@@ -145,10 +148,16 @@ template<typename Device>
     out_textures.clear();
     out_textures.reserve(vk_images.size());
 
+    const auto mapped_format = textureFormatFromNative(native_format, is_depth);
+    if (!mapped_format) {
+        VNE_LOG_ERROR << "OpenXR: unsupported swapchain format " << native_format;
+        return false;
+    }
+
     vne::rhi::TextureDescriptor desc{};
     desc.name = is_depth ? "openxr_depth" : "openxr_color";
     desc.type = vne::rhi::TextureType::eTexture2d;
-    desc.format = textureFormatFromNative(native_format, is_depth);
+    desc.format = *mapped_format;
     desc.width = width;
     desc.height = height;
     desc.mip_levels = 1;

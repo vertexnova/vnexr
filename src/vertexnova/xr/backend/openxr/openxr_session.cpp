@@ -222,15 +222,39 @@ bool OpenXrSession::initOpenXr() {
     std::vector<int64_t> formats(format_count);
     OPENXR_CHECK_BOOL(xrEnumerateSwapchainFormats(session_, format_count, &format_count, formats.data()));
     if (!formats.empty()) {
-        color_format_ = formats.front();
 #if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
+        // Prefer explicitly mapped color formats (must match textureFormatFromNative).
+        constexpr int64_t kPreferredColorFormats[] = {
+            static_cast<int64_t>(VK_FORMAT_R8G8B8A8_SRGB),
+            static_cast<int64_t>(VK_FORMAT_B8G8R8A8_SRGB),
+            static_cast<int64_t>(VK_FORMAT_R8G8B8A8_UNORM),
+            static_cast<int64_t>(VK_FORMAT_B8G8R8A8_UNORM),
+            static_cast<int64_t>(VK_FORMAT_R16G16B16A16_SFLOAT),
+            static_cast<int64_t>(VK_FORMAT_R32G32B32A32_SFLOAT),
+        };
+        color_format_ = 0;
+        for (const auto preferred : kPreferredColorFormats) {
+            if (std::find(formats.begin(), formats.end(), preferred) != formats.end()) {
+                color_format_ = preferred;
+                break;
+            }
+        }
+        if (color_format_ == 0) {
+            VNE_LOG_ERROR << "OpenXR: no supported color swapchain format among " << formats.size()
+                          << " runtime formats";
+            return false;
+        }
         for (const auto format : formats) {
             if (format == static_cast<int64_t>(VK_FORMAT_D32_SFLOAT)
+                || format == static_cast<int64_t>(VK_FORMAT_D24_UNORM_S8_UINT)
+                || format == static_cast<int64_t>(VK_FORMAT_D32_SFLOAT_S8_UINT)
                 || format == static_cast<int64_t>(VK_FORMAT_D16_UNORM)) {
                 depth_format_ = format;
                 break;
             }
         }
+#else
+        color_format_ = formats.front();
 #endif
     }
 
