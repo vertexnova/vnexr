@@ -1,0 +1,18 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="@VNE_RUN_CONFIG_NAME@" type="AndroidRunConfigurationType" factoryName="Android App">
+    <module name="vnexr-android-samples.app" />
+    <option name="DEPLOY" value="true" />
+    <option name="MODE" value="default_activity" />
+    <option name="CLEAR_LOGCAT" value="false" />
+    <option name="SHOW_LOGCAT_AUTOMATICALLY" value="true" />
+    <option name="SKIP_NOOP_APK_INSTALLATIONS" value="true" />
+    <option name="FORCE_STOP_RUNNING_APP" value="true" />
+    <Profilers>
+      <option name="ADVANCED_PROFILING_ENABLED" value="false" />
+    </Profilers>
+    <option name="SELECTED_BUILD_VARIANT" value="@VNE_RUN_CONFIG_VARIANT@" />
+    <method v="2">
+      <option name="Android.Gradle.BeforeRunTask" enabled="true" />
+    </method>
+  </configuration>
+</component>

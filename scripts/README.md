@@ -72,14 +72,18 @@ Requires [Emscripten](https://emscripten.org/) (`source /path/to/emsdk/emsdk_env
 
 ### Android (`build_android.sh`)
 
-Set `ANDROID_HOME` and `ANDROID_NDK_ROOT` first.
+Set `ANDROID_HOME` and `ANDROID_NDK_ROOT` first. Default ABI is **arm64-v8a** (Galaxy XR).
 
 ```bash
-./scripts/build_android.sh -t Debug -a configure_and_build --dev -abi x86_64
-./scripts/build_android.sh -t Release -l static -abi arm64-v8a
+./scripts/build_android.sh -t Debug -a configure_and_build --dev -abi arm64-v8a
+./scripts/build_android.sh -t Debug -a install -sample sample_02_openxr_stereo -abi arm64-v8a
+./scripts/build_android.sh -a studio --dev -abi arm64-v8a
+./scripts/verify_android_vulkan.sh com.vertexnova.vnexr.openxr_stereo
 ```
 
-**Options:** `-t`, `-a` (configure|build|configure_and_build), `-abi`, `-api`, `-l`, `-clean`, `-j`, `--dev`, `--with-tests`, `--with-examples`, `--no-tests`, `--no-examples`, `-h`
+**Options:** `-t`, `-a` (configure|build|configure_and_build|apk|install|studio|clean), `-abi`, `-api`, `-sample`, `-l`, `-clean`, `-j`, `--dev`, `--with-tests`, `--with-examples`, `--no-tests`, `--no-examples`, `-h`
+
+Gradle templates: `samples/framework/app/platform/android/gradle/`. Generator: `cmake/VneXrAndroidGradle.cmake`.
 
 ### Windows
 
@@ -127,11 +131,12 @@ cmake --install build/shared --prefix /tmp/vnexr-install --component vnexr
 ./scripts/ci_verify_xr_install.sh /tmp/vnexr-install shared
 ```
 
-## Not copied from vnegfx
+## Not copied from vnegfx / vnerhi
 
-Gfx-specific tooling was intentionally omitted:
+Intentionally omitted (not needed for XR core yet):
 
-- Shader compilation (`glsl_to_spirv.py`, `convert_shaders.sh`, `generate_shaders.sh`)
-- WebGPU prefetch (`ci_prefetch_emdawnwebgpu.sh`)
-- Android Vulkan verification (`verify_android_vulkan.sh`)
-- Medical volume conversion (`convert_brainweb_volume_to_nrrd.py`)
+- Full shader toolchain (`glsl_to_spirv.py`, vnesc bundles)
+- WebGPU / Dawn prefetch
+- Medical volume conversion helpers
+
+Shared helpers live in `scripts/lib/common.sh`. Agent skills live in `skills/`.

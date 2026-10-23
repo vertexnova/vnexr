@@ -72,7 +72,7 @@ samples/                   Platform samples (see samples/README.md)
 | Tier | Libraries | When |
 |------|-----------|------|
 | 0 | vnecmake, vnecommon, vnelogging, googletest | Always |
-| 1 | **vnerhi**, **vnemath** | `VNE_XR_WITH_RHI=ON` (default) |
+| 1 | **vnerhi**, **vnemath** | Required (`VNE_XR_WITH_RHI=ON`; hard dependency of vnexr) |
 | 2 | Khronos OpenXR-SDK loader | `VNE_XR_WITH_OPENXR=ON` |
 | 3 | CompositorServices, SwiftUI (visionOS SDK) | `VNE_XR_WITH_VISIONOS=ON` |
 | 4 | vnegfx, entt (samples only) | `VNE_XR_WITH_GFX_SAMPLE=ON` |
@@ -90,7 +90,7 @@ export VNE_VNERHI_PATH=../vnerhi   # local private checkout
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `VNE_XR_WITH_RHI` | ON | Link vnerhi + vnemath |
+| `VNE_XR_WITH_RHI` | ON (required) | Link vnerhi + vnemath; sources assume RHI is always available |
 | `VNE_XR_WITH_OPENXR` | OFF (ON Android CI / Windows+Linux dev) | OpenXR backend |
 | `VNE_XR_WITH_VISIONOS` | OFF (ON visionOS) | CompositorServices backend |
 | `VNE_XR_WITH_GFX_SAMPLE` | OFF | Build vnegfx integration sample |
@@ -115,16 +115,23 @@ CMake minimum: **3.26** (vnerhi requirement).
 
 See [samples/README.md](../../../samples/README.md) for the getting-started path and layer architecture.
 
-Android build:
+**Learning by doing (Ubuntu 24.04):** [learning_path.md](learning_path.md)
+
+Android build (Galaxy XR, arm64):
 
 ```bash
-./scripts/build_android.sh --dev --with-examples
+./scripts/build_android.sh -t Debug -a install \
+  -sample sample_02_openxr_stereo -abi arm64-v8a
 ```
 
 ## Further reading
 
+- [Learning path](learning_path.md)
+- [Demo rehearsal](demo_rehearsal.md)
 - [Linux OpenXR setup](linux_setup.md)
 - [OpenXR backend design](openxr_design.md)
 - [Coordinate conventions](conventions.md)
+- [Sample platforms](../../samples/platforms.md)
 - [Diagrams](diagrams/README.md)
+- Skills under [skills/](../../../skills/)
 - Root [README.md](../../../README.md)

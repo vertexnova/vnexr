@@ -18,6 +18,7 @@
 #include "vertexnova/xr/input.h"
 #include "vertexnova/xr/render_session.h"
 #include "vertexnova/xr/types.h"
+#include "vertexnova/rhi/device.h"
 
 #include <memory>
 #include <string>
@@ -74,6 +75,12 @@ class VNE_XR_API ISession {
         const auto s = state();
         return s == SessionState::eSynchronized || s == SessionState::eVisible || s == SessionState::eFocused;
     }
+
+    /**
+     * @brief Session-owned graphics device used for compositor swapchain import.
+     * @details Apps must render with this device. Creating a second device cannot target OpenXR images.
+     */
+    [[nodiscard]] virtual std::shared_ptr<vne::rhi::IDevice> graphicsDevice() const { return nullptr; }
 };
 
 /** @brief Create session for @p config (factory dispatches by backend). */

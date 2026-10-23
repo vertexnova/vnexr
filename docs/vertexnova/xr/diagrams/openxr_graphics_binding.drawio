@@ -25,7 +25,7 @@
                 <mxCell id="v3" value="XrGraphicsBindingVulkanKHR&#10;instance, physicalDevice, device, queueFamilyIndex, queueIndex&#10;sourced from vne::rhi::VulkanDevice accessors" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
                     <mxGeometry x="60" y="615" width="520" height="70" as="geometry"/>
                 </mxCell>
-                <mxCell id="v4" value="XrSwapchainImageVulkanKHR { VkImage }&#10;&#8594; OpenXrVulkanTexture (isWrappedImage() is true)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
+                <mxCell id="v4" value="XrSwapchainImageVulkanKHR { VkImage }&#10;&#8594; VulkanDevice::wrapExternalImage (isWrappedImage)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;fontSize=11;align=left;spacingLeft=10;fontColor=#1a1a1a;" parent="1" vertex="1">
                     <mxGeometry x="60" y="700" width="520" height="60" as="geometry"/>
                 </mxCell>
                 <mxCell id="mhdr" value="OpenXrMetalGraphics &#8212; Apple, via embedded runtime (designed, not built)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;strokeWidth=2;fontSize=12;fontStyle=1;fontColor=#1a1a1a;dashed=1;" parent="1" vertex="1">

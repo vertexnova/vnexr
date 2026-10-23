@@ -16,7 +16,7 @@ Canonical architecture for the OpenXR session/compositor backend on **Android, W
 - Vendoring Khronos `GraphicsAPI_*`, Diligent `OpenXRUtilities.h`, or monolithic tutorial classes.
 - OpenXR on Apple (visionOS uses CompositorServices).
 - D3D11/D3D12/OpenGL graphics bindings.
-- `XR_FB_passthrough`, hand-tracking mesh (later phase).
+- `XR_FB_passthrough`, hand mesh visualization (later phase). Bare-hand **action** bindings via `XR_EXT_hand_interaction` are supported for grab/spawn.
 
 ## Layering
 
@@ -63,6 +63,7 @@ sequenceDiagram
   participant Life as InstanceLifetime
   participant XR as OpenXR
   participant Gfx as VulkanGraphics
+  participant Bind as VulkanBindingHooks
   participant RHI as vnerhi
   participant Sess as OpenXrSession
 
@@ -71,16 +72,21 @@ sequenceDiagram
   Sess->>Life: createInstance extensions
   Sess->>XR: xrGetSystem view config blend mode
   Sess->>Gfx: initialize attribs
-  Gfx->>RHI: createPhysicalDevice createDevice
-  Gfx->>XR: xrGetVulkanGraphicsRequirementsKHR
-  Sess->>XR: xrCreateSession graphics binding
+  Gfx->>Bind: prepare enable2 hooks
+  Gfx->>XR: xrGetVulkanGraphicsRequirements2KHR
+  Gfx->>RHI: createPhysicalDevice with VulkanCreateHooks
+  RHI->>XR: xrCreateVulkanInstanceKHR
+  RHI->>XR: xrGetVulkanGraphicsDevice2KHR
+  RHI->>XR: xrCreateVulkanDeviceKHR
+  Sess->>XR: xrCreateSession graphics binding from that device
   Sess->>XR: xrCreateReferenceSpace LOCAL
   Note over Sess: On SESSION_STATE_READY
   Sess->>XR: xrBeginSession primaryViewConfigurationType
   Sess->>Sess: create per-eye color+depth swapchains
+  Sess->>RHI: wrapExternalImage for each swapchain VkImage
 ```
 
-Prefer `XR_KHR_vulkan_enable2` when available; fall back to `XR_KHR_vulkan_enable`. Graphics binding is filled from `VulkanDevice::getVulkanInstance()`, `getVulkanPhysicalDevice()`, `getVulkanDevice()`, `getVulkanGraphicsQueueFamily()`.
+Prefer `XR_KHR_vulkan_enable2` when available; fall back to `XR_KHR_vulkan_enable`. vnerhi builds the Vulkan instance and device; OpenXR only supplies create hooks (`VulkanCreateHooks` on `PhysicalDeviceDescriptor` / `DeviceDescriptor`). Graphics binding is filled from `VulkanDevice::getVulkanInstance()`, `getVulkanPhysicalDevice()`, `getVulkanDevice()`, `getVulkanGraphicsQueueFamily()`.
 
 ## Ownership and RAII
 
@@ -97,7 +103,8 @@ Shutdown order: `xrEndSession` → destroy swapchains → destroy input → dest
 
 ## vnerhi interop
 
-- Swapchain images are compositor-owned `VkImage` handles wrapped by `OpenXrVulkanTexture` (`isWrappedImage() == true`).
+- Swapchain images are compositor-owned `VkImage` handles wrapped by `VulkanDevice::wrapExternalImage` (`isWrappedImage() == true`).
+- Apps must use `ISession::graphicsDevice()` — the same device that owns the binding and wrapped textures.
 - Apps render via `Frame::surfaces.views[i].color_texture` / `depth_texture`.
 - Before `xrReleaseSwapchainImage`, call `OpenXrSession::flushGpu()` (queue wait idle / finish frame).
 - Depth swapchains are created for rendering; depth composition layer submission is deferred.
@@ -139,10 +146,14 @@ Portable logic stays in `.cpp`; platform files expose small `noexcept` init func
 
 - **CI**: `NullSession` backend (no OpenXR runtime).
 - **Optional**: `tests/backend/openxr/` gated on `VNE_XR_WITH_OPENXR`.
-- **Manual**: `03_hello_openxr` (Android, Linux), `04_openxr_windows` (Win32 loop).
+- **Manual**: `samples/02_openxr_stereo` (Linux Monado, Windows OpenXR runtimes, Android Galaxy XR / Quest-class) — interactive stereo cubes on the session device. Hand interaction uses `XR_EXT_hand_interaction` when available.
+
+## Session-module rule (samples)
+
+Samples never own the XR graphics device or swapchains. They call `ISession::graphicsDevice()` and draw into `Frame.surfaces` only. See [learning_path.md](learning_path.md) step 3 and skill `vne-xr-session`.
 
 ## References
 
 - Khronos OpenXR tutorial Ch.4 (input, haptics, block interaction patterns).
-- Diligent T28 HelloOpenXR (bootstrap order, per-eye swapchains, `XrCreateProjectionFov`, WinMain loop).
+- Khronos `XR_EXT_hand_interaction` / `XR_KHR_vulkan_enable2` specifications.
 - vnerhi `backend/vulkan/` module layout and `rhi_error.h`.

@@ -24,7 +24,8 @@ Binaries land in `build/<lib_type>/<config>/bin/samples/`.
 |--------|---------|----------------|
 | **00_hello_xr** | — | Link `vne::xr`, call `hello()` |
 | **01_null_simulator** | Null | `XrSampleApp` + `IXrLayer` stack without a headset (CI / headless) |
-| **02_openxr_stereo** | OpenXR | Stereo rendering + block grab/spawn on Monado, PC VR, or Quest |
+| **02_openxr_stereo** | OpenXR | Stereo rendering + block grab/spawn on Monado, PC VR, or Galaxy XR |
+| **03_openxr_csg** | OpenXR + vnegfx | Stretch: CSG on the session-owned device (Monado first) |
 
 Start with **01** on any host, then **02** once you have an OpenXR runtime.
 

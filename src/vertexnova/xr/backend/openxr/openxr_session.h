@@ -36,6 +36,7 @@ class OpenXrSession final : public ISession {
     bool beginFrame(Frame& out_frame) override;
     void endFrame(const Frame& frame, const LayerParams& layers) override;
     void pollInput(InputState& out_input) override;
+    [[nodiscard]] std::shared_ptr<vne::rhi::IDevice> graphicsDevice() const override;
 
    private:
     SessionConfig config_;

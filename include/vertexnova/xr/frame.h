@@ -45,6 +45,8 @@ struct LayerParams {
     float far_z = kDefaultFarZ;
     bool enable_passthrough = false;
     bool request_exit = false;
+    /** @brief When false, endFrame submits zero projection layers (acquired images not presented). */
+    bool submit_projection = true;
 };
 
 }  // namespace vne::xr

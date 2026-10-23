@@ -23,7 +23,7 @@ if(NOT DEFINED PROJECT_VERSION_INIT)
     set(PROJECT_VERSION_INIT "1.0.0")
 endif()
 
-project(vnexr VERSION ${PROJECT_VERSION_INIT} LANGUAGES CXX)
+project(vnexr VERSION ${PROJECT_VERSION_INIT} LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -223,16 +223,17 @@ endif()
 #==============================================================================
 # XR framework options
 #==============================================================================
-option(VNE_XR_WITH_RHI "Link vnerhi/vnemath for GPU-backed XR sessions" ON)
+option(VNE_XR_WITH_RHI "Link vnerhi/vnemath (required for vnexr)" ON)
 option(VNE_XR_WITH_EVENTS "Link vneevents for XR input routing" OFF)
 option(VNE_XR_WITH_OPENXR "Build OpenXR backend (Android/Windows/Linux; not Apple)" OFF)
 option(VNE_XR_WITH_VISIONOS "Build CompositorServices backend (visionOS)" OFF)
 option(VNE_XR_WITH_GFX_SAMPLE "Build optional vnegfx integration example" OFF)
+option(VNE_XR_GENERATE_ANDROID_GRADLE "Generate Android Studio Gradle project under the build tree" OFF)
 set(VNE_XR_BACKEND_OPENXR_GRAPHICS "vulkan" CACHE STRING "OpenXR graphics binding: vulkan or d3d12")
 set_property(CACHE VNE_XR_BACKEND_OPENXR_GRAPHICS PROPERTY STRINGS "vulkan" "d3d12")
 
-if(VNE_XR_WITH_OPENXR AND NOT VNE_XR_WITH_RHI)
-    message(FATAL_ERROR "VNE_XR_WITH_OPENXR requires VNE_XR_WITH_RHI=ON (vnerhi is required for swapchain bridging).")
+if(NOT VNE_XR_WITH_RHI)
+    message(FATAL_ERROR "VNE_XR_WITH_RHI=ON is required (vnerhi is a hard dependency of vnexr).")
 endif()
 
 if(VNE_XR_WITH_OPENXR AND VNE_XR_WITH_VISIONOS)
@@ -256,10 +257,8 @@ if(VNE_TARGET_PLATFORM STREQUAL "Linux" AND VNE_XR_DEV AND NOT VNE_XR_CI)
     option(VNE_XR_WITH_OPENXR "Build OpenXR backend" ON)
 endif()
 
-if(VNE_XR_WITH_RHI)
-    include(VneXrDeps)
-    xr_configure_rhi_deps()
-endif()
+include(VneXrDeps)
+xr_configure_rhi_deps()
 
 if(VNE_XR_WITH_OPENXR)
     include(VneXrOpenXR)

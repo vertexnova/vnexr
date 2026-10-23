@@ -15,15 +15,15 @@ void XrLayerStack::pushOverlay(std::unique_ptr<IXrLayer> overlay) {
     overlays_.push_back(std::move(overlay));
 }
 
-void XrLayerStack::onAttach() {
+void XrLayerStack::onAttach(ISession* session) {
     for (auto& layer : layers_) {
         if (layer && layer->isEnabled()) {
-            layer->onAttach();
+            layer->onAttach(session);
         }
     }
     for (auto& overlay : overlays_) {
         if (overlay && overlay->isEnabled()) {
-            overlay->onAttach();
+            overlay->onAttach(session);
         }
     }
 }

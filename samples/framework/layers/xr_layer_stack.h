@@ -17,7 +17,7 @@ class XrLayerStack {
     void pushLayer(std::unique_ptr<IXrLayer> layer);
     void pushOverlay(std::unique_ptr<IXrLayer> overlay);
 
-    void onAttach();
+    void onAttach(ISession* session);
     void onDetach();
     void onUpdate(const FrameParams& params, LayerParams& out_layers);
 

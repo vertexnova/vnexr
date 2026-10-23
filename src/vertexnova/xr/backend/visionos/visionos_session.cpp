@@ -11,11 +11,9 @@
 
 #include "vertexnova/xr/backend/visionos/visionos_session.h"
 
-#include <cstring>
-
-#ifdef VNE_XR_WITH_RHI
 #include "vertexnova/rhi/graphics_factory.h"
-#endif
+
+#include <cstring>
 
 namespace vne::xr {
 
@@ -37,10 +35,8 @@ void setIdentityMat4(float* matrix) {
 VisionOsSession::VisionOsSession(SessionConfig config)
     : config_(std::move(config))
     , state_(SessionState::eReady) {
-#ifdef VNE_XR_WITH_RHI
     const auto backend = vne::rhi::GraphicsFactory::getDefaultBackend();
     (void)vne::rhi::GraphicsFactory::createPhysicalDevice(backend);
-#endif
 }
 
 VisionOsSession::~VisionOsSession() = default;
@@ -84,9 +80,6 @@ void VisionOsSession::endFrame(const Frame& frame, const LayerParams& layers) {
         running_ = false;
         state_ = SessionState::eExiting;
     }
-#ifdef VNE_XR_WITH_RHI
-    (void)layers;
-#endif
 }
 
 }  // namespace vne::xr

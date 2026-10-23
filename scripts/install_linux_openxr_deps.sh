@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
-# Install Linux packages needed to build vnexr with OpenXR + Vulkan.
+# Install Linux packages needed to build and run vnexr with OpenXR + Vulkan.
 #
 # Usage:
 #   ./scripts/install_linux_openxr_deps.sh
 #
-# Supports apt (Debian/Ubuntu). For other distros install equivalents manually:
-#   Vulkan SDK / libvulkan-dev, X11 or Wayland dev headers (OpenXR loader WSI).
+# Tuned for Ubuntu 24.04 (Noble). For other distros install equivalents manually:
+#   Vulkan SDK / libvulkan-dev, X11 or Wayland dev headers (OpenXR loader WSI),
+#   Monado OpenXR runtime for desktop simulation.
 set -euo pipefail
 
 if ! command -v apt-get >/dev/null 2>&1; then
   echo "This script supports apt-based distros (Debian/Ubuntu)."
   echo "Install manually: cmake, g++ or clang, libvulkan-dev, libx11-dev,"
-  echo "  libx11-xcb-dev, libxrandr-dev, libxxf86vm-dev, libxcb1-dev, libxcb-glx0-dev"
+  echo "  libx11-xcb-dev, libxrandr-dev, libxxf86vm-dev, libxcb1-dev, libxcb-glx0-dev,"
+  echo "  and an OpenXR runtime (Monado)."
   exit 1
 fi
 
@@ -33,6 +35,21 @@ sudo apt-get install -y \
   libxcb1-dev \
   libxcb-glx0-dev
 
+echo ">> Installing required OpenXR runtime packages (Ubuntu 24.04 names)"
+# On Noble these packages provide the Monado service and a system OpenXR loader.
+# Build-time loader still comes from FetchContent (cmake/VneXrOpenXR.cmake).
+if ! sudo apt-get install -y monado-service libopenxr-loader1; then
+  echo "ERROR: required Monado/OpenXR runtime packages missing or renamed on this distro."
+  echo "  Try: apt-cache search monado | head"
+  echo "  Or build Monado from https://monado.freedesktop.org/"
+  exit 1
+fi
+
+echo ">> Installing optional OpenXR validation layer (non-fatal if missing)"
+sudo apt-get install -y openxr-layer-corevalidation || {
+  echo "WARNING: openxr-layer-corevalidation not installed; continuing without it."
+}
+
 echo ">> Done. Verify Vulkan:"
 if command -v vulkaninfo >/dev/null 2>&1; then
   vulkaninfo --summary 2>/dev/null | head -20 || echo "vulkaninfo: no GPU/runtime (build may still succeed)"
@@ -41,5 +58,17 @@ else
 fi
 
 echo ""
-echo "Optional runtime for headset testing: Monado (https://monado.freedesktop.org/)"
-echo "  sudo apt-get install monado-vulkan-driver openxr-loader  # if packaged on your distro"
+echo "Monado desktop simulation (no headset):"
+echo "  1. Start with qwerty + debug GUI:"
+echo "       export QWERTY_ENABLE=1"
+echo "       export XRT_DEBUG_GUI=1"
+echo "       systemctl --user start monado.service"
+echo "       # or: QWERTY_ENABLE=1 XRT_DEBUG_GUI=1 monado-service &"
+echo "  2. Point the active runtime at Monado, then run the sample:"
+echo "       export XR_RUNTIME_JSON=/usr/share/openxr/1/openxr_monado.json"
+echo "       # path may be /etc/xdg/openxr/1/active_runtime.json on some installs"
+echo "       ./build/shared/Debug/build-linux-gcc-*/bin/samples/sample_02_openxr_stereo"
+echo "  3. Controllers: Monado qwerty driver maps keyboard/mouse to poses."
+echo "     See: https://monado.freedesktop.org/getting-started.html"
+echo ""
+echo "If XR_RUNTIME_JSON is unset, OpenXR uses the active_runtime.json symlink."

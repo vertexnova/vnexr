@@ -59,10 +59,7 @@ if(TARGET vne::logging)
     target_link_libraries(vnexr PUBLIC vne::logging)
 endif()
 
-if(VNE_XR_WITH_RHI)
-    target_compile_definitions(vnexr PUBLIC VNE_XR_WITH_RHI=1)
-    target_link_libraries(vnexr PUBLIC vne::rhi vne::math)
-endif()
+target_link_libraries(vnexr PUBLIC vne::rhi vne::math)
 
 if(VNE_XR_WITH_OPENXR)
     target_compile_definitions(vnexr PUBLIC VNE_XR_WITH_OPENXR=1)
@@ -116,8 +113,8 @@ if(VNE_XR_WITH_OPENXR)
                 "vulkan/vulkan.h not found for vnexr OpenXR/Vulkan.\n"
                 "  Install a Vulkan SDK, or run: ./scripts/init_submodules.sh full")
         endif()
-        # openxr_vulkan_binding calls vkGetInstanceProcAddr / vkDestroyInstance /
-        # vkDestroyDevice. Headers alone do not provide those symbols.
+        # openxr_vulkan_binding calls vkGetInstanceProcAddr, vkCreateInstance, and
+        # vkCreateDevice. Headers alone do not provide those symbols.
         set(_vne_xr_vk_loader_ok FALSE)
         if(TARGET Vulkan::Vulkan)
             target_link_libraries(vnexr PRIVATE Vulkan::Vulkan)

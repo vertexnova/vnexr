@@ -9,8 +9,8 @@ Backends may differ in handedness, depth range, and NDC Z. Applications should u
 | `Pose.position` | Meters, runtime world space |
 | `Pose.orientation` | Quaternion `(x, y, z, w)` |
 | `FieldOfView` | Radians: left/right/up/down from center |
-| `View.view_matrix` | Row-major 4×4, world → eye |
-| `View.projection_matrix` | Row-major 4×4, eye → clip |
+| `View.view_matrix` | Column-major 4×4, world → eye |
+| `View.projection_matrix` | Column-major 4×4, eye → clip |
 | `LayerParams.near_z` / `far_z` | App hint for depth submission |
 
 ## OpenXR (Android / Windows / Linux)
@@ -19,7 +19,7 @@ Backends may differ in handedness, depth range, and NDC Z. Applications should u
 |-------|------------|
 | Reference space | `XR_REFERENCE_SPACE_TYPE_LOCAL` at session start |
 | Graphics | Vulkan via `XR_KHR_vulkan_enable2` (preferred) or `XR_KHR_vulkan_enable` |
-| Swapchain images | Per-eye color + depth; compositor-owned; wrapped as `vne::rhi::ITexture` |
+| Swapchain images | Per-eye color + depth; compositor-owned; wrapped via `VulkanDevice::wrapExternalImage` |
 | Depth | Depth swapchain for rendering; composition layer depth deferred |
 | Module layout | See [openxr_design.md](openxr_design.md) |
 | Samsung Galaxy XR | Same path as Quest: Android + OpenXR + Vulkan |

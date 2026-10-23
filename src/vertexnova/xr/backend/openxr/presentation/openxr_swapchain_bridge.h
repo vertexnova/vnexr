@@ -17,10 +17,13 @@
 
 #include <array>
 #include <cstdint>
+#include <memory>
 #include <vector>
 
-struct XrSwapchain_T;
-struct XrSession_T;
+namespace vne::rhi {
+class IDevice;
+class ITexture;
+}  // namespace vne::rhi
 
 namespace vne::xr {
 
@@ -36,7 +39,8 @@ class OpenXrSwapchainBridge {
     bool create(XrSession session,
                 const std::vector<XrViewConfigurationView>& view_configs,
                 std::int64_t color_format,
-                std::int64_t depth_format);
+                std::int64_t depth_format,
+                const std::shared_ptr<vne::rhi::IDevice>& device);
     void destroy();
 
     bool acquireForFrame(Frame& in_out_frame);
@@ -55,12 +59,18 @@ class OpenXrSwapchainBridge {
         XrSwapchain depth_swapchain = XR_NULL_HANDLE;
         std::vector<std::uint64_t> color_vk_images;
         std::vector<std::uint64_t> depth_vk_images;
+        std::vector<std::shared_ptr<vne::rhi::ITexture>> color_textures;
+        std::vector<std::shared_ptr<vne::rhi::ITexture>> depth_textures;
         std::uint32_t width = 0;
         std::uint32_t height = 0;
         std::uint32_t acquired_index = 0;
+        std::uint32_t acquired_depth_index = 0;
     };
 
     XrSession session_ = XR_NULL_HANDLE;
+    std::shared_ptr<vne::rhi::IDevice> device_;
+    std::int64_t color_format_ = 0;
+    std::int64_t depth_format_ = 0;
     std::vector<ViewSwapchain> views_;
     std::array<XrView, 2> cached_views_{};
     std::uint32_t cached_view_count_ = 0;

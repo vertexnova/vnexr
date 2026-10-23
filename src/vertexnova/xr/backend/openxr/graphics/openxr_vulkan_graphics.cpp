@@ -32,7 +32,10 @@ Result OpenXrVulkanGraphics::initialize(Attribs attribs) {
     }
     attribs_ = attribs;
     use_vulkan_enable2_ = attribs.use_vulkan_enable2;
-    return Result::eSuccess;
+    return binding_.prepare(attribs.instance,
+                            attribs.system_id,
+                            attribs.get_instance_proc_addr,
+                            attribs.use_vulkan_enable2);
 }
 
 Result OpenXrVulkanGraphics::createDevice() {
@@ -43,29 +46,7 @@ Result OpenXrVulkanGraphics::createDevice() {
         return Result::eErrorBadState;
     }
 
-    const auto backend = vne::rhi::GraphicsFactory::getDefaultBackend();
-    auto physical = vne::rhi::GraphicsFactory::createPhysicalDevice(backend);
-    if (!physical) {
-        VNE_LOG_ERROR << "OpenXR: failed to create physical device";
-        return Result::eErrorInitializationFailed;
-    }
-
-    vne::rhi::PhysicalDeviceDescriptor phys_desc{};
-    const auto device_info = physical->selectBestDevice(phys_desc);
-    if (!device_info.isValid()) {
-        VNE_LOG_ERROR << "OpenXR: no suitable Vulkan device";
-        return Result::eErrorInitializationFailed;
-    }
-
-    vne::rhi::DeviceDescriptor dev_desc{};
-    dev_desc.name = "openxr_vulkan";
-    device_ = physical->createDevice(device_info, dev_desc);
-    if (!device_ || !device_->isValid()) {
-        VNE_LOG_ERROR << "OpenXR: failed to create Vulkan logical device";
-        return Result::eErrorInitializationFailed;
-    }
-
-    // Khronos names: XrGraphicsRequirementsVulkan[2]KHR (not XrVulkanGraphicsRequirements*).
+    // Prefer enable2 requirements when available (version clamp is advisory for logging).
     XrGraphicsRequirementsVulkanKHR requirements{XR_TYPE_GRAPHICS_REQUIREMENTS_VULKAN_KHR};
     if (use_vulkan_enable2_) {
         auto pfn_get_requirements =
@@ -90,6 +71,33 @@ Result OpenXrVulkanGraphics::createDevice() {
                 VNE_LOG_WARN << "OpenXR: xrGetVulkanGraphicsRequirementsKHR failed";
             }
         }
+    }
+
+    const auto backend = vne::rhi::GraphicsFactory::getDefaultBackend();
+    auto physical = vne::rhi::GraphicsFactory::createPhysicalDevice(backend);
+    if (!physical) {
+        VNE_LOG_ERROR << "OpenXR: failed to create physical device";
+        return Result::eErrorInitializationFailed;
+    }
+
+    vne::rhi::PhysicalDeviceDescriptor phys_desc{};
+    vne::rhi::DeviceDescriptor dev_desc{};
+    dev_desc.name = "openxr_vulkan";
+    // Same hook context for instance and device (extra extensions + create callbacks).
+    if (!binding_.configureDeviceCreation(phys_desc, dev_desc)) {
+        VNE_LOG_ERROR << "OpenXR: Vulkan create hooks are not prepared";
+        return Result::eErrorBadState;
+    }
+
+    const auto device_info = physical->selectBestDevice(phys_desc);
+    if (!device_info.isValid()) {
+        VNE_LOG_ERROR << "OpenXR: no suitable Vulkan device from runtime selection";
+        return Result::eErrorInitializationFailed;
+    }
+    device_ = physical->createDevice(device_info, dev_desc);
+    if (!device_ || !device_->isValid()) {
+        VNE_LOG_ERROR << "OpenXR: failed to create Vulkan logical device via enable hooks";
+        return Result::eErrorInitializationFailed;
     }
 
     VNE_LOG_INFO << "OpenXR Vulkan device ready (enable2=" << use_vulkan_enable2_ << ")";

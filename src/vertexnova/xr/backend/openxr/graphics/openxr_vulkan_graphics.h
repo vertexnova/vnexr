@@ -10,8 +10,9 @@
  * ----------------------------------------------------------------------
  */
 
-#include "vertexnova/xr/xr_error.h"
+#include "vertexnova/xr/backend/openxr/graphics/openxr_vulkan_binding.h"
 #include "vertexnova/xr/backend/openxr/openxr_platform_prelude.h"
+#include "vertexnova/xr/xr_error.h"
 
 #include <memory>
 
@@ -47,6 +48,7 @@ class OpenXrVulkanGraphics final {
    private:
     Attribs attribs_{};
     bool use_vulkan_enable2_ = false;
+    OpenXrVulkanBinding binding_;
     std::shared_ptr<vne::rhi::IDevice> device_;
 };
 

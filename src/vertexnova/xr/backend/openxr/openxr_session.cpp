@@ -107,6 +107,12 @@ bool OpenXrSession::initOpenXr() {
 #if defined(__ANDROID__)
     requested.emplace_back(XR_KHR_ANDROID_CREATE_INSTANCE_EXTENSION_NAME);
 #endif
+#ifndef XR_EXT_HAND_INTERACTION_EXTENSION_NAME
+#define XR_EXT_HAND_INTERACTION_EXTENSION_NAME "XR_EXT_hand_interaction"
+#endif
+    if (OpenXrUtil::isExtensionAvailable(XR_EXT_HAND_INTERACTION_EXTENSION_NAME, available)) {
+        requested.emplace_back(XR_EXT_HAND_INTERACTION_EXTENSION_NAME);
+    }
     requested.emplace_back(XR_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
     auto enabled = OpenXrUtil::filterEnabledExtensions(requested, available);
@@ -207,7 +213,7 @@ bool OpenXrSession::initOpenXr() {
     space_info.poseInReferenceSpace = identityPose();
     OPENXR_CHECK_BOOL(xrCreateReferenceSpace(session_, &space_info, &reference_space_));
 
-    if (isError(input_.create(instance_, session_))) {
+    if (isError(input_.create(instance_, session_, reference_space_))) {
         VNE_LOG_WARN << "OpenXR input setup failed; continuing without actions";
     }
 
@@ -216,15 +222,46 @@ bool OpenXrSession::initOpenXr() {
     std::vector<int64_t> formats(format_count);
     OPENXR_CHECK_BOOL(xrEnumerateSwapchainFormats(session_, format_count, &format_count, formats.data()));
     if (!formats.empty()) {
-        color_format_ = formats.front();
 #if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
+        // Accept only formats with an exact RHI mapping; keep runtime preference order.
+        constexpr int64_t kSupportedColorFormats[] = {
+            static_cast<int64_t>(VK_FORMAT_R8G8B8A8_SRGB),
+            static_cast<int64_t>(VK_FORMAT_B8G8R8A8_SRGB),
+            static_cast<int64_t>(VK_FORMAT_R8G8B8A8_UNORM),
+            static_cast<int64_t>(VK_FORMAT_B8G8R8A8_UNORM),
+            static_cast<int64_t>(VK_FORMAT_R16G16B16A16_SFLOAT),
+            static_cast<int64_t>(VK_FORMAT_R32G32B32A32_SFLOAT),
+        };
+        color_format_ = 0;
+        for (const auto format : formats) {
+            bool supported = false;
+            for (const auto candidate : kSupportedColorFormats) {
+                if (format == candidate) {
+                    supported = true;
+                    break;
+                }
+            }
+            if (supported) {
+                color_format_ = format;
+                break;
+            }
+        }
+        if (color_format_ == 0) {
+            VNE_LOG_ERROR << "OpenXR: no supported color swapchain format among " << formats.size()
+                          << " runtime formats";
+            return false;
+        }
         for (const auto format : formats) {
             if (format == static_cast<int64_t>(VK_FORMAT_D32_SFLOAT)
+                || format == static_cast<int64_t>(VK_FORMAT_D24_UNORM_S8_UINT)
+                || format == static_cast<int64_t>(VK_FORMAT_D32_SFLOAT_S8_UINT)
                 || format == static_cast<int64_t>(VK_FORMAT_D16_UNORM)) {
                 depth_format_ = format;
                 break;
             }
         }
+#else
+        color_format_ = formats.front();
 #endif
     }
 
@@ -324,11 +361,15 @@ bool OpenXrSession::ensureSwapchains() {
     if (view_configs_.empty() || color_format_ == 0) {
         return false;
     }
-    if (!swapchain_bridge_.create(session_, view_configs_, color_format_, depth_format_)) {
+    if (!swapchain_bridge_.create(session_, view_configs_, color_format_, depth_format_, graphics_.getDevice())) {
         return false;
     }
     swapchains_ready_ = true;
     return true;
+}
+
+std::shared_ptr<vne::rhi::IDevice> OpenXrSession::graphicsDevice() const {
+    return graphics_.getDevice();
 }
 
 void OpenXrSession::flushGpu() {
@@ -442,7 +483,7 @@ void OpenXrSession::endFrame(const Frame& frame, const LayerParams& layers) {
 
     XrCompositionLayerProjection layer{XR_TYPE_COMPOSITION_LAYER_PROJECTION};
     std::array<XrCompositionLayerProjectionView, 2> projection_views{};
-    if (frame.should_render && frame.view_count > 0 && swapchains_ready_) {
+    if (frame.should_render && frame.view_count > 0 && swapchains_ready_ && layers.submit_projection) {
         composition_layer_.buildProjectionLayer(reference_space_,
                                                 swapchain_bridge_,
                                                 frame.view_count,

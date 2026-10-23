@@ -6,6 +6,7 @@
 
 #include "vertexnova/xr/frame.h"
 #include "vertexnova/xr/render_session.h"
+#include "vertexnova/xr/session.h"
 
 #include <string>
 
@@ -24,7 +25,8 @@ class IXrLayer {
     IXrLayer(const IXrLayer&) = delete;
     IXrLayer& operator=(const IXrLayer&) = delete;
 
-    virtual void onAttach() {}
+    /** @brief One-time setup after the session device exists. */
+    virtual void onAttach(ISession* session) { (void)session; }
     virtual void onDetach() {}
 
     /** Called once per XR frame before per-eye rendering hooks. */
