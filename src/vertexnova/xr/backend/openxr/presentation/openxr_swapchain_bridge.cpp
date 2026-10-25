@@ -275,6 +275,13 @@ bool OpenXrSwapchainBridge::acquireForFrame(Frame& in_out_frame) {
     if (session_ == XR_NULL_HANDLE || views_.empty()) {
         return false;
     }
+    const bool has_outstanding_image = std::any_of(views_.begin(), views_.end(), [](const ViewSwapchain& view) {
+        return view.is_color_acquired || view.is_depth_acquired;
+    });
+    if (has_outstanding_image) {
+        VNE_LOG_WARN << "OpenXR swapchain images from an earlier frame are still acquired; not acquiring new ones";
+        return false;
+    }
     const std::uint32_t count = std::min(static_cast<std::uint32_t>(views_.size()), in_out_frame.view_count);
     in_out_frame.surfaces.view_count = count;
     for (std::uint32_t i = 0; i < count; ++i) {
@@ -318,22 +325,28 @@ bool OpenXrSwapchainBridge::acquireForFrame(Frame& in_out_frame) {
     return true;
 }
 
-void OpenXrSwapchainBridge::releaseForFrame() {
+bool OpenXrSwapchainBridge::releaseForFrame() {
+    bool is_all_released = true;
     for (auto& view : views_) {
         XrSwapchainImageReleaseInfo release_info{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
         if (view.is_depth_acquired && view.depth_swapchain != XR_NULL_HANDLE) {
-            if (XR_FAILED(xrReleaseSwapchainImage(view.depth_swapchain, &release_info))) {
+            if (XR_SUCCEEDED(xrReleaseSwapchainImage(view.depth_swapchain, &release_info))) {
+                view.is_depth_acquired = false;
+            } else {
                 VNE_LOG_WARN << "xrReleaseSwapchainImage failed for a depth swapchain";
+                is_all_released = false;
             }
         }
-        view.is_depth_acquired = false;
         if (view.is_color_acquired && view.color_swapchain != XR_NULL_HANDLE) {
-            if (XR_FAILED(xrReleaseSwapchainImage(view.color_swapchain, &release_info))) {
+            if (XR_SUCCEEDED(xrReleaseSwapchainImage(view.color_swapchain, &release_info))) {
+                view.is_color_acquired = false;
+            } else {
                 VNE_LOG_WARN << "xrReleaseSwapchainImage failed for a color swapchain";
+                is_all_released = false;
             }
         }
-        view.is_color_acquired = false;
     }
+    return is_all_released;
 }
 
 XrSwapchain OpenXrSwapchainBridge::getColorSwapchain(std::uint32_t view_index) const {

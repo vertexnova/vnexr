@@ -330,9 +330,11 @@ void OpenXrSession::shutdownOpenXr() {
         static_cast<void>(requestExit());
         for (int attempt = 0; attempt < kShutdownDrainAttempts && session_begun_; ++attempt) {
             processPendingEvents();
-            if (session_begun_) {
-                std::this_thread::sleep_for(kShutdownDrainInterval);
+            if (!session_begun_ || !running_) {
+                // Ended, or the runtime/instance is going away: there is nothing further to wait for.
+                break;
             }
+            std::this_thread::sleep_for(kShutdownDrainInterval);
         }
     }
 
@@ -361,7 +363,7 @@ void OpenXrSession::shutdownOpenXr() {
 
 void OpenXrSession::releaseSwapchains() {
     if (are_images_acquired_) {
-        swapchain_bridge_.releaseForFrame();
+        static_cast<void>(swapchain_bridge_.releaseForFrame());
         are_images_acquired_ = false;
     }
     swapchain_bridge_.destroy();
@@ -561,7 +563,8 @@ bool OpenXrSession::beginFrame(Frame& out_frame) {
             are_images_acquired_ = true;
             if (!swapchain_bridge_.acquireForFrame(out_frame)) {
                 // Give back what was acquired and submit no layer for this frame.
-                swapchain_bridge_.releaseForFrame();
+                // If a release fails here the bridge keeps the image marked, and the next frame retries it.
+                static_cast<void>(swapchain_bridge_.releaseForFrame());
                 are_images_acquired_ = false;
                 out_frame.should_render = false;
                 out_frame.view_count = 0;
@@ -598,7 +601,9 @@ void OpenXrSession::endFrame(const Frame& frame, const LayerParams& layers) {
     // Release exactly what beginFrame() acquired: releasing without an acquire is a call-order error.
     const bool has_images = are_images_acquired_;
     if (has_images) {
-        swapchain_bridge_.releaseForFrame();
+        if (!swapchain_bridge_.releaseForFrame()) {
+            VNE_LOG_WARN << "Some swapchain images were not released; they are retried next frame";
+        }
         are_images_acquired_ = false;
     }
 

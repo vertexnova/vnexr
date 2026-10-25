@@ -45,12 +45,16 @@ class OpenXrSwapchainBridge {
 
     /**
      * @brief Acquire and wait for the current image of every view's swapchains.
-     * @return False when any acquire or wait fails; the images acquired so far stay acquired until
-     * `releaseForFrame()`, which releases exactly those.
+     * @return False when any acquire or wait fails, or when images from an earlier frame are still outstanding.
+     * The images acquired so far stay acquired until `releaseForFrame()`, which releases exactly those.
      */
     bool acquireForFrame(Frame& in_out_frame);
-    /** @brief Release every image that `acquireForFrame()` acquired and has not been released yet. */
-    void releaseForFrame();
+    /**
+     * @brief Release every image that `acquireForFrame()` acquired and has not been released yet.
+     * @return True when nothing is left outstanding. A failed release keeps its image marked as acquired, so a
+     * later call retries it, and `acquireForFrame()` refuses to start until then.
+     */
+    [[nodiscard]] bool releaseForFrame();
 
     [[nodiscard]] XrSwapchain getColorSwapchain(std::uint32_t view_index) const;
     [[nodiscard]] std::uint32_t getWidth(std::uint32_t view_index) const;

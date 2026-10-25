@@ -96,7 +96,7 @@ Prefer `XR_KHR_vulkan_enable2` when available; fall back to `XR_KHR_vulkan_enabl
 | `XrSession` | `OpenXrSession` | Before instance destroy |
 | `XrSpace` (reference) | `OpenXrSession` | Before session destroy |
 | Action spaces | `OpenXrInput` | Before session destroy |
-| Swapchains | `OpenXrSwapchainBridge` | Before session destroy; after `xrEndSession` on STOPPING |
+| Swapchains | `OpenXrSwapchainBridge` | Released (after waiting for the GPU) on STOPPING, before `xrEndSession`; always before session destroy |
 | `vne::rhi::IDevice` | `OpenXrVulkanGraphics` | Before instance destroy |
 
 Shutdown order: if the session is begun, `xrRequestExitSession` and pump events (bounded, about one second) until the runtime reports STOPPING and the session is ended -> wait for the GPU -> destroy input -> destroy swapchains -> destroy spaces -> `xrDestroySession` -> release graphics device -> `xrDestroyInstance`.
@@ -133,7 +133,7 @@ flowchart LR
   release --> end[xrEndFrame]
 ```
 
-Lifecycle rules live in `core/session_state.h` (`evaluateSessionTransition`): READY begins the session, STOPPING ends it and releases the swapchains, and LOSS_PENDING / EXITING (and `XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING`) leave the loop. Events for another session handle are ignored.
+Lifecycle rules live in `core/session_state.h` (`evaluateSessionTransition`): READY begins the session; STOPPING first waits for the GPU and releases the swapchains, then calls `xrEndSession`; and LOSS_PENDING / EXITING (and `XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING`) leave the loop. Events for another session handle are ignored.
 
 Per-frame rules: every `xrWaitFrame` is followed by `xrBeginFrame` and `xrEndFrame`. When `shouldRender` is false, or the located views do not have both position and orientation valid, no swapchain image is acquired and the frame is ended with zero layers. Swapchain images are released only if they were acquired in that frame, always before `xrEndFrame`. The display time passed to `xrEndFrame` is the exact `XrTime` from `xrWaitFrame`. The reference space is LOCAL_FLOOR (`XR_EXT_local_floor`) when the runtime offers it, else STAGE, else LOCAL.
 
