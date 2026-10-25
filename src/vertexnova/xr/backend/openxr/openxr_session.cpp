@@ -15,12 +15,16 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cstring>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "vertexnova/logging/logging.h"
 #include "vertexnova/rhi/device.h"
+#include "vertexnova/xr/backend/openxr/openxr_platform_prelude.h"
+#include "vertexnova/xr/core/session_state.h"
 #include "vertexnova/xr/backend/openxr/math/openxr_math.h"
 #include "vertexnova/xr/backend/openxr/openxr_instance_lifetime.h"
 #include "vertexnova/xr/backend/openxr/openxr_util.h"
@@ -57,6 +61,33 @@ XrPosef identityPose() {
     pose.orientation.w = 1.f;
     return pose;
 }
+
+[[nodiscard]] SessionState toSessionState(XrSessionState xr_state) {
+    switch (xr_state) {
+        case XR_SESSION_STATE_IDLE:
+            return SessionState::eIdle;
+        case XR_SESSION_STATE_READY:
+            return SessionState::eReady;
+        case XR_SESSION_STATE_SYNCHRONIZED:
+            return SessionState::eSynchronized;
+        case XR_SESSION_STATE_VISIBLE:
+            return SessionState::eVisible;
+        case XR_SESSION_STATE_FOCUSED:
+            return SessionState::eFocused;
+        case XR_SESSION_STATE_STOPPING:
+            return SessionState::eStopping;
+        case XR_SESSION_STATE_LOSS_PENDING:
+            return SessionState::eLossPending;
+        case XR_SESSION_STATE_EXITING:
+            return SessionState::eExiting;
+        default:
+            return SessionState::eUnknown;
+    }
+}
+
+constexpr XrViewStateFlags kViewPoseValidFlags = XR_VIEW_STATE_POSITION_VALID_BIT | XR_VIEW_STATE_ORIENTATION_VALID_BIT;
+constexpr int kShutdownDrainAttempts = 100;
+constexpr auto kShutdownDrainInterval = std::chrono::milliseconds(10);
 
 }  // namespace
 
@@ -113,6 +144,9 @@ bool OpenXrSession::initOpenXr() {
     if (OpenXrUtil::isExtensionAvailable(XR_EXT_HAND_INTERACTION_EXTENSION_NAME, available)) {
         requested.emplace_back(XR_EXT_HAND_INTERACTION_EXTENSION_NAME);
     }
+    if (OpenXrUtil::isExtensionAvailable(XR_EXT_LOCAL_FLOOR_EXTENSION_NAME, available)) {
+        requested.emplace_back(XR_EXT_LOCAL_FLOOR_EXTENSION_NAME);
+    }
     requested.emplace_back(XR_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
     auto enabled = OpenXrUtil::filterEnabledExtensions(requested, available);
@@ -134,6 +168,23 @@ bool OpenXrSession::initOpenXr() {
                                   config_.application_name.c_str());
     create_info.enabledExtensionCount = static_cast<std::uint32_t>(enabled_ptrs.size());
     create_info.enabledExtensionNames = enabled_ptrs.data();
+
+#if defined(__ANDROID__)
+    // XR_KHR_android_create_instance: runtimes on Android need the VM and activity at instance creation.
+    XrInstanceCreateInfoAndroidKHR android_info{XR_TYPE_INSTANCE_CREATE_INFO_ANDROID_KHR};
+    const bool is_android_create_enabled = std::any_of(enabled_ptrs.begin(), enabled_ptrs.end(), [](const char* name) {
+        return std::strcmp(name, XR_KHR_ANDROID_CREATE_INSTANCE_EXTENSION_NAME) == 0;
+    });
+    if (is_android_create_enabled && config_.platform.application_vm != nullptr
+        && config_.platform.application_context != nullptr) {
+        android_info.applicationVM = config_.platform.application_vm;
+        android_info.applicationActivity = config_.platform.application_context;
+        create_info.next = &android_info;
+    } else {
+        VNE_LOG_ERROR << "OpenXR on Android needs XR_KHR_android_create_instance plus the application VM and activity";
+        return false;
+    }
+#endif
 
     OPENXR_CHECK_BOOL(xrCreateInstance(&create_info, &instance_));
     OpenXrInstanceLifetime::registerInstanceUser(instance_);
@@ -208,8 +259,9 @@ bool OpenXrSession::initOpenXr() {
 #endif
     OPENXR_CHECK_BOOL(xrCreateSession(instance_, &session_info, &session_));
 
+    reference_space_type_ = chooseReferenceSpaceType();
     XrReferenceSpaceCreateInfo space_info{XR_TYPE_REFERENCE_SPACE_CREATE_INFO};
-    space_info.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;
+    space_info.referenceSpaceType = reference_space_type_;
     space_info.poseInReferenceSpace = identityPose();
     OPENXR_CHECK_BOOL(xrCreateReferenceSpace(session_, &space_info, &reference_space_));
 
@@ -272,14 +324,21 @@ bool OpenXrSession::initOpenXr() {
 }
 
 void OpenXrSession::shutdownOpenXr() {
-    input_.destroy();
-    swapchain_bridge_.destroy();
-    swapchains_ready_ = false;
-
-    if (session_begun_ && session_ != XR_NULL_HANDLE) {
-        xrEndSession(session_);
-        session_begun_ = false;
+    // A begun session must be taken through STOPPING before it is destroyed. Ask for the exit and pump events for
+    // a bounded time; destroying the session below is the fallback when the runtime does not answer.
+    if (session_begun_ && session_ != XR_NULL_HANDLE && instance_ != XR_NULL_HANDLE) {
+        static_cast<void>(requestExit());
+        for (int attempt = 0; attempt < kShutdownDrainAttempts && session_begun_; ++attempt) {
+            processPendingEvents();
+            if (session_begun_) {
+                std::this_thread::sleep_for(kShutdownDrainInterval);
+            }
+        }
     }
+
+    flushGpu();
+    input_.destroy();
+    releaseSwapchains();
 
     if (reference_space_ != XR_NULL_HANDLE) {
         xrDestroySpace(reference_space_);
@@ -300,57 +359,69 @@ void OpenXrSession::shutdownOpenXr() {
     session_running_ = false;
 }
 
-void OpenXrSession::handleSessionStateChanged(XrSessionState xr_state) {
-    switch (xr_state) {
-        case XR_SESSION_STATE_IDLE:
-            state_ = SessionState::eIdle;
-            session_running_ = false;
-            break;
-        case XR_SESSION_STATE_READY: {
-            state_ = SessionState::eReady;
-            if (!session_begun_) {
-                XrSessionBeginInfo begin{XR_TYPE_SESSION_BEGIN_INFO};
-                begin.primaryViewConfigurationType = view_configuration_;
-                if (XR_SUCCEEDED(xrBeginSession(session_, &begin))) {
-                    session_begun_ = true;
-                    session_running_ = true;
-                }
-            }
-            break;
+void OpenXrSession::releaseSwapchains() {
+    if (are_images_acquired_) {
+        swapchain_bridge_.releaseForFrame();
+        are_images_acquired_ = false;
+    }
+    swapchain_bridge_.destroy();
+    swapchains_ready_ = false;
+}
+
+XrReferenceSpaceType OpenXrSession::chooseReferenceSpaceType() const {
+    std::uint32_t count = 0;
+    std::vector<XrReferenceSpaceType> types;
+    if (XR_SUCCEEDED(xrEnumerateReferenceSpaces(session_, 0, &count, nullptr)) && count > 0) {
+        types.resize(count);
+        if (XR_FAILED(xrEnumerateReferenceSpaces(session_, count, &count, types.data()))) {
+            types.clear();
         }
-        case XR_SESSION_STATE_SYNCHRONIZED:
-            state_ = SessionState::eSynchronized;
+    }
+    const auto is_supported = [&types](XrReferenceSpaceType type) {
+        return std::find(types.begin(), types.end(), type) != types.end();
+    };
+    // Floor-relative content (a table at 0.8 m) needs an origin on the floor: LOCAL_FLOOR when the runtime
+    // offers it, else STAGE; LOCAL puts the origin at the head and is the last resort.
+    if (is_supported(XR_REFERENCE_SPACE_TYPE_LOCAL_FLOOR_EXT)) {
+        return XR_REFERENCE_SPACE_TYPE_LOCAL_FLOOR_EXT;
+    }
+    if (is_supported(XR_REFERENCE_SPACE_TYPE_STAGE)) {
+        return XR_REFERENCE_SPACE_TYPE_STAGE;
+    }
+    return XR_REFERENCE_SPACE_TYPE_LOCAL;
+}
+
+void OpenXrSession::handleSessionStateChanged(XrSessionState xr_state) {
+    const SessionState next = toSessionState(xr_state);
+    if (next == SessionState::eUnknown) {
+        return;
+    }
+    const SessionTransition transition = evaluateSessionTransition(next, session_begun_);
+    state_ = transition.state;
+    session_running_ = transition.is_frame_loop_active;
+
+    if (transition.should_begin_session) {
+        XrSessionBeginInfo begin{XR_TYPE_SESSION_BEGIN_INFO};
+        begin.primaryViewConfigurationType = view_configuration_;
+        if (XR_SUCCEEDED(xrBeginSession(session_, &begin))) {
+            session_begun_ = true;
             session_running_ = true;
-            break;
-        case XR_SESSION_STATE_VISIBLE:
-            state_ = SessionState::eVisible;
-            session_running_ = true;
-            break;
-        case XR_SESSION_STATE_FOCUSED:
-            state_ = SessionState::eFocused;
-            session_running_ = true;
-            break;
-        case XR_SESSION_STATE_STOPPING:
-            state_ = SessionState::eStopping;
-            session_running_ = false;
-            if (session_begun_) {
-                xrEndSession(session_);
-                session_begun_ = false;
-            }
-            swapchain_bridge_.destroy();
-            swapchains_ready_ = false;
-            break;
-        case XR_SESSION_STATE_LOSS_PENDING:
-            state_ = SessionState::eLossPending;
-            session_running_ = false;
-            break;
-        case XR_SESSION_STATE_EXITING:
-            state_ = SessionState::eExiting;
-            session_running_ = false;
-            running_ = false;
-            break;
-        default:
-            break;
+        } else {
+            VNE_LOG_ERROR << "xrBeginSession failed";
+        }
+    }
+    if (transition.should_release_swapchains) {
+        flushGpu();
+        releaseSwapchains();
+    }
+    if (transition.should_end_session) {
+        if (XR_FAILED(xrEndSession(session_))) {
+            VNE_LOG_WARN << "xrEndSession failed";
+        }
+        session_begun_ = false;
+    }
+    if (transition.should_leave_loop) {
+        running_ = false;
     }
 }
 
@@ -381,24 +452,62 @@ void OpenXrSession::flushGpu() {
     }
 }
 
-bool OpenXrSession::pollEvents() {
-    if (!running_ || instance_ == XR_NULL_HANDLE) {
-        return false;
-    }
+void OpenXrSession::processPendingEvents() {
     XrEventDataBuffer event{XR_TYPE_EVENT_DATA_BUFFER};
     while (xrPollEvent(instance_, &event) == XR_SUCCESS) {
         switch (event.type) {
             case XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED: {
                 const auto* state_event = reinterpret_cast<XrEventDataSessionStateChanged*>(&event);
-                handleSessionStateChanged(state_event->state);
+                if (state_event->session == session_) {
+                    handleSessionStateChanged(state_event->state);
+                }
                 break;
             }
+            case XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING:
+                VNE_LOG_WARN << "OpenXR instance loss pending; leaving the loop";
+                state_ = SessionState::eLossPending;
+                session_running_ = false;
+                running_ = false;
+                break;
+            case XR_TYPE_EVENT_DATA_EVENTS_LOST:
+                VNE_LOG_WARN << "OpenXR event queue overflowed; "
+                             << reinterpret_cast<XrEventDataEventsLost*>(&event)->lostEventCount << " events lost";
+                break;
+            case XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING:
+                VNE_LOG_INFO << "OpenXR reference space change pending (recenter or boundary change)";
+                break;
+            case XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED:
+                VNE_LOG_INFO << "OpenXR interaction profile changed";
+                break;
             default:
                 break;
         }
         event = {XR_TYPE_EVENT_DATA_BUFFER};
     }
+}
+
+bool OpenXrSession::pollEvents() {
+    if (!running_ || instance_ == XR_NULL_HANDLE) {
+        return false;
+    }
+    processPendingEvents();
     return running_;
+}
+
+bool OpenXrSession::requestExit() {
+    if (session_ == XR_NULL_HANDLE || !session_begun_) {
+        // Nothing is running, so there is no STOPPING to wait for.
+        running_ = false;
+        return true;
+    }
+    if (!is_exit_requested_) {
+        is_exit_requested_ = true;
+        if (XR_FAILED(xrRequestExitSession(session_))) {
+            VNE_LOG_WARN << "xrRequestExitSession failed; leaving the loop without waiting for STOPPING";
+            running_ = false;
+        }
+    }
+    return true;
 }
 
 bool OpenXrSession::beginFrame(Frame& out_frame) {
@@ -434,8 +543,10 @@ bool OpenXrSession::beginFrame(Frame& out_frame) {
     XrViewState view_state{XR_TYPE_VIEW_STATE};
     constexpr std::uint32_t kCapacity = 2;
     std::array<XrView, kCapacity> xr_views{};
+    xr_views.fill(XrView{XR_TYPE_VIEW});
     std::uint32_t view_count = kCapacity;
-    if (XR_SUCCEEDED(xrLocateViews(session_, &locate_info, &view_state, view_count, &view_count, xr_views.data()))) {
+    if (XR_SUCCEEDED(xrLocateViews(session_, &locate_info, &view_state, view_count, &view_count, xr_views.data()))
+        && (view_state.viewStateFlags & kViewPoseValidFlags) == kViewPoseValidFlags) {
         out_frame.view_count = view_count;
         out_frame.surfaces.view_count = view_count;
         swapchain_bridge_.setCachedViews(xr_views.data(), view_count);
@@ -447,8 +558,19 @@ bool OpenXrSession::beginFrame(Frame& out_frame) {
             out_frame.surfaces.views[i].view_index = i;
         }
         if (ensureSwapchains()) {
-            swapchain_bridge_.acquireForFrame(out_frame);
+            are_images_acquired_ = true;
+            if (!swapchain_bridge_.acquireForFrame(out_frame)) {
+                // Give back what was acquired and submit no layer for this frame.
+                swapchain_bridge_.releaseForFrame();
+                are_images_acquired_ = false;
+                out_frame.should_render = false;
+                out_frame.view_count = 0;
+                out_frame.surfaces.view_count = 0;
+            }
         }
+    } else {
+        // The runtime has no valid head pose yet (or lost tracking): the frame is still ended, with no layers.
+        out_frame.should_render = false;
     }
     return true;
 }
@@ -473,30 +595,36 @@ void OpenXrSession::endFrame(const Frame& frame, const LayerParams& layers) {
 
     flushGpu();
 
-    if (swapchains_ready_) {
+    // Release exactly what beginFrame() acquired: releasing without an acquire is a call-order error.
+    const bool has_images = are_images_acquired_;
+    if (has_images) {
         swapchain_bridge_.releaseForFrame();
+        are_images_acquired_ = false;
     }
 
-    XrFrameEndInfo end_info{XR_TYPE_FRAME_END_INFO};
-    end_info.displayTime = static_cast<XrTime>(frame.predicted_display_time);
-    end_info.environmentBlendMode = blend_mode_;
-
+    // These must outlive xrEndFrame, so they live at function scope rather than inside the branch below.
     XrCompositionLayerProjection layer{XR_TYPE_COMPOSITION_LAYER_PROJECTION};
     std::array<XrCompositionLayerProjectionView, 2> projection_views{};
-    if (frame.should_render && frame.view_count > 0 && swapchains_ready_ && layers.submit_projection) {
+    const XrCompositionLayerBaseHeader* layer_headers[1] = {nullptr};
+
+    XrFrameEndInfo end_info{XR_TYPE_FRAME_END_INFO};
+    end_info.displayTime = predicted_display_time_;
+    end_info.environmentBlendMode = blend_mode_;
+    if (has_images && frame.should_render && frame.view_count > 0 && layers.submit_projection) {
         composition_layer_.buildProjectionLayer(reference_space_,
                                                 swapchain_bridge_,
                                                 frame.view_count,
                                                 layer,
                                                 projection_views);
-        const XrCompositionLayerBaseHeader* layer_hdr = reinterpret_cast<const XrCompositionLayerBaseHeader*>(&layer);
+        layer_headers[0] = reinterpret_cast<const XrCompositionLayerBaseHeader*>(&layer);
         end_info.layerCount = 1;
-        end_info.layers = &layer_hdr;
-    } else {
-        end_info.layerCount = 0;
-        end_info.layers = nullptr;
+        end_info.layers = layer_headers;
     }
-    xrEndFrame(session_, &end_info);
+
+    const XrResult end_result = xrEndFrame(session_, &end_info);
+    if (XR_FAILED(end_result)) {
+        VNE_LOG_WARN << "xrEndFrame failed (XrResult=" << end_result << ")";
+    }
 }
 
 }  // namespace vne::xr

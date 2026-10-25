@@ -67,6 +67,13 @@ class VNE_XR_API ISession {
     /** @brief Optional input snapshot after beginFrame. */
     virtual void pollInput(InputState& out_input) { (void)out_input; }
 
+    /**
+     * @brief Ask the runtime to end the session gracefully (the application wants to quit).
+     * @return True when the backend will make `pollEvents()` return false once the session has stopped, so the
+     * caller keeps running the loop until then. False when the loop should simply stop (the default).
+     */
+    [[nodiscard]] virtual bool requestExit() { return false; }
+
     /** @brief Run loop with app render session until pollEvents returns false. */
     virtual void run(IRenderSession& app_session);
 

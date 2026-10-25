@@ -284,6 +284,7 @@ bool OpenXrSwapchainBridge::acquireForFrame(Frame& in_out_frame) {
         if (XR_FAILED(xrAcquireSwapchainImage(view.color_swapchain, &acquire_info, &index))) {
             return false;
         }
+        view.is_color_acquired = true;
         view.acquired_index = index;
 
         XrSwapchainImageWaitInfo wait_info{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO};
@@ -297,6 +298,7 @@ bool OpenXrSwapchainBridge::acquireForFrame(Frame& in_out_frame) {
             if (XR_FAILED(xrAcquireSwapchainImage(view.depth_swapchain, &acquire_info, &depth_index))) {
                 return false;
             }
+            view.is_depth_acquired = true;
             if (XR_FAILED(xrWaitSwapchainImage(view.depth_swapchain, &wait_info))) {
                 return false;
             }
@@ -318,14 +320,19 @@ bool OpenXrSwapchainBridge::acquireForFrame(Frame& in_out_frame) {
 
 void OpenXrSwapchainBridge::releaseForFrame() {
     for (auto& view : views_) {
-        if (view.depth_swapchain != XR_NULL_HANDLE) {
-            XrSwapchainImageReleaseInfo release_info{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
-            xrReleaseSwapchainImage(view.depth_swapchain, &release_info);
+        XrSwapchainImageReleaseInfo release_info{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
+        if (view.is_depth_acquired && view.depth_swapchain != XR_NULL_HANDLE) {
+            if (XR_FAILED(xrReleaseSwapchainImage(view.depth_swapchain, &release_info))) {
+                VNE_LOG_WARN << "xrReleaseSwapchainImage failed for a depth swapchain";
+            }
         }
-        if (view.color_swapchain != XR_NULL_HANDLE) {
-            XrSwapchainImageReleaseInfo release_info{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
-            xrReleaseSwapchainImage(view.color_swapchain, &release_info);
+        view.is_depth_acquired = false;
+        if (view.is_color_acquired && view.color_swapchain != XR_NULL_HANDLE) {
+            if (XR_FAILED(xrReleaseSwapchainImage(view.color_swapchain, &release_info))) {
+                VNE_LOG_WARN << "xrReleaseSwapchainImage failed for a color swapchain";
+            }
         }
+        view.is_color_acquired = false;
     }
 }
 

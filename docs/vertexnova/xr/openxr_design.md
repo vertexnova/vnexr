@@ -23,7 +23,7 @@ Canonical architecture for the OpenXR session/compositor backend on **Android, W
 | Layer | Location | Contents |
 |-------|----------|----------|
 | Public API | `include/vertexnova/xr/` | `ISession`, `Frame`, `InputState`, `xr_error.h`, `xr_factory.h` |
-| Core | `src/vertexnova/xr/core/` | Factory, null backend |
+| Core | `src/vertexnova/xr/core/` | Factory, null backend, `session_state.h` (lifecycle rules shared by all backends, unit-tested) |
 | OpenXR backend | `src/vertexnova/xr/backend/openxr/` | All OpenXR implementation (never in `include/`) |
 
 Mirrors vnerhi: `IDevice` in `include/`, `VulkanDevice` in `src/.../backend/vulkan/`. vnexr uses only vnerhi's public API: `IVulkanContextProvider` (`vulkan_context_provider.h`) to let the runtime create the device, and `vulkan_device_interop.h` for the native handles and image import.
@@ -99,7 +99,9 @@ Prefer `XR_KHR_vulkan_enable2` when available; fall back to `XR_KHR_vulkan_enabl
 | Swapchains | `OpenXrSwapchainBridge` | Before session destroy; after `xrEndSession` on STOPPING |
 | `vne::rhi::IDevice` | `OpenXrVulkanGraphics` | Before instance destroy |
 
-Shutdown order: `xrEndSession` → destroy swapchains → destroy input → destroy spaces → `xrDestroySession` → release graphics device → `xrDestroyInstance`.
+Shutdown order: if the session is begun, `xrRequestExitSession` and pump events (bounded, about one second) until the runtime reports STOPPING and the session is ended -> wait for the GPU -> destroy input -> destroy swapchains -> destroy spaces -> `xrDestroySession` -> release graphics device -> `xrDestroyInstance`.
+
+Application exit: an app sets `LayerParams::request_exit`; `ISession::run` calls `requestExit()`, which for OpenXR calls `xrRequestExitSession`, and the loop keeps running until `pollEvents()` returns false (EXITING). A loop that stops on its own is also safe, because the destructor performs the same drain.
 
 ## vnerhi interop
 
@@ -130,6 +132,10 @@ flowchart LR
   compose --> release[release swapchains]
   release --> end[xrEndFrame]
 ```
+
+Lifecycle rules live in `core/session_state.h` (`evaluateSessionTransition`): READY begins the session, STOPPING ends it and releases the swapchains, and LOSS_PENDING / EXITING (and `XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING`) leave the loop. Events for another session handle are ignored.
+
+Per-frame rules: every `xrWaitFrame` is followed by `xrBeginFrame` and `xrEndFrame`. When `shouldRender` is false, or the located views do not have both position and orientation valid, no swapchain image is acquired and the frame is ended with zero layers. Swapchain images are released only if they were acquired in that frame, always before `xrEndFrame`. The display time passed to `xrEndFrame` is the exact `XrTime` from `xrWaitFrame`. The reference space is LOCAL_FLOOR (`XR_EXT_local_floor`) when the runtime offers it, else STAGE, else LOCAL.
 
 `beginFrame` only runs `xrWaitFrame` / `xrBeginFrame` when `session_running_` is true. That flag is set immediately after a successful `xrBeginSession()` in `XR_SESSION_STATE_READY`, and stays set through `SYNCHRONIZED`, `VISIBLE`, and `FOCUSED`. `running_` stays true on `STOPPING` so the run loop can still observe `IDLE` and ends on `EXITING`.
 
