@@ -13,7 +13,7 @@ Canonical architecture for the OpenXR session/compositor backend on **Android, W
 
 **Non-goals**
 
-- Vendoring Khronos `GraphicsAPI_*`, Diligent `OpenXRUtilities.h`, or monolithic tutorial classes.
+- Vendoring Khronos `GraphicsAPI_*` helper classes or monolithic tutorial code.
 - OpenXR on Apple (visionOS uses CompositorServices).
 - D3D11/D3D12/OpenGL graphics bindings.
 - `XR_FB_passthrough`, hand mesh visualization (later phase). Bare-hand **action** bindings via `XR_EXT_hand_interaction` are supported for grab/spawn.
@@ -26,7 +26,7 @@ Canonical architecture for the OpenXR session/compositor backend on **Android, W
 | Core | `src/vertexnova/xr/core/` | Factory, null backend |
 | OpenXR backend | `src/vertexnova/xr/backend/openxr/` | All OpenXR implementation (never in `include/`) |
 
-Mirrors vnerhi: `IDevice` in `include/`, `VulkanDevice` in `src/.../backend/vulkan/`.
+Mirrors vnerhi: `IDevice` in `include/`, `VulkanDevice` in `src/.../backend/vulkan/`. vnexr uses only vnerhi's public API: `IVulkanContextProvider` (`vulkan_context_provider.h`) to let the runtime create the device, and `vulkan_device_interop.h` for the native handles and image import.
 
 ## Module map
 
@@ -38,7 +38,7 @@ src/vertexnova/xr/backend/openxr/
 ├── openxr_session.{h,cpp}           ISession orchestrator
 ├── graphics/
 │   ├── openxr_vulkan_graphics.{h,cpp}
-│   ├── openxr_vulkan_binding.{h,cpp}
+│   ├── openxr_vulkan_context_provider.{h,cpp}   runtime-created Vulkan instance/device (IVulkanContextProvider)
 │   └── openxr_vulkan_texture.{h,cpp}
 ├── presentation/
 │   ├── openxr_swapchain_bridge.{h,cpp}
@@ -63,7 +63,7 @@ sequenceDiagram
   participant Life as InstanceLifetime
   participant XR as OpenXR
   participant Gfx as VulkanGraphics
-  participant Bind as VulkanBindingHooks
+  participant Bind as VulkanContextProvider
   participant RHI as vnerhi
   participant Sess as OpenXrSession
 
@@ -72,9 +72,9 @@ sequenceDiagram
   Sess->>Life: createInstance extensions
   Sess->>XR: xrGetSystem view config blend mode
   Sess->>Gfx: initialize attribs
-  Gfx->>Bind: prepare enable2 hooks
+  Gfx->>Bind: prepare (query runtime Vulkan requirements)
   Gfx->>XR: xrGetVulkanGraphicsRequirements2KHR
-  Gfx->>RHI: createPhysicalDevice with VulkanCreateHooks
+  Gfx->>RHI: createPhysicalDevice with IVulkanContextProvider
   RHI->>XR: xrCreateVulkanInstanceKHR
   RHI->>XR: xrGetVulkanGraphicsDevice2KHR
   RHI->>XR: xrCreateVulkanDeviceKHR
@@ -83,10 +83,10 @@ sequenceDiagram
   Note over Sess: On SESSION_STATE_READY
   Sess->>XR: xrBeginSession primaryViewConfigurationType
   Sess->>Sess: create per-eye color+depth swapchains
-  Sess->>RHI: wrapExternalImage for each swapchain VkImage
+  Sess->>RHI: vulkan::importImage for each swapchain VkImage
 ```
 
-Prefer `XR_KHR_vulkan_enable2` when available; fall back to `XR_KHR_vulkan_enable`. vnerhi builds the Vulkan instance and device; OpenXR only supplies create hooks (`VulkanCreateHooks` on `PhysicalDeviceDescriptor` / `DeviceDescriptor`). Graphics binding is filled from `VulkanDevice::getVulkanInstance()`, `getVulkanPhysicalDevice()`, `getVulkanDevice()`, `getVulkanGraphicsQueueFamily()`.
+Prefer `XR_KHR_vulkan_enable2` when available; fall back to `XR_KHR_vulkan_enable`. vnerhi builds the Vulkan instance and device; `OpenXrVulkanContextProvider` (set as `PhysicalDeviceDescriptor::external_context`) lets the runtime create them and choose the GPU, and reports the runtime's minimum Vulkan version. The graphics binding is filled from `vne::rhi::vulkan::getNativeDeviceHandles()`.
 
 ## Ownership and RAII
 
@@ -103,7 +103,7 @@ Shutdown order: `xrEndSession` → destroy swapchains → destroy input → dest
 
 ## vnerhi interop
 
-- Swapchain images are compositor-owned `VkImage` handles wrapped by `VulkanDevice::wrapExternalImage` (`isWrappedImage() == true`).
+- Swapchain images are compositor-owned `VkImage` handles imported through `vne::rhi::vulkan::importImage` (`isWrappedImage() == true`).
 - Apps must use `ISession::graphicsDevice()` — the same device that owns the binding and wrapped textures.
 - Apps render via `Frame::surfaces.views[i].color_texture` / `depth_texture`.
 - Before `xrReleaseSwapchainImage`, call `OpenXrSession::flushGpu()` (queue wait idle / finish frame).

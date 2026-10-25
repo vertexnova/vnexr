@@ -12,8 +12,8 @@
 #include "vertexnova/xr/backend/openxr/graphics/openxr_vulkan_graphics.h"
 
 #include "vertexnova/logging/logging.h"
-#include "vertexnova/rhi/backend/vulkan/vulkan_device.h"
 #include "vertexnova/rhi/graphics_factory.h"
+#include "vertexnova/rhi/vulkan_device_interop.h"
 #include "vertexnova/xr/backend/openxr/openxr_util.h"
 
 namespace {
@@ -32,10 +32,10 @@ Result OpenXrVulkanGraphics::initialize(Attribs attribs) {
     }
     attribs_ = attribs;
     use_vulkan_enable2_ = attribs.use_vulkan_enable2;
-    return binding_.prepare(attribs.instance,
-                            attribs.system_id,
-                            attribs.get_instance_proc_addr,
-                            attribs.use_vulkan_enable2);
+    return context_provider_->prepare(attribs.instance,
+                                      attribs.system_id,
+                                      attribs.get_instance_proc_addr,
+                                      attribs.use_vulkan_enable2);
 }
 
 Result OpenXrVulkanGraphics::createDevice() {
@@ -46,48 +46,16 @@ Result OpenXrVulkanGraphics::createDevice() {
         return Result::eErrorBadState;
     }
 
-    // Prefer enable2 requirements when available (version clamp is advisory for logging).
-    XrGraphicsRequirementsVulkanKHR requirements{XR_TYPE_GRAPHICS_REQUIREMENTS_VULKAN_KHR};
-    if (use_vulkan_enable2_) {
-        auto pfn_get_requirements =
-            OpenXrUtil::loadXrProc<PFN_xrGetVulkanGraphicsRequirements2KHR>(attribs_.instance,
-                                                                            attribs_.get_instance_proc_addr,
-                                                                            "xrGetVulkanGraphicsRequirements2KHR");
-        if (pfn_get_requirements != nullptr) {
-            requirements.type = XR_TYPE_GRAPHICS_REQUIREMENTS_VULKAN2_KHR;
-            const XrResult req_result = pfn_get_requirements(attribs_.instance, attribs_.system_id, &requirements);
-            if (XR_FAILED(req_result)) {
-                VNE_LOG_WARN << "OpenXR: xrGetVulkanGraphicsRequirements2KHR failed";
-            }
-        }
-    } else {
-        auto pfn_get_requirements =
-            OpenXrUtil::loadXrProc<PFN_xrGetVulkanGraphicsRequirementsKHR>(attribs_.instance,
-                                                                           attribs_.get_instance_proc_addr,
-                                                                           "xrGetVulkanGraphicsRequirementsKHR");
-        if (pfn_get_requirements != nullptr) {
-            const XrResult req_result = pfn_get_requirements(attribs_.instance, attribs_.system_id, &requirements);
-            if (XR_FAILED(req_result)) {
-                VNE_LOG_WARN << "OpenXR: xrGetVulkanGraphicsRequirementsKHR failed";
-            }
-        }
-    }
-
-    const auto backend = vne::rhi::GraphicsFactory::getDefaultBackend();
-    auto physical = vne::rhi::GraphicsFactory::createPhysicalDevice(backend);
+    auto physical = vne::rhi::GraphicsFactory::createPhysicalDevice(vne::rhi::GraphicsBackend::eVulkan);
     if (!physical) {
         VNE_LOG_ERROR << "OpenXR: failed to create physical device";
         return Result::eErrorInitializationFailed;
     }
 
     vne::rhi::PhysicalDeviceDescriptor phys_desc{};
+    phys_desc.external_context = context_provider_;
     vne::rhi::DeviceDescriptor dev_desc{};
     dev_desc.name = "openxr_vulkan";
-    // Same hook context for instance and device (extra extensions + create callbacks).
-    if (!binding_.configureDeviceCreation(phys_desc, dev_desc)) {
-        VNE_LOG_ERROR << "OpenXR: Vulkan create hooks are not prepared";
-        return Result::eErrorBadState;
-    }
 
     const auto device_info = physical->selectBestDevice(phys_desc);
     if (!device_info.isValid()) {
@@ -96,7 +64,7 @@ Result OpenXrVulkanGraphics::createDevice() {
     }
     device_ = physical->createDevice(device_info, dev_desc);
     if (!device_ || !device_->isValid()) {
-        VNE_LOG_ERROR << "OpenXR: failed to create Vulkan logical device via enable hooks";
+        VNE_LOG_ERROR << "OpenXR: failed to create the Vulkan logical device through the runtime";
         return Result::eErrorInitializationFailed;
     }
 
@@ -107,17 +75,16 @@ Result OpenXrVulkanGraphics::createDevice() {
 
 XrGraphicsBindingVulkanKHR OpenXrVulkanGraphics::getGraphicsBinding() const {
     XrGraphicsBindingVulkanKHR binding{XR_TYPE_GRAPHICS_BINDING_VULKAN_KHR};
-#if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
-    if (device_) {
-        if (auto* vk_device = dynamic_cast<vne::rhi::VulkanDevice*>(device_.get())) {
-            binding.instance = static_cast<VkInstance>(vk_device->getVulkanInstance());
-            binding.physicalDevice = static_cast<VkPhysicalDevice>(vk_device->getVulkanPhysicalDevice());
-            binding.device = static_cast<VkDevice>(vk_device->getVulkanDevice());
-            binding.queueFamilyIndex = vk_device->getVulkanGraphicsQueueFamily();
-            binding.queueIndex = 0U;
-        }
+    if (!device_) {
+        return binding;
     }
-#endif
+    if (const auto handles = vne::rhi::vulkan::getNativeDeviceHandles(*device_)) {
+        binding.instance = handles->instance;
+        binding.physicalDevice = handles->physical_device;
+        binding.device = handles->device;
+        binding.queueFamilyIndex = handles->graphics_queue_family_index;
+        binding.queueIndex = handles->graphics_queue_index;
+    }
     return binding;
 }
 

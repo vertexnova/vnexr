@@ -11,7 +11,7 @@ set(_openxr_sources
     ${CMAKE_CURRENT_SOURCE_DIR}/openxr_platform_handle.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/openxr_session.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/graphics/openxr_vulkan_graphics.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/graphics/openxr_vulkan_binding.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/graphics/openxr_vulkan_context_provider.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/presentation/openxr_swapchain_bridge.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/presentation/openxr_composition_layer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/input/openxr_input.cpp
@@ -27,7 +27,7 @@ set(_openxr_headers
     ${CMAKE_CURRENT_SOURCE_DIR}/openxr_session.h
     ${CMAKE_CURRENT_SOURCE_DIR}/openxr_util.h
     ${CMAKE_CURRENT_SOURCE_DIR}/graphics/openxr_vulkan_graphics.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/graphics/openxr_vulkan_binding.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/graphics/openxr_vulkan_context_provider.h
     ${CMAKE_CURRENT_SOURCE_DIR}/presentation/openxr_swapchain_bridge.h
     ${CMAKE_CURRENT_SOURCE_DIR}/presentation/openxr_composition_layer.h
     ${CMAKE_CURRENT_SOURCE_DIR}/input/openxr_input.h

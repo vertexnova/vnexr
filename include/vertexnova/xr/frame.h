@@ -33,13 +33,13 @@ struct Frame {
     SurfaceTextures surfaces{};
 };
 
-/** @brief Host → app frame parameters (ShellParams pattern from IGL). */
+/** @brief Host → app frame parameters: the compositor frame plus the input snapshot. */
 struct FrameParams {
     Frame frame{};
     InputState input{};
 };
 
-/** @brief App → host layer hints (AppParams pattern from IGL). */
+/** @brief App → host layer hints: depth range, passthrough, exit request and layer submission. */
 struct LayerParams {
     float near_z = kDefaultNearZ;
     float far_z = kDefaultFarZ;

@@ -71,8 +71,8 @@ if(VNE_XR_WITH_OPENXR)
             VNE_XR_OPENXR_GRAPHICS_VULKAN=1
             XR_USE_GRAPHICS_API_VULKAN=1
         )
-        # vnerhi links Vulkan headers PRIVATE; vnexr still needs vulkan.h / vulkan.hpp
-        # for openxr_platform_prelude.h and vulkan_device.h. Always attach nested
+        # vnerhi links Vulkan headers PRIVATE; vnexr still needs vulkan.h for
+        # openxr_platform_prelude.h and the OpenXR Vulkan structs. Always attach nested
         # Vulkan-Headers when present (reliable on Android NDK + Windows SDK CI).
         set(_vne_xr_vk_nested
             "${CMAKE_SOURCE_DIR}/deps/internal/vnerhi/deps/external/vulkan-headers/include")
@@ -113,7 +113,7 @@ if(VNE_XR_WITH_OPENXR)
                 "vulkan/vulkan.h not found for vnexr OpenXR/Vulkan.\n"
                 "  Install a Vulkan SDK, or run: ./scripts/init_submodules.sh full")
         endif()
-        # openxr_vulkan_binding calls vkGetInstanceProcAddr, vkCreateInstance, and
+        # openxr_vulkan_context_provider calls vkGetInstanceProcAddr, vkCreateInstance, and
         # vkCreateDevice. Headers alone do not provide those symbols.
         set(_vne_xr_vk_loader_ok FALSE)
         if(TARGET Vulkan::Vulkan)

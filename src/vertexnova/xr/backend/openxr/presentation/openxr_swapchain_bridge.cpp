@@ -16,12 +16,11 @@
 
 #include <algorithm>
 #include <optional>
-#include <type_traits>
 #include <utility>
 
 #if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
-#include "vertexnova/rhi/backend/vulkan/vulkan_device.h"
 #include "vertexnova/rhi/texture.h"
+#include "vertexnova/rhi/vulkan_device_interop.h"
 #endif
 
 namespace {
@@ -82,63 +81,33 @@ bool createSwapchain(XrSession session,
 [[nodiscard]] std::optional<vne::rhi::TextureFormat> textureFormatFromNative(std::int64_t native_format,
                                                                              bool is_depth) {
     (void)is_depth;
-    switch (static_cast<vk::Format>(native_format)) {
-        case vk::Format::eR8G8B8A8Unorm:
+    switch (static_cast<VkFormat>(native_format)) {
+        case VK_FORMAT_R8G8B8A8_UNORM:
             return vne::rhi::TextureFormat::eRgba8;
-        case vk::Format::eR8G8B8A8Srgb:
-        case vk::Format::eB8G8R8A8Srgb:
+        case VK_FORMAT_R8G8B8A8_SRGB:
             return vne::rhi::TextureFormat::eSrgb8Alpha8;
-        case vk::Format::eB8G8R8A8Unorm:
+        case VK_FORMAT_B8G8R8A8_SRGB:
+            return vne::rhi::TextureFormat::eBgra8Srgb;
+        case VK_FORMAT_B8G8R8A8_UNORM:
             return vne::rhi::TextureFormat::eBgra8;
-        case vk::Format::eR16G16B16A16Sfloat:
+        case VK_FORMAT_R16G16B16A16_SFLOAT:
             return vne::rhi::TextureFormat::eRgba16f;
-        case vk::Format::eR32G32B32A32Sfloat:
+        case VK_FORMAT_R32G32B32A32_SFLOAT:
             return vne::rhi::TextureFormat::eRgba32f;
-        case vk::Format::eD16Unorm:
+        case VK_FORMAT_D16_UNORM:
             return vne::rhi::TextureFormat::eDepth16;
-        case vk::Format::eD32Sfloat:
+        case VK_FORMAT_D32_SFLOAT:
             return vne::rhi::TextureFormat::eDepth32f;
-        case vk::Format::eD24UnormS8Uint:
+        case VK_FORMAT_D24_UNORM_S8_UINT:
             return vne::rhi::TextureFormat::eDepth24Stencil8;
-        case vk::Format::eD32SfloatS8Uint:
+        case VK_FORMAT_D32_SFLOAT_S8_UINT:
             return vne::rhi::TextureFormat::eDepth32fStencil8;
         default:
             return std::nullopt;
     }
 }
 
-template<typename Device, typename = void>
-struct CanWrapExternalImage : std::false_type {};
-
-template<typename Device>
-struct CanWrapExternalImage<Device,
-                            std::void_t<decltype(std::declval<Device&>().wrapExternalImage(
-                                vk::Image{}, std::declval<const vne::rhi::TextureDescriptor&>(), vk::ImageLayout{}))>>
-    : std::true_type {};
-
-template<typename Device>
-[[nodiscard]] std::shared_ptr<vne::rhi::ITexture> adoptExternalImage(Device& device,
-                                                                     vk::Image image,
-                                                                     const vne::rhi::TextureDescriptor& desc,
-                                                                     vk::ImageLayout initial_layout,
-                                                                     std::true_type) {
-    return device.wrapExternalImage(image, desc, initial_layout);
-}
-
-template<typename Device>
-[[nodiscard]] std::shared_ptr<vne::rhi::ITexture> adoptExternalImage(Device& device,
-                                                                     vk::Image image,
-                                                                     const vne::rhi::TextureDescriptor& desc,
-                                                                     vk::ImageLayout initial_layout,
-                                                                     std::false_type) {
-    (void)device;
-    (void)image;
-    (void)desc;
-    (void)initial_layout;
-    return nullptr;
-}
-
-[[nodiscard]] bool wrapSwapchainImages(vne::rhi::VulkanDevice& device,
+[[nodiscard]] bool wrapSwapchainImages(vne::rhi::IDevice& device,
                                        std::uint32_t width,
                                        std::uint32_t height,
                                        std::int64_t native_format,
@@ -165,18 +134,14 @@ template<typename Device>
     desc.usage = is_depth ? (vne::rhi::TextureUsage::eDepthStencil | vne::rhi::TextureUsage::eSampled)
                           : (vne::rhi::TextureUsage::eRenderTarget | vne::rhi::TextureUsage::eSampled);
 
-    const vk::ImageLayout initial_layout =
-        is_depth ? vk::ImageLayout::eDepthStencilAttachmentOptimal : vk::ImageLayout::eColorAttachmentOptimal;
-
-    if constexpr (!CanWrapExternalImage<vne::rhi::VulkanDevice>::value) {
-        VNE_LOG_ERROR << "OpenXR: this vnerhi cannot adopt compositor VkImages";
-        return false;
-    }
+    vne::rhi::vulkan::ImportedImageDescriptor import_desc;
+    import_desc.texture = desc;
+    import_desc.layout = is_depth ? vne::rhi::vulkan::ImportedImageLayout::eDepthStencilAttachment
+                                  : vne::rhi::vulkan::ImportedImageLayout::eColorAttachment;
 
     for (std::size_t i = 0; i < vk_images.size(); ++i) {
-        const auto image = vk::Image(reinterpret_cast<VkImage>(vk_images[i]));
-        auto texture =
-            adoptExternalImage(device, image, desc, initial_layout, CanWrapExternalImage<vne::rhi::VulkanDevice>{});
+        import_desc.image_handle = vk_images[i];
+        auto texture = vne::rhi::vulkan::importImage(device, import_desc);
         if (!texture) {
             VNE_LOG_ERROR << "Failed to wrap OpenXR swapchain image " << i;
             out_textures.clear();
@@ -210,9 +175,8 @@ bool OpenXrSwapchainBridge::create(XrSession session,
     views_.resize(view_configs.size());
 
 #if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
-    auto* vk_device = dynamic_cast<vne::rhi::VulkanDevice*>(device_.get());
-    if (vk_device == nullptr) {
-        VNE_LOG_ERROR << "OpenXR swapchain bridge requires VulkanDevice";
+    if (!vne::rhi::vulkan::getNativeDeviceHandles(*device_).has_value()) {
+        VNE_LOG_ERROR << "OpenXR swapchain bridge requires a Vulkan device";
         destroy();
         return false;
     }
@@ -238,7 +202,7 @@ bool OpenXrSwapchainBridge::create(XrSession session,
         }
 
 #if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
-        if (!wrapSwapchainImages(*vk_device,
+        if (!wrapSwapchainImages(*device_,
                                  view.width,
                                  view.height,
                                  color_format,
@@ -263,7 +227,7 @@ bool OpenXrSwapchainBridge::create(XrSession session,
                 return false;
             }
 #if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
-            if (!wrapSwapchainImages(*vk_device,
+            if (!wrapSwapchainImages(*device_,
                                      view.width,
                                      view.height,
                                      depth_format,

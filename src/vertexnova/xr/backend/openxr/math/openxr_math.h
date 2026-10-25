@@ -17,7 +17,7 @@
 
 namespace vne::xr {
 
-/** @brief OpenXR-specific projection and pose math (Diligent XrCreateProjectionFov). */
+/** @brief OpenXR-specific projection and pose math: asymmetric-FOV projection and pose-to-view conversion. */
 namespace OpenXrMath {
 
 void poseToMatrix(const Pose& pose, float out_matrix[kMat4FloatCount]);
