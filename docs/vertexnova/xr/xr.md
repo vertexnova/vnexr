@@ -120,8 +120,7 @@ See [samples/README.md](../../../samples/README.md) for the getting-started path
 Android build (Galaxy XR, arm64):
 
 ```bash
-./scripts/build_android.sh -t Debug -a install \
-  -sample sample_02_openxr_stereo -abi arm64-v8a
+./scripts/build_android.sh -t Debug -a run -sample stereo_cube -abi arm64-v8a
 ```
 
 ## Further reading

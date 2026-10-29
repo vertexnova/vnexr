@@ -21,9 +21,8 @@ export XR_RUNTIME_JSON=/usr/share/openxr/1/openxr_monado.json
 ## Android / Galaxy XR
 
 ```bash
-./scripts/build_android.sh -t Debug -a install \
-  -sample sample_02_openxr_stereo -abi arm64-v8a
-./scripts/verify_android_vulkan.sh com.vertexnova.vnexr.openxr_stereo
+./scripts/build_android.sh -t Debug -a run -sample stereo_cube -abi arm64-v8a
+./scripts/verify_android_vulkan.sh
 ```
 
 Gradle project lands in the CMake build tree under `android-studio/`.

@@ -1,6 +1,7 @@
 #==============================================================================
 # Generates an Android Studio Gradle project for registered vnexr samples
-# (one product flavor / APK per sample). Modeled on vnerhi VneRhiAndroidGradle.
+# (one product flavor per registered NativeActivity library; vnexr registers just the vnexr_samples launcher).
+# Modeled on vnerhi VneRhiAndroidGradle.
 #==============================================================================
 
 include_guard(GLOBAL)
@@ -10,7 +11,7 @@ define_property(GLOBAL PROPERTY VNE_XR_ANDROID_SAMPLE_NAMES
 )
 
 function(vne_xr_android_sample_flavor_from_name SAMPLE_NAME OUT_VAR)
-    # sample_02_openxr_stereo -> openxr_stereo (strip sample_ before digits).
+    # sample_02_openxr_stereo -> openxr_stereo (strip sample_ before digits); vne_xr_register_android_sample can override.
     string(REGEX REPLACE "^sample_" "" _suffix "${SAMPLE_NAME}")
     string(REGEX REPLACE "^[0-9]+" "" _suffix "${_suffix}")
     string(REGEX REPLACE "^_+" "" _suffix "${_suffix}")
@@ -20,14 +21,25 @@ function(vne_xr_android_sample_flavor_from_name SAMPLE_NAME OUT_VAR)
     set(${OUT_VAR} "${_suffix}" PARENT_SCOPE)
 endfunction()
 
+# vne_xr_register_android_sample(<target> [FLAVOR <name>] [LABEL <app label>])
+# Registers the NativeActivity library <target> as an APK flavor. FLAVOR defaults to a name derived from the target.
 function(vne_xr_register_android_sample TARGET_NAME)
+    cmake_parse_arguments(ARG "" "FLAVOR;LABEL" "" ${ARGN})
     if(NOT TARGET "${TARGET_NAME}")
         message(FATAL_ERROR "vne_xr_register_android_sample: target '${TARGET_NAME}' does not exist")
     endif()
 
-    vne_xr_android_sample_flavor_from_name("${TARGET_NAME}" _flavor)
+    if(ARG_FLAVOR)
+        set(_flavor "${ARG_FLAVOR}")
+    else()
+        vne_xr_android_sample_flavor_from_name("${TARGET_NAME}" _flavor)
+    endif()
     set(_package_id "com.vertexnova.vnexr.${_flavor}")
-    set(_app_label "VNE XR ${_flavor}")
+    if(ARG_LABEL)
+        set(_app_label "${ARG_LABEL}")
+    else()
+        set(_app_label "VNE XR ${_flavor}")
+    endif()
 
     set_target_properties("${TARGET_NAME}" PROPERTIES
         VNE_ANDROID_FLAVOR "${_flavor}"
@@ -181,11 +193,11 @@ function(vne_xr_generate_android_gradle_project)
 
     list(JOIN _sample_names ", " _sample_names_joined)
     file(WRITE "${_gradle_root}/ANDROID_STUDIO.md"
-"# vnexr Android Studio — OpenXR sample APKs
+"# vnexr Android Studio — OpenXR samples APK
 
-Each product flavor is a separate immersive OpenXR app (NativeActivity).
+One immersive OpenXR app (NativeActivity) that runs any registered sample, chosen at launch.
 
-1. Open Build Variants and pick e.g. openxr_stereoDebug.
+1. Open Build Variants and pick samplesDebug.
 2. Deploy to Galaxy XR (arm64-v8a) or a Vulkan-capable device.
 3. Mirror with scrcpy for demos: scrcpy --video-codec=h264
 
@@ -193,7 +205,7 @@ Each product flavor is a separate immersive OpenXR app (NativeActivity).
 
 ```
 ./scripts/build_android.sh -a studio --dev -abi arm64-v8a
-./scripts/build_android.sh -t Debug -a install -sample sample_02_openxr_stereo -abi arm64-v8a
+./scripts/build_android.sh -t Debug -a run -sample stereo_cube -abi arm64-v8a
 ```
 
 ## Registered flavors

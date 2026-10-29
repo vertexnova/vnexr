@@ -3,12 +3,16 @@
  * Licensed under the Apache License, Version 2.0 (the "License")
  * ---------------------------------------------------------------------- */
 
-#include "vertexnova/xr/xr.h"
+#include "app/sample_launcher.h"
 #include "framework/common/logging_guard.h"
+
+namespace vne::xr::samples {
+void registerHelloXrSample(SampleRegistry& registry);
+}
 
 int main() {
     vne::xr::samples::LoggingGuard guard;
-    VNE_LOG_INFO << vne::xr::hello();
-    VNE_LOG_INFO << "Version: " << vne::xr::getVersion();
-    return 0;
+    vne::xr::samples::SampleRegistry registry;
+    vne::xr::samples::registerHelloXrSample(registry);
+    return vne::xr::samples::launchSample(*registry.defaultSample());
 }

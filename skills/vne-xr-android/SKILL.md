@@ -10,11 +10,10 @@ description: >
 ## Build / install
 
 ```bash
-./scripts/build_android.sh -t Debug -a install \
-  -sample sample_02_openxr_stereo -abi arm64-v8a
+./scripts/build_android.sh -t Debug -a run -sample stereo_cube -abi arm64-v8a
 ```
 
-Package id pattern: `com.vertexnova.vnexr.<flavor>` (e.g. `openxr_stereo`).
+There is a single APK, package `com.vertexnova.vnexr.samples` (the `vnexr_samples` launcher). The sample is chosen at launch: `-a run -sample <name>` passes the intent extra `sample`.
 
 ## Manifest checklist
 
@@ -32,7 +31,7 @@ Generator: `cmake/VneXrAndroidGradle.cmake`.
 
 ```bash
 adb devices
-./scripts/verify_android_vulkan.sh com.vertexnova.vnexr.openxr_stereo
+./scripts/verify_android_vulkan.sh
 adb logcat -s vne.xr:* OpenXR:* vulkan:*
 ```
 

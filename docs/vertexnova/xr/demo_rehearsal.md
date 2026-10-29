@@ -7,7 +7,7 @@ Target length: **3 minutes** live, with a recorded fallback.
 - [ ] Ubuntu 24.04 laptop charged; Monado starts (`systemctl --user start monado.service`)
 - [ ] `sample_02_openxr_stereo` runs on Monado without adb
 - [ ] Galaxy XR charged; developer mode on; `adb devices` lists the headset
-- [ ] APK installed: `com.vertexnova.vnexr.openxr_stereo`
+- [ ] APK installed: `com.vertexnova.vnexr.samples` (one APK; pick the sample with `-a run -sample <name>`)
 - [ ] Hand pinch/grasp works in the headset
 - [ ] `scrcpy` mirrors to the meeting display
 - [ ] Fallback MP4 of a clean run copied to the laptop

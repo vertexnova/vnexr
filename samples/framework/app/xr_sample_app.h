@@ -14,7 +14,7 @@
 namespace vne::xr::samples {
 
 /**
- * @brief Sample host: owns ISession + layer stack (vnegfx SampleApplication analogue).
+ * @brief Sample host: owns ISession + layer stack and runs the one frame loop every sample shares.
  *
  * Usage:
  *   XrSampleApp app(config);
@@ -23,6 +23,12 @@ namespace vne::xr::samples {
  */
 class XrSampleApp final : public IRenderSession {
    public:
+    /**
+     * @brief Called at the top of every loop iteration, before events are polled.
+     * @return False to ask the app to quit. Platforms use it to pump their own event queue (Android's looper).
+     */
+    using FramePump = std::function<bool(ISession&)>;
+
     explicit XrSampleApp(SessionConfig config);
     ~XrSampleApp() override;
 
@@ -32,22 +38,21 @@ class XrSampleApp final : public IRenderSession {
     /** Optional hook before session loop (platform init, RHI device, etc.). */
     void setOnReady(std::function<void()> callback);
 
-    int run();
+    /** @brief Install the platform event pump (see FramePump). */
+    void setFramePump(FramePump pump);
 
-    /** @brief Bind an externally owned session (Android custom loop). */
-    void bindSession(ISession* session);
+    /** @brief Create the session and run the frame loop until it ends. @return Process exit code. */
+    int run();
 
     void onSessionReady() override;
     void update(const FrameParams& params, LayerParams& out_layers) override;
 
    private:
-    [[nodiscard]] ISession* activeSession() const;
-
     SessionConfig config_;
     std::unique_ptr<ISession> session_;
-    ISession* external_session_ = nullptr;
     XrLayerStack stack_;
     std::function<void()> on_ready_;
+    FramePump frame_pump_;
 };
 
 }  // namespace vne::xr::samples

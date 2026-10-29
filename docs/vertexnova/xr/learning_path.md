@@ -71,8 +71,7 @@ Pick an installed NDK under `$ANDROID_HOME/ndk/` (example: `27.2.12479018`), the
 ```bash
 export ANDROID_HOME=$HOME/Android/Sdk
 export ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/$(ls "$ANDROID_HOME/ndk" | sort -V | tail -1)
-./scripts/build_android.sh -t Debug -a install \
-  -sample sample_02_openxr_stereo -abi arm64-v8a
+./scripts/build_android.sh -t Debug -a run -sample stereo_cube -abi arm64-v8a
 ```
 
 Enable developer mode on Galaxy XR; confirm `adb devices` shows the headset.
@@ -87,7 +86,7 @@ Missing hand response -- confirm `XR_EXT_hand_interaction` is enabled (see input
 ## Step 5 -- Debug + mirror
 
 ```bash
-./scripts/verify_android_vulkan.sh com.vertexnova.vnexr.openxr_stereo
+./scripts/verify_android_vulkan.sh
 adb logcat -s vne.xr:* OpenXR:*
 scrcpy --video-codec=h264 --max-size 1280
 ```

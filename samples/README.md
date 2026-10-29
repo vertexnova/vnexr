@@ -42,6 +42,29 @@ export XR_RUNTIME_JSON=/usr/share/openxr/1/openxr_monado.json
 ./build/shared/Debug/build-linux-gcc-*/bin/samples/sample_02_openxr_stereo
 ```
 
+## One launcher for every sample
+
+`vnexr_samples` is a single binary that runs any registered sample by name. Each sample also keeps its own standalone executable on desktop.
+
+| Sample name | Directory | Backend |
+|-------------|-----------|---------|
+| `hello_xr` | `00_hello_xr` | Null |
+| `null_simulator` | `01_null_simulator` | Null |
+| `stereo_cube` | `02_openxr_stereo` | OpenXR |
+
+```bash
+vnexr_samples --list
+vnexr_samples --sample null_simulator
+```
+
+On Android the same library is the only NativeActivity. The sample comes from the launch intent: `adb shell am start -n com.vertexnova.vnexr.samples/android.app.NativeActivity -e sample stereo_cube`, or `./scripts/build_android.sh -a run -sample stereo_cube`.
+
+### Adding a sample
+
+1. In the sample's `CMakeLists.txt` call `vne_xr_add_sample_library(<name> REGISTER register<Name>Sample SOURCES ... [LIBRARIES ...])`.
+2. In its sources define `void vne::xr::samples::register<Name>Sample(SampleRegistry&)`, which calls `registry.add({.name, .description, .backend, .setup})`; `setup` pushes the sample's layers onto the `XrSampleApp`.
+3. The launcher picks it up on the next configure: its registration list is generated from the `vne_xr_add_sample_library` calls, so nothing else needs editing.
+
 ## Layer architecture
 
 Samples use a thin **layer stack** (analogous to vnegfx `ILayer`):
@@ -79,7 +102,7 @@ Build with the Android script:
 ./scripts/build_android.sh -t Debug -a configure_and_build --with-openxr --with-examples
 ```
 
-Link `android`, `log`, and `native_app_glue` (see `02_openxr_stereo/CMakeLists.txt`). Entry point is `android_main`, not `main`.
+On Android only the `vnexr_samples` launcher is a NativeActivity library (it links `android`, `log` and `native_app_glue`, entry point `android_main`); every sample is a static library with a `register<Name>Sample()` function, see `launcher/CMakeLists.txt`.
 
 ## Optional samples
 

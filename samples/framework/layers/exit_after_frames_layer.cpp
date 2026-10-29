@@ -3,7 +3,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License")
  * ---------------------------------------------------------------------- */
 
-#include "exit_after_frames_layer.h"
+#include "layers/exit_after_frames_layer.h"
 
 #include "vertexnova/logging/logging.h"
 
