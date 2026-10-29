@@ -92,6 +92,8 @@ resolve_sdk_root() {
     if [[ -n "${ANDROID_HOME:-}" && -d "${ANDROID_HOME}" ]]; then to_tool_path "$ANDROID_HOME"; return 0; fi
     if [[ -n "${ANDROID_SDK_ROOT:-}" && -d "${ANDROID_SDK_ROOT}" ]]; then to_tool_path "$ANDROID_SDK_ROOT"; return 0; fi
     if [[ -d "$HOME/Android/Sdk" ]]; then to_tool_path "$HOME/Android/Sdk"; return 0; fi
+    # Android Studio's default SDK on macOS.
+    if [[ -d "$HOME/Library/Android/sdk" ]]; then echo "$HOME/Library/Android/sdk"; return 0; fi
     # Android Studio's default SDK on Windows.
     if [[ -n "${LOCALAPPDATA:-}" ]]; then
         candidate="$(to_tool_path "${LOCALAPPDATA}/Android/Sdk")"
@@ -150,7 +152,17 @@ resolve_java_home() {
         "$HOME/android-studio/jbr"
         /opt/android-studio/jbr
         "/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+        # Homebrew openjdk on macOS (Apple silicon, then Intel).
+        /opt/homebrew/opt/openjdk/libexec/openjdk.jdk/Contents/Home
+        /usr/local/opt/openjdk/libexec/openjdk.jdk/Contents/Home
     )
+    # macOS: /usr/bin/javac is a stub even with no JDK installed; java_home names a real one.
+    if [[ -x /usr/libexec/java_home ]]; then
+        studio_jbr="$(/usr/libexec/java_home 2>/dev/null || true)"
+        if [[ -n "$studio_jbr" ]]; then
+            candidates+=("$studio_jbr")
+        fi
+    fi
     if [[ -n "$program_files" ]]; then
         candidates+=("${program_files}/Android/Android Studio/jbr")
     fi
@@ -192,6 +204,10 @@ resolve_studio() {
     if command -v android-studio >/dev/null 2>&1; then echo "android-studio"; return 0; fi
     if [[ -x "/opt/android-studio/bin/studio.sh" ]]; then echo "/opt/android-studio/bin/studio.sh"; return 0; fi
     if [[ -x "$HOME/android-studio/bin/studio.sh" ]]; then echo "$HOME/android-studio/bin/studio.sh"; return 0; fi
+    if [[ -x "/Applications/Android Studio.app/Contents/MacOS/studio" ]]; then
+        echo "/Applications/Android Studio.app/Contents/MacOS/studio"
+        return 0
+    fi
     return 1
 }
 

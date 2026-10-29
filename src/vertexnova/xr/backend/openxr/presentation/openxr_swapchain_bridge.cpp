@@ -15,13 +15,12 @@
 #include "vertexnova/xr/backend/openxr/openxr_platform_prelude.h"
 
 #include <algorithm>
-#include <cstdint>
 #include <optional>
 #include <utility>
 
 #if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
-#include "vertexnova/rhi/backend/vulkan/vulkan_device.h"
 #include "vertexnova/rhi/texture.h"
+#include "vertexnova/rhi/vulkan_device_interop.h"
 #endif
 
 namespace {
@@ -135,17 +134,14 @@ bool createSwapchain(XrSession session,
     desc.usage = is_depth ? (vne::rhi::TextureUsage::eDepthStencil | vne::rhi::TextureUsage::eSampled)
                           : (vne::rhi::TextureUsage::eRenderTarget | vne::rhi::TextureUsage::eSampled);
 
-    if (device.getBackend() != vne::rhi::GraphicsBackend::eVulkan) {
-        VNE_LOG_ERROR << "OpenXR swapchain images require a Vulkan device";
-        return false;
-    }
-    auto* vulkan_device = static_cast<vne::rhi::VulkanDevice*>(&device);
-    const vk::ImageLayout layout = is_depth ? vk::ImageLayout::eDepthStencilAttachmentOptimal
-                                            : vk::ImageLayout::eColorAttachmentOptimal;
+    vne::rhi::vulkan::ImportedImageDescriptor import_desc;
+    import_desc.texture = desc;
+    import_desc.layout = is_depth ? vne::rhi::vulkan::ImportedImageLayout::eDepthStencilAttachment
+                                  : vne::rhi::vulkan::ImportedImageLayout::eColorAttachment;
 
     for (std::size_t i = 0; i < vk_images.size(); ++i) {
-        const auto image = static_cast<VkImage>(reinterpret_cast<void*>(static_cast<std::uintptr_t>(vk_images[i])));
-        auto texture = vulkan_device->wrapExternalImage(image, desc, layout);
+        import_desc.image_handle = vk_images[i];
+        auto texture = vne::rhi::vulkan::importImage(device, import_desc);
         if (!texture) {
             VNE_LOG_ERROR << "Failed to wrap OpenXR swapchain image " << i;
             out_textures.clear();
@@ -179,7 +175,7 @@ bool OpenXrSwapchainBridge::create(XrSession session,
     views_.resize(view_configs.size());
 
 #if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
-    if (device_->getBackend() != vne::rhi::GraphicsBackend::eVulkan) {
+    if (!vne::rhi::vulkan::getNativeDeviceHandles(*device_).has_value()) {
         VNE_LOG_ERROR << "OpenXR swapchain bridge requires a Vulkan device";
         destroy();
         return false;

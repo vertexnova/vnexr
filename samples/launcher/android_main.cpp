@@ -17,13 +17,70 @@
 #include "app/sample_registry.h"
 #include "framework/common/logging_guard.h"
 
+#include <android/log.h>
 #include <android_native_app_glue.h>
 #include <jni.h>
+#include <unistd.h>
 
+#include <cstdio>
 #include <string>
 #include <string_view>
+#include <thread>
 
 namespace {
+
+/** Logcat tag for everything the samples print; `adb logcat -s vne.xr:*` follows it. */
+constexpr const char* kLogcatTag = "vne.xr";
+
+/** Reads @p fd until it closes and writes each line to logcat at @p priority. */
+void forwardLinesToLogcat(int fd, android_LogPriority priority) {
+    char buffer[1024];
+    std::string line;
+    ssize_t count = 0;
+    while ((count = read(fd, buffer, sizeof(buffer))) > 0) {
+        for (ssize_t i = 0; i < count; ++i) {
+            if (buffer[i] == '\n') {
+                __android_log_write(priority, kLogcatTag, line.c_str());
+                line.clear();
+            } else {
+                line.push_back(buffer[i]);
+            }
+        }
+    }
+    if (!line.empty()) {
+        __android_log_write(priority, kLogcatTag, line.c_str());
+    }
+    close(fd);
+}
+
+/**
+ * NativeActivity sends stdout and stderr to /dev/null, and VNE_LOG writes to them through the console sink.
+ * Pipe both into logcat (stdout as info, stderr as error). Runs once per process; the activity can start again
+ * in the same process.
+ */
+void redirectStdioToLogcat() {
+    static bool redirected = false;
+    if (redirected) {
+        return;
+    }
+    redirected = true;
+    std::setvbuf(stdout, nullptr, _IOLBF, 0);
+    std::setvbuf(stderr, nullptr, _IONBF, 0);
+    const struct {
+        int target_fd;
+        android_LogPriority priority;
+    } streams[] = {{STDOUT_FILENO, ANDROID_LOG_INFO}, {STDERR_FILENO, ANDROID_LOG_ERROR}};
+    for (const auto& stream : streams) {
+        int pipe_fds[2] = {-1, -1};
+        if (pipe(pipe_fds) != 0) {
+            __android_log_write(ANDROID_LOG_WARN, kLogcatTag, "Could not create a pipe for stdio; logs are dropped");
+            continue;
+        }
+        dup2(pipe_fds[1], stream.target_fd);
+        close(pipe_fds[1]);
+        std::thread(forwardLinesToLogcat, pipe_fds[0], stream.priority).detach();
+    }
+}
 
 /** Attaches this thread to the VM for the object's lifetime. */
 class JniThreadAttach {
@@ -254,6 +311,7 @@ bool pumpAndWatchIntent(PumpState& state, vne::xr::ISession&) {
 }  // namespace
 
 void android_main(android_app* app) {
+    redirectStdioToLogcat();
     vne::xr::samples::LoggingGuard guard;
     vne::xr::samples::SampleRegistry registry;
     vne::xr::samples::registerAllSamples(registry);

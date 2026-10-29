@@ -94,11 +94,13 @@ python scripts\build_windows.py -t Debug -a run --sample stereo_cube
 
 Options: `-t` / `-BuildType` build type, `-a` / `-Action` action, `-l` / `-LibType` lib type (`static` | `shared`, default `shared`), `-clean` / `-Clean`, `-j N` / `-Jobs N`. macOS script also supports `-xcode` for Xcode project.
 
-The Quest 3 walkthrough is in [Windows laptop setup](#windows-laptop-setup) below.
+The Quest 3 walkthroughs are in [Windows laptop setup](#windows-laptop-setup) and [macOS to Quest 3](#macos-to-quest-3) below.
 
 ## Windows laptop setup
 
 Two ways to see `stereo_cube` on a Quest 3. Do them in this order: the PC sample through Meta Quest Link, then the on-headset APK. The desktop build does not need Android Studio.
+
+Quest Link runs only on the GPUs and drivers Meta lists. If the Link app rejects the laptop GPU, skip step 3. The APK (steps 4 to 6) renders on the headset's own GPU, so it needs neither Link nor the PC GPU.
 
 ### 1. Tools
 
@@ -173,6 +175,39 @@ If no headset is connected yet, build the APK without installing:
 ```
 
 The APK is `build/android/arm64-v8a/android-studio/app/build/outputs/apk/samples/debug/app-samples-debug.apk`. If the view is black, capture `adb logcat -s vne.xr:* OpenXR:*` and stop there.
+
+## macOS to Quest 3
+
+macOS has no Quest Link and no desktop OpenXR runtime, so the Mac builds the APK and the Quest 3 runs it standalone over USB.
+
+### 1. Tools
+
+- A JDK 17 or newer: Android Studio's bundled JBR, or `brew install openjdk`. The script finds either, so `JAVA_HOME` is optional.
+- The Android SDK in `~/Library/Android/sdk`, Android Studio's default. Android Studio's SDK Manager works. Without Android Studio, unpack the [command-line tools](https://developer.android.com/studio#command-line-tools-only) to `~/Library/Android/sdk/cmdline-tools/latest`, then:
+
+```bash
+SDK="$HOME/Library/Android/sdk"
+"$SDK/cmdline-tools/latest/bin/sdkmanager" --licenses
+"$SDK/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-36" "build-tools;36.0.0" \
+    "ndk;29.0.14206865" "cmake;3.31.6"
+```
+
+- Gradle 9.1 or newer, either on `PATH` (`brew install gradle`) or in `~/.gradle/wrapper/dists` from an Android Studio sync.
+- SSH access to the private `vnerhi` repository, then `git submodule update --init --recursive`.
+
+### 2. Developer mode and USB
+
+Same as [Windows step 5](#5-developer-mode): turn on Developer mode in the Meta Horizon phone app, connect USB-C, allow USB debugging in the headset, and check that `~/Library/Android/sdk/platform-tools/adb devices` lists the headset as `device`.
+
+### 3. Build, install, and run
+
+```bash
+./scripts/build_android.sh -t Debug -a run -sample stereo_cube -abi arm64-v8a
+```
+
+The APK is `build/static/Debug/build-android-ndk-<ndk>-arm64-v8a/android-studio/app/build/outputs/apk/samples/debug/app-samples-debug.apk`. Use `-a apk` to build without a headset. The app also appears in the headset library under Unknown Sources. A library launch runs the first OpenXR sample.
+
+Follow the log with `adb logcat -s vne.xr:* OpenXR:*`. Every `VNE_LOG` line from the app is under the `vne.xr` tag. A good start shows `OpenXR Android loader initialized`, `OpenXR Vulkan context ready`, and `OpenXR session initialized`. Mirror the headset for an audience with `scrcpy --video-codec=h264` (`brew install scrcpy`).
 
 ## Test
 
