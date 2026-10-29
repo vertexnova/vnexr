@@ -21,7 +21,7 @@ There is a single APK, package `com.vertexnova.vnexr.samples` (the `vnexr_sample
 - Immersive HMD intent category: `org.khronos.openxr.intent.category.IMMERSIVE_HMD`
 - Full-space start mode meta-data for unmanaged OpenXR activities
 - OpenXR runtime broker `<queries>`
-- NativeActivity + `android.app.lib_name` pointing at the sample SHARED lib
+- NativeActivity + `android.app.lib_name` pointing at the `vnexr_samples` launcher library
 - Package the OpenXR loader `.so` built with the app (FetchContent / NDK link)
 
 Templates live under `samples/framework/app/platform/android/gradle/`.

@@ -34,6 +34,12 @@ Result initializeOpenXrLoaderAndroid(void* application_vm, void* application_con
         return Result::eErrorInvalidArgument;
     }
 
+    // xrInitializeLoaderKHR succeeds once per process. A later sample in this activity must not call it again.
+    static bool initialized = false;
+    if (initialized) {
+        return Result::eSuccess;
+    }
+
     XrLoaderInitInfoAndroidKHR loader_info{XR_TYPE_LOADER_INIT_INFO_ANDROID_KHR};
     loader_info.applicationVM = application_vm;
     loader_info.applicationContext = application_context;
@@ -47,6 +53,7 @@ Result initializeOpenXrLoaderAndroid(void* application_vm, void* application_con
         return Result::eErrorOpenXrFailed;
     }
     OPENXR_CHECK(pfn_init(reinterpret_cast<const XrLoaderInitInfoBaseHeaderKHR*>(&loader_info)));
+    initialized = true;
     VNE_LOG_INFO << "OpenXR Android loader initialized";
     return Result::eSuccess;
 #endif

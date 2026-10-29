@@ -21,6 +21,22 @@ function(vne_xr_android_sample_flavor_from_name SAMPLE_NAME OUT_VAR)
     set(${OUT_VAR} "${_suffix}" PARENT_SCOPE)
 endfunction()
 
+# XML-escape a display label, then escape that text for a Groovy single-quoted string.
+# OUT_XML is for strings.xml and XML attributes. OUT_GRADLE is for build.gradle. The raw label is left unchanged.
+function(vne_xr_escape_app_label RAW OUT_XML OUT_GRADLE)
+    string(REPLACE "\r" " " _oneline "${RAW}")
+    string(REPLACE "\n" " " _oneline "${_oneline}")
+    string(REPLACE "&" "&amp;" _xml "${_oneline}")
+    string(REPLACE "<" "&lt;" _xml "${_xml}")
+    string(REPLACE ">" "&gt;" _xml "${_xml}")
+    string(REPLACE "\"" "&quot;" _xml "${_xml}")
+    string(REPLACE "'" "&apos;" _xml "${_xml}")
+    string(REPLACE "\\" "\\\\" _gradle "${_xml}")
+    string(REPLACE "'" "\\'" _gradle "${_gradle}")
+    set(${OUT_XML} "${_xml}" PARENT_SCOPE)
+    set(${OUT_GRADLE} "${_gradle}" PARENT_SCOPE)
+endfunction()
+
 # vne_xr_register_android_sample(<target> [FLAVOR <name>] [LABEL <app label>])
 # Registers the NativeActivity library <target> as an APK flavor. FLAVOR defaults to a name derived from the target.
 function(vne_xr_register_android_sample TARGET_NAME)
@@ -40,11 +56,15 @@ function(vne_xr_register_android_sample TARGET_NAME)
     else()
         set(_app_label "VNE XR ${_flavor}")
     endif()
+    # VNE_ANDROID_APP_LABEL stays the raw label (vne_samples.txt). XML and Gradle copies are for generated files.
+    vne_xr_escape_app_label("${_app_label}" _app_label_xml _app_label_gradle)
 
     set_target_properties("${TARGET_NAME}" PROPERTIES
         VNE_ANDROID_FLAVOR "${_flavor}"
         VNE_ANDROID_PACKAGE "${_package_id}"
         VNE_ANDROID_APP_LABEL "${_app_label}"
+        VNE_ANDROID_APP_LABEL_XML "${_app_label_xml}"
+        VNE_ANDROID_APP_LABEL_GRADLE "${_app_label_gradle}"
     )
     set_property(GLOBAL APPEND PROPERTY VNE_XR_ANDROID_SAMPLE_NAMES "${TARGET_NAME}")
 endfunction()
@@ -79,6 +99,10 @@ function(vne_xr_generate_android_gradle_project)
 
     file(COPY "${_GEN_GRADLE_TEMPLATE_DIR}/app/src/main/AndroidManifest.xml"
          DESTINATION "${_gradle_root}/app/src/main")
+    if(EXISTS "${_GEN_GRADLE_TEMPLATE_DIR}/app/src/main/java")
+        file(COPY "${_GEN_GRADLE_TEMPLATE_DIR}/app/src/main/java"
+             DESTINATION "${_gradle_root}/app/src/main")
+    endif()
 
     set(VNEXR_ROOT "${_GEN_VNEXR_ROOT}")
     configure_file(
@@ -99,13 +123,15 @@ function(vne_xr_generate_android_gradle_project)
         get_target_property(_flavor "${_name}" VNE_ANDROID_FLAVOR)
         get_target_property(_package "${_name}" VNE_ANDROID_PACKAGE)
         get_target_property(_app_label "${_name}" VNE_ANDROID_APP_LABEL)
+        get_target_property(_app_label_xml "${_name}" VNE_ANDROID_APP_LABEL_XML)
+        get_target_property(_app_label_gradle "${_name}" VNE_ANDROID_APP_LABEL_GRADLE)
 
         string(APPEND _flavor_blocks "        ${_flavor} {\n")
         string(APPEND _flavor_blocks "            dimension 'sample'\n")
         string(APPEND _flavor_blocks "            applicationId '${_package}'\n")
         string(APPEND _flavor_blocks "            manifestPlaceholders = [\n")
         string(APPEND _flavor_blocks "                vneNativeLib: '${_name}',\n")
-        string(APPEND _flavor_blocks "                vneAppLabel : '${_app_label}'\n")
+        string(APPEND _flavor_blocks "                vneAppLabel : '${_app_label_gradle}'\n")
         string(APPEND _flavor_blocks "            ]\n")
         string(APPEND _flavor_blocks "            externalNativeBuild {\n")
         string(APPEND _flavor_blocks "                cmake {\n")
@@ -121,12 +147,12 @@ function(vne_xr_generate_android_gradle_project)
         set(_flavor_src "${_gradle_root}/app/src/${_flavor}")
         file(MAKE_DIRECTORY "${_flavor_src}/res/values")
         file(WRITE "${_flavor_src}/res/values/strings.xml"
-"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<resources>\n    <string name=\"vne_app_label\">${_app_label}</string>\n</resources>\n")
+"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<resources>\n    <string name=\"vne_app_label\">${_app_label_xml}</string>\n</resources>\n")
         file(WRITE "${_flavor_src}/AndroidManifest.xml"
-"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\">\n    <application\n        android:label=\"@string/vne_app_label\"\n        tools:replace=\"android:label\">\n        <activity\n            android:name=\"android.app.NativeActivity\"\n            android:taskAffinity=\"${_package}\"\n            tools:node=\"merge\">\n            <meta-data\n                android:name=\"android.app.lib_name\"\n                android:value=\"${_name}\"\n                tools:replace=\"android:value\" />\n        </activity>\n    </application>\n</manifest>\n")
+"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    xmlns:tools=\"http://schemas.android.com/tools\">\n    <application\n        android:label=\"@string/vne_app_label\"\n        tools:replace=\"android:label\">\n        <activity\n            android:name=\"com.vertexnova.vnexr.samples.VneXrNativeActivity\"\n            android:taskAffinity=\"${_package}\"\n            tools:node=\"merge\">\n            <meta-data\n                android:name=\"android.app.lib_name\"\n                android:value=\"${_name}\"\n                tools:replace=\"android:value\" />\n        </activity>\n    </application>\n</manifest>\n")
 
         set(_run_config_variant "${_flavor}Debug")
-        set(_run_config_name "${_app_label} (${_run_config_variant})")
+        set(_run_config_name "${_app_label_xml} (${_run_config_variant})")
         set(VNE_RUN_CONFIG_NAME "${_run_config_name}")
         set(VNE_RUN_CONFIG_VARIANT "${_run_config_variant}")
         set(VNE_RUN_CONFIG_PACKAGE "${_package}")

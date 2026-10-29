@@ -262,7 +262,7 @@ run_apk() {
     local adb_bin line package
     adb_bin="$(resolve_adb)"
     IFS=',' read -r _ _ package _ <<<"$(head -n 1 <<<"$SAMPLE_ENTRIES")"
-    local start_args=(shell am start -n "${package}/android.app.NativeActivity")
+    local start_args=(shell am start -n "${package}/com.vertexnova.vnexr.samples.VneXrNativeActivity")
     if [[ -n "$SAMPLE" ]]; then
         start_args+=(-e sample "$SAMPLE")
     fi

@@ -57,12 +57,22 @@ vnexr_samples --list
 vnexr_samples --sample null_simulator
 ```
 
-On Android the same library is the only NativeActivity. The sample comes from the launch intent: `adb shell am start -n com.vertexnova.vnexr.samples/android.app.NativeActivity -e sample stereo_cube`, or `./scripts/build_android.sh -a run -sample stereo_cube`.
+On Android the same library is the only NativeActivity. The sample comes from the launch intent: `adb shell am start -n com.vertexnova.vnexr.samples/com.vertexnova.vnexr.samples.VneXrNativeActivity -e sample stereo_cube`, or `./scripts/build_android.sh -a run -sample stereo_cube`.
 
 ### Adding a sample
 
 1. In the sample's `CMakeLists.txt` call `vne_xr_add_sample_library(<name> REGISTER register<Name>Sample SOURCES ... [LIBRARIES ...])`.
-2. In its sources define `void vne::xr::samples::register<Name>Sample(SampleRegistry&)`, which calls `registry.add({.name, .description, .backend, .setup})`; `setup` pushes the sample's layers onto the `XrSampleApp`.
+2. In its sources define `void vne::xr::samples::register<Name>Sample(SampleRegistry&)`, which calls `registry.add` with an explicit initializer for each field. `setup` pushes the sample's layers onto the `XrSampleApp`.
+
+   ```cpp
+   registry.add({
+       .name = "my_sample",
+       .description = "What the sample shows",
+       .backend = BackendType::eOpenXr,
+       .setup = [](XrSampleApp& app) { app.pushLayer(std::make_unique<MyLayer>()); },
+   });
+   ```
+
 3. The launcher picks it up on the next configure: its registration list is generated from the `vne_xr_add_sample_library` calls, so nothing else needs editing.
 
 ## Layer architecture
@@ -78,12 +88,6 @@ main.cpp
 ```
 
 Each frame the session calls `XrSampleApp::update()` → `XrLayerStack::onUpdate(FrameParams, LayerParams)`.
-
-Add a new sample by:
-
-1. Subclass `IXrLayer` in your sample folder.
-2. `app.pushLayer(std::make_unique<MyLayer>())`.
-3. `return app.run()` (desktop) or wire `android_main` (Android).
 
 Framework lives in `samples/framework/` (`vne::xr::samples::framework`).
 
