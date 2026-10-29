@@ -200,19 +200,30 @@ function(vne_xr_generate_android_gradle_project)
     endif()
 
     set(VNE_ANDROID_CMAKE_VERSION_LINE "")
-    foreach(_sdk_root IN ITEMS "$ENV{ANDROID_HOME}" "$ENV{ANDROID_SDK_ROOT}" "$ENV{HOME}/Android/Sdk")
+    # vnexr needs CMake 3.26 or newer (native/CMakeLists.txt); pick the newest SDK CMake that satisfies it, since
+    # Android Studio's default 3.22.1 would fail the configure.
+    foreach(_sdk_root IN ITEMS "$ENV{ANDROID_HOME}" "$ENV{ANDROID_SDK_ROOT}" "$ENV{HOME}/Android/Sdk"
+                               "$ENV{HOME}/Library/Android/sdk")
         if(_sdk_root AND EXISTS "${_sdk_root}/cmake")
             file(GLOB _cmake_dirs "${_sdk_root}/cmake/*")
-            if(_cmake_dirs)
-                list(SORT _cmake_dirs COMPARE NATURAL)
-                list(REVERSE _cmake_dirs)
-                list(GET _cmake_dirs 0 _latest_cmake)
-                get_filename_component(_cmake_ver "${_latest_cmake}" NAME)
-                set(VNE_ANDROID_CMAKE_VERSION_LINE "            version '${_cmake_ver}'")
+            list(SORT _cmake_dirs COMPARE NATURAL)
+            list(REVERSE _cmake_dirs)
+            foreach(_cmake_dir IN LISTS _cmake_dirs)
+                get_filename_component(_cmake_ver "${_cmake_dir}" NAME)
+                if(_cmake_ver VERSION_GREATER_EQUAL "3.26")
+                    set(VNE_ANDROID_CMAKE_VERSION_LINE "            version '${_cmake_ver}'")
+                    break()
+                endif()
+            endforeach()
+            if(NOT VNE_ANDROID_CMAKE_VERSION_LINE STREQUAL "")
                 break()
             endif()
         endif()
     endforeach()
+    if(VNE_ANDROID_CMAKE_VERSION_LINE STREQUAL "")
+        message(WARNING "No Android SDK CMake 3.26 or newer found; Gradle would use its default (3.22.1). "
+                        "Install one: sdkmanager \"cmake;3.31.6\"")
+    endif()
 
     configure_file(
         "${_GEN_GRADLE_TEMPLATE_DIR}/app/build.gradle.in"

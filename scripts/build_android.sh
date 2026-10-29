@@ -232,8 +232,10 @@ fi
 NDK_VERSION="$(basename "$NDK_ROOT")"
 if [[ -n "${WINDIR:-}" || -n "${MSYSTEM:-}" ]]; then
     # AGP writes object files under <build>/android-studio/app/.cxx/.../CMakeFiles.
-    # The full NDK build-dir name pushes those paths past the Windows MAX_PATH limit.
-    BUILD_DIR="$PROJECT_ROOT/build/android/${ABI}"
+    # The full NDK build-dir name pushes those paths past the Windows MAX_PATH limit, so keep it short, but
+    # still distinct per ABI, build type, library type and NDK major: a build-only action must never reuse the
+    # cached configuration of another combination.
+    BUILD_DIR="$PROJECT_ROOT/build/android/${ABI}-$(lowercase "$BUILD_TYPE")-${LIB_TYPE}-ndk${NDK_VERSION%%.*}"
 else
     BUILD_DIR="$PROJECT_ROOT/build/${LIB_TYPE}/${BUILD_TYPE}/build-android-ndk-${NDK_VERSION}-${ABI}"
 fi
@@ -243,11 +245,27 @@ TOOLCHAIN_FILE="${NDK_ROOT}/build/cmake/android.toolchain.cmake"
 
 # Windows CMake defaults to Visual Studio, which cannot use the NDK toolchain.
 # The Android SDK CMake package ships Ninja beside cmake.exe.
+# VneXR needs CMake 3.26 or newer; Android Studio's default SDK CMake (3.22.1) is older and must not shadow a
+# suitable CMake that is already on PATH.
+is_cmake_version_ok() {
+    [[ "$(printf '%s\n%s\n' "3.26" "$1" | sort -V | head -n 1)" == "3.26" ]]
+}
+
 if [[ -n "${WINDIR:-}" || -n "${MSYSTEM:-}" ]]; then
     if [[ -n "$SDK_ROOT" && -d "${SDK_ROOT}/cmake" ]]; then
-        latest_sdk_cmake="$(ls -1d "${SDK_ROOT}/cmake/"* 2>/dev/null | sort -V | tail -n 1 || true)"
-        if [[ -n "$latest_sdk_cmake" && -d "${latest_sdk_cmake}/bin" ]]; then
-            export PATH="${latest_sdk_cmake}/bin:${PATH}"
+        suitable_sdk_cmake=""
+        newest_sdk_cmake=""
+        while IFS= read -r sdk_cmake_dir; do
+            [[ -d "${sdk_cmake_dir}/bin" ]] || continue
+            newest_sdk_cmake="$sdk_cmake_dir"
+            if is_cmake_version_ok "$(basename "$sdk_cmake_dir")"; then suitable_sdk_cmake="$sdk_cmake_dir"; fi
+        done < <(ls -1d "${SDK_ROOT}/cmake/"* 2>/dev/null | sort -V || true)
+        if [[ -n "$suitable_sdk_cmake" ]]; then
+            export PATH="${suitable_sdk_cmake}/bin:${PATH}"
+        elif [[ -n "$newest_sdk_cmake" ]]; then
+            # Too old to use as CMake, but its folder is where the SDK keeps Ninja: append so PATH's CMake wins.
+            log_warn "Android SDK CMake $(basename "$newest_sdk_cmake") is older than 3.26; install 'cmake;3.31.6' with sdkmanager"
+            export PATH="${PATH}:${newest_sdk_cmake}/bin"
         fi
     fi
 fi
@@ -308,6 +326,35 @@ build_native() {
     cmake_build "$BUILD_DIR"
 }
 
+# Run Gradle with the given arguments. Git Bash drops arguments when it launches a Windows .bat directly, so go
+# through cmd. cmd /c strips the first and last quote of a command that starts with one, hence the doubled outer
+# quotes: they keep a Gradle path that contains spaces intact.
+run_gradle() {
+    local gradle="$1"
+    shift
+    if [[ "$gradle" == *.bat || "$gradle" == *.cmd ]]; then
+        local gradle_win
+        gradle_win="$(cygpath -w "$gradle")"
+        cmd //c "\"\"${gradle_win}\" $*\""
+    else
+        "$gradle" "$@"
+    fi
+}
+
+# The generated project uses Android Gradle Plugin 9.0.1, which refuses to run on Gradle older than 9.1.0.
+readonly MIN_GRADLE_VERSION="9.1.0"
+require_gradle_version() {
+    local gradle="$1" version
+    version="$(run_gradle "$gradle" --version 2>/dev/null | tr -d '\r' | sed -n 's/^Gradle \([0-9][0-9.]*\).*/\1/p' | head -n 1 || true)"
+    if [[ -z "$version" ]]; then
+        log_warn "Could not read the Gradle version from '$gradle'; the build needs Gradle ${MIN_GRADLE_VERSION} or newer"
+        return 0
+    fi
+    if [[ "$(printf '%s\n%s\n' "$MIN_GRADLE_VERSION" "$version" | sort -V | head -n 1)" != "$MIN_GRADLE_VERSION" ]]; then
+        die "Gradle $version is too old: Android Gradle Plugin 9.0.1 needs ${MIN_GRADLE_VERSION} or newer ($gradle). Install a newer Gradle (for example 'brew install gradle'), or set GRADLE_DIR to a project with a newer wrapper."
+    fi
+}
+
 build_apk() {
     local gradle java_home
     gradle="$(resolve_gradle || true)"
@@ -324,13 +371,8 @@ build_apk() {
         cd "$GRADLE_PROJECT_DIR"
         export JAVA_HOME="$java_home"
         export PATH="$java_home/bin:$PATH"
-        # Git Bash drops arguments when it launches a Windows .bat directly.
-        if [[ "$gradle" == *.bat || "$gradle" == *.cmd ]]; then
-            gradle_win="$(cygpath -w "$gradle")"
-            cmd //c "${gradle_win} assemble${variant_suffix}"
-        else
-            "$gradle" "assemble${variant_suffix}"
-        fi
+        require_gradle_version "$gradle"
+        run_gradle "$gradle" "assemble${variant_suffix}"
     )
     load_sample_entries
     local line flavor
