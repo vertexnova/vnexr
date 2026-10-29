@@ -51,7 +51,7 @@ void ISession::run(IRenderSession& app_session) {
         params.input = input;
         app_session.update(params, layers);
         endFrame(frame, layers);
-        if (layers.request_exit) {
+        if (layers.request_exit && !requestExit()) {
             break;
         }
     }

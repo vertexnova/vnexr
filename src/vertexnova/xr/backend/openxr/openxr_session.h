@@ -36,6 +36,7 @@ class OpenXrSession final : public ISession {
     bool beginFrame(Frame& out_frame) override;
     void endFrame(const Frame& frame, const LayerParams& layers) override;
     void pollInput(InputState& out_input) override;
+    [[nodiscard]] bool requestExit() override;
     [[nodiscard]] std::shared_ptr<vne::rhi::IDevice> graphicsDevice() const override;
 
    private:
@@ -67,12 +68,19 @@ class OpenXrSession final : public ISession {
     std::int64_t color_format_ = 0;
     std::int64_t depth_format_ = 0;
     bool swapchains_ready_ = false;
+    /** True from a successful swapchain acquire in beginFrame() until the images are released in endFrame(). */
+    bool are_images_acquired_ = false;
+    bool is_exit_requested_ = false;
+    XrReferenceSpaceType reference_space_type_ = XR_REFERENCE_SPACE_TYPE_LOCAL;
 
     bool initOpenXr();
     void shutdownOpenXr();
     bool ensureSwapchains();
     void flushGpu();
     void handleSessionStateChanged(XrSessionState xr_state);
+    void processPendingEvents();
+    void releaseSwapchains();
+    [[nodiscard]] XrReferenceSpaceType chooseReferenceSpaceType() const;
 };
 
 }  // namespace vne::xr

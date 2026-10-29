@@ -43,8 +43,18 @@ class OpenXrSwapchainBridge {
                 const std::shared_ptr<vne::rhi::IDevice>& device);
     void destroy();
 
+    /**
+     * @brief Acquire and wait for the current image of every view's swapchains.
+     * @return False when any acquire or wait fails, or when images from an earlier frame are still outstanding.
+     * The images acquired so far stay acquired until `releaseForFrame()`, which releases exactly those.
+     */
     bool acquireForFrame(Frame& in_out_frame);
-    void releaseForFrame();
+    /**
+     * @brief Release every image that `acquireForFrame()` acquired and has not been released yet.
+     * @return True when nothing is left outstanding. A failed release keeps its image marked as acquired, so a
+     * later call retries it, and `acquireForFrame()` refuses to start until then.
+     */
+    [[nodiscard]] bool releaseForFrame();
 
     [[nodiscard]] XrSwapchain getColorSwapchain(std::uint32_t view_index) const;
     [[nodiscard]] std::uint32_t getWidth(std::uint32_t view_index) const;
@@ -65,6 +75,9 @@ class OpenXrSwapchainBridge {
         std::uint32_t height = 0;
         std::uint32_t acquired_index = 0;
         std::uint32_t acquired_depth_index = 0;
+        /** Set between a successful acquire and its release; releasing an image that was not acquired is an error. */
+        bool is_color_acquired = false;
+        bool is_depth_acquired = false;
     };
 
     XrSession session_ = XR_NULL_HANDLE;
