@@ -52,7 +52,7 @@ def find_visual_studio() -> Optional[str]:
 
 def get_compiler_version() -> str:
     try:
-        result = subprocess.run(["cl"], capture_output=True, text=True, stderr=subprocess.STDOUT)
+        result = subprocess.run(["cl"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, check=False)
         match = re.search(r"Version (\d+\.\d+\.\d+)", result.stdout or "")
         if match:
             return match.group(1)
@@ -259,12 +259,30 @@ def find_launcher(build_dir: Path, build_type: str) -> Optional[Path]:
     return None
 
 
+def prepend_runtime_path(env: dict, build_dir: Path, build_type: str) -> None:
+    """Shared DLLs land in bin/<Config>; the launcher is in bin/samples/<Config>."""
+    entries = []
+    bin_config = build_dir / "bin" / build_type
+    if bin_config.is_dir():
+        entries.append(str(bin_config))
+    vulkan_sdk = env.get("VULKAN_SDK")
+    if vulkan_sdk:
+        vulkan_bin = os.path.join(vulkan_sdk, "Bin")
+        if os.path.isdir(vulkan_bin):
+            entries.append(vulkan_bin)
+    if not entries:
+        return
+    env["PATH"] = os.pathsep.join(entries + [env.get("PATH", "")])
+    print("PATH prepended: " + os.pathsep.join(entries))
+
+
 def run_sample(build_dir: Path, build_type: str, sample: str, runtime_json: str) -> bool:
     launcher = find_launcher(build_dir, build_type)
     if launcher is None:
         print(f"Error: vnexr_samples.exe not found under {build_dir / 'bin' / 'samples'}")
         return False
     env = os.environ.copy()
+    prepend_runtime_path(env, build_dir, build_type)
     if runtime_json:
         # Selects the OpenXR runtime for this process only (for example the Meta XR Simulator).
         env["XR_RUNTIME_JSON"] = runtime_json

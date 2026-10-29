@@ -90,25 +90,28 @@ Gradle templates: `samples/framework/app/platform/android/gradle/`. Generator: `
 
 ### Windows
 
-**Bash** (Git Bash): `build_windows.sh`
+Python, PowerShell, and Bash share `build/<lib>/<config>/build-windows-cl-<cl-version>`. Run them from a **Visual Studio Developer Command Prompt**. `--with-openxr` builds the OpenXR backend and Vulkan and turns samples on. `-a run` launches `vnexr_samples` with `bin/<Config>` and `%VULKAN_SDK%\Bin` on `PATH`.
+
+**Python** (recommended): `build_windows.py`
 
 ```bash
-./scripts/build_windows.sh -t Debug -a configure_and_build --dev
-./scripts/build_windows.sh -j 8 -t Release --with-examples
-```
-
-**Python** (recommended): `build_windows.py` — run from a **Visual Studio Developer Command Prompt**
-
-```bash
-python scripts/build_windows.py -t Debug -a configure_and_build --dev
-python scripts/build_windows.py --build-type Release --jobs 8 --with-examples
-python scripts/build_windows.py --interactive
+python scripts/build_windows.py -t Debug -a configure_and_build --with-openxr
+python scripts/build_windows.py -t Debug -a run --sample null_simulator
+python scripts/build_windows.py -t Debug -a run --sample stereo_cube --runtime-json C:\path\to\runtime.json
 ```
 
 **PowerShell:** `build_windows.ps1`
 
 ```powershell
-.\scripts\build_windows.ps1 -BuildType Debug -Action configure_and_build -Dev
+.\scripts\build_windows.ps1 -BuildType Debug -Action configure_and_build -WithOpenXR
+.\scripts\build_windows.ps1 -BuildType Debug -Action run -WithOpenXR -Sample stereo_cube
+```
+
+**Bash** (Git Bash): `build_windows.sh`
+
+```bash
+./scripts/build_windows.sh -t Debug -a configure_and_build --with-openxr
+./scripts/build_windows.sh -t Debug -a run --with-openxr --sample stereo_cube
 ```
 
 ## Documentation

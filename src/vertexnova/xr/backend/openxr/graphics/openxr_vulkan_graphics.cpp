@@ -12,8 +12,8 @@
 #include "vertexnova/xr/backend/openxr/graphics/openxr_vulkan_graphics.h"
 
 #include "vertexnova/logging/logging.h"
+#include "vertexnova/rhi/backend/vulkan/vulkan_device.h"
 #include "vertexnova/rhi/graphics_factory.h"
-#include "vertexnova/rhi/vulkan_device_interop.h"
 #include "vertexnova/xr/backend/openxr/openxr_util.h"
 
 namespace {
@@ -75,16 +75,18 @@ Result OpenXrVulkanGraphics::createDevice() {
 
 XrGraphicsBindingVulkanKHR OpenXrVulkanGraphics::getGraphicsBinding() const {
     XrGraphicsBindingVulkanKHR binding{XR_TYPE_GRAPHICS_BINDING_VULKAN_KHR};
-    if (!device_) {
+    if (!device_ || device_->getBackend() != vne::rhi::GraphicsBackend::eVulkan) {
         return binding;
     }
-    if (const auto handles = vne::rhi::vulkan::getNativeDeviceHandles(*device_)) {
-        binding.instance = handles->instance;
-        binding.physicalDevice = handles->physical_device;
-        binding.device = handles->device;
-        binding.queueFamilyIndex = handles->graphics_queue_family_index;
-        binding.queueIndex = handles->graphics_queue_index;
+    const auto* vulkan_device = static_cast<const vne::rhi::VulkanDevice*>(device_.get());
+    if (!vulkan_device->getVulkanDevice()) {
+        return binding;
     }
+    binding.instance = vulkan_device->getVulkanInstance();
+    binding.physicalDevice = vulkan_device->getVulkanPhysicalDevice();
+    binding.device = vulkan_device->getVulkanDevice();
+    binding.queueFamilyIndex = vulkan_device->getVulkanGraphicsQueueFamily();
+    binding.queueIndex = 0;
     return binding;
 }
 
