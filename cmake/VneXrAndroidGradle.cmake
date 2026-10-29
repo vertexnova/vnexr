@@ -164,6 +164,11 @@ function(vne_xr_generate_android_gradle_project)
     endforeach()
 
     set(VNE_ANDROID_PRODUCT_FLAVORS "${_flavor_blocks}")
+    if(ANDROID_ABI)
+        set(VNE_ANDROID_ABI_FILTERS "'${ANDROID_ABI}'")
+    else()
+        set(VNE_ANDROID_ABI_FILTERS "'arm64-v8a', 'x86_64'")
+    endif()
 
     set(_vne_android_ndk_root "${ANDROID_NDK}")
     if((NOT _vne_android_ndk_root) AND DEFINED CMAKE_ANDROID_NDK)

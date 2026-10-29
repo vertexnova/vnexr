@@ -70,10 +70,33 @@ if [[ "$ABI" != arm64-v8a && "$ABI" != x86_64 ]]; then
 fi
 validate_lib_type "$LIB_TYPE"
 
+# C:/... form so Git Bash tests, Windows CMake, and local.properties agree.
+to_tool_path() {
+    local path="$1"
+    [[ -n "$path" ]] || return 0
+    if command -v cygpath >/dev/null 2>&1; then
+        cygpath -m "$path"
+    else
+        echo "$path"
+    fi
+}
+
+is_exec() {
+    local path="$1"
+    # Git Bash does not mark .bat files executable, and Windows tools are often *.exe.
+    [[ -e "$path" || -e "${path}.exe" || -e "${path}.bat" || -e "${path}.cmd" ]]
+}
+
 resolve_sdk_root() {
-    if [[ -n "${ANDROID_HOME:-}" ]]; then echo "$ANDROID_HOME"; return 0; fi
-    if [[ -n "${ANDROID_SDK_ROOT:-}" ]]; then echo "$ANDROID_SDK_ROOT"; return 0; fi
-    if [[ -d "$HOME/Android/Sdk" ]]; then echo "$HOME/Android/Sdk"; return 0; fi
+    local candidate
+    if [[ -n "${ANDROID_HOME:-}" && -d "${ANDROID_HOME}" ]]; then to_tool_path "$ANDROID_HOME"; return 0; fi
+    if [[ -n "${ANDROID_SDK_ROOT:-}" && -d "${ANDROID_SDK_ROOT}" ]]; then to_tool_path "$ANDROID_SDK_ROOT"; return 0; fi
+    if [[ -d "$HOME/Android/Sdk" ]]; then to_tool_path "$HOME/Android/Sdk"; return 0; fi
+    # Android Studio's default SDK on Windows.
+    if [[ -n "${LOCALAPPDATA:-}" ]]; then
+        candidate="$(to_tool_path "${LOCALAPPDATA}/Android/Sdk")"
+        if [[ -d "$candidate" ]]; then echo "$candidate"; return 0; fi
+    fi
     return 1
 }
 
@@ -98,28 +121,55 @@ resolve_ndk_root() {
 }
 
 resolve_gradle() {
-    if [[ -n "${GRADLE_DIR:-}" && -x "${GRADLE_DIR}/gradlew" ]]; then echo "${GRADLE_DIR}/gradlew"; return 0; fi
-    if command -v gradle >/dev/null 2>&1; then echo "gradle"; return 0; fi
+    if [[ -n "${GRADLE_DIR:-}" ]] && is_exec "${GRADLE_DIR}/gradlew"; then
+        if [[ -x "${GRADLE_DIR}/gradlew" ]]; then echo "${GRADLE_DIR}/gradlew"; else echo "${GRADLE_DIR}/gradlew.bat"; fi
+        return 0
+    fi
+    if command -v gradle >/dev/null 2>&1; then command -v gradle; return 0; fi
     local wrapper_gradle
-    wrapper_gradle="$(find "${HOME}/.gradle/wrapper/dists" -path "*/gradle-*/bin/gradle" -type f 2>/dev/null | sort -V | tail -n 1 || true)"
-    if [[ -n "$wrapper_gradle" && -x "$wrapper_gradle" ]]; then echo "$wrapper_gradle"; return 0; fi
+    wrapper_gradle="$(find "${HOME}/.gradle/wrapper/dists" \( -path "*/gradle-*/bin/gradle" -o -path "*/gradle-*/bin/gradle.bat" -o -path "*/gradle-*/bin/gradle.cmd" \) -type f 2>/dev/null | sort -V | tail -n 1 || true)"
+    if [[ -n "$wrapper_gradle" ]] && is_exec "$wrapper_gradle"; then echo "$wrapper_gradle"; return 0; fi
     return 1
 }
 
 resolve_java_home() {
-    if [[ -n "${JAVA_HOME:-}" && -x "${JAVA_HOME}/bin/javac" ]]; then echo "$JAVA_HOME"; return 0; fi
-    local studio_jbr
-    for studio_jbr in \
-        /snap/android-studio/current/jbr \
-        "$HOME/android-studio/jbr" \
-        /opt/android-studio/jbr \
-        "/Applications/Android Studio.app/Contents/jbr/Contents/Home"; do
-        if [[ -d "$studio_jbr" && -x "${studio_jbr}/bin/javac" ]]; then
-            echo "$studio_jbr"
+    if [[ -n "${JAVA_HOME:-}" ]] && is_exec "${JAVA_HOME}/bin/javac"; then to_tool_path "$JAVA_HOME"; return 0; fi
+    local studio_jbr program_files="" program_files_x86=""
+    local candidates=()
+    if [[ -n "${ProgramFiles:-}" ]]; then
+        program_files="$(to_tool_path "$ProgramFiles")"
+    elif [[ -n "${PROGRAMFILES:-}" ]]; then
+        program_files="$(to_tool_path "$PROGRAMFILES")"
+    fi
+    program_files_x86="$(printenv 'ProgramFiles(x86)' 2>/dev/null || true)"
+    if [[ -n "$program_files_x86" ]]; then
+        program_files_x86="$(to_tool_path "$program_files_x86")"
+    fi
+    candidates=(
+        /snap/android-studio/current/jbr
+        "$HOME/android-studio/jbr"
+        /opt/android-studio/jbr
+        "/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+    )
+    if [[ -n "$program_files" ]]; then
+        candidates+=("${program_files}/Android/Android Studio/jbr")
+    fi
+    if [[ -n "$program_files_x86" ]]; then
+        candidates+=("${program_files_x86}/Android/Android Studio/jbr")
+    fi
+    if [[ -n "${LOCALAPPDATA:-}" ]]; then
+        candidates+=("$(to_tool_path "${LOCALAPPDATA}/Programs/Android Studio/jbr")")
+    fi
+    for studio_jbr in "${candidates[@]}"; do
+        if [[ -n "$studio_jbr" ]] && is_exec "${studio_jbr}/bin/javac"; then
+            to_tool_path "$studio_jbr"
             return 0
         fi
     done
-    if command -v javac >/dev/null 2>&1; then dirname "$(dirname "$(command -v javac)")"; return 0; fi
+    if command -v javac >/dev/null 2>&1; then
+        to_tool_path "$(dirname "$(dirname "$(command -v javac)")")"
+        return 0
+    fi
     return 1
 }
 
@@ -129,6 +179,10 @@ resolve_adb() {
     sdk_root="$(resolve_sdk_root || true)"
     if [[ -n "$sdk_root" && -x "${sdk_root}/platform-tools/adb" ]]; then
         echo "${sdk_root}/platform-tools/adb"
+        return 0
+    fi
+    if [[ -n "$sdk_root" && -x "${sdk_root}/platform-tools/adb.exe" ]]; then
+        echo "${sdk_root}/platform-tools/adb.exe"
         return 0
     fi
     return 1
@@ -151,18 +205,47 @@ lowercase() {
 
 SDK_ROOT="$(resolve_sdk_root || true)"
 NDK_ROOT="$(resolve_ndk_root || true)"
+if [[ -n "$SDK_ROOT" ]]; then
+    export ANDROID_HOME="$SDK_ROOT"
+    export ANDROID_SDK_ROOT="$SDK_ROOT"
+fi
+if [[ -n "$NDK_ROOT" ]]; then
+    export ANDROID_NDK_ROOT="$NDK_ROOT"
+    export ANDROID_NDK_HOME="$NDK_ROOT"
+fi
 
 if [[ -z "$NDK_ROOT" ]]; then
     die "Android NDK not found. Set ANDROID_NDK_ROOT or install via sdkmanager."
 fi
 
 NDK_VERSION="$(basename "$NDK_ROOT")"
-BUILD_DIR="$PROJECT_ROOT/build/${LIB_TYPE}/${BUILD_TYPE}/build-android-ndk-${NDK_VERSION}-${ABI}"
+if [[ -n "${WINDIR:-}" || -n "${MSYSTEM:-}" ]]; then
+    # AGP writes object files under <build>/android-studio/app/.cxx/.../CMakeFiles.
+    # The full NDK build-dir name pushes those paths past the Windows MAX_PATH limit.
+    BUILD_DIR="$PROJECT_ROOT/build/android/${ABI}"
+else
+    BUILD_DIR="$PROJECT_ROOT/build/${LIB_TYPE}/${BUILD_TYPE}/build-android-ndk-${NDK_VERSION}-${ABI}"
+fi
 GRADLE_PROJECT_DIR="${BUILD_DIR}/android-studio"
 SAMPLE_MANIFEST="${GRADLE_PROJECT_DIR}/vne_samples.txt"
 TOOLCHAIN_FILE="${NDK_ROOT}/build/cmake/android.toolchain.cmake"
 
-CMAKE_ARGS=(
+# Windows CMake defaults to Visual Studio, which cannot use the NDK toolchain.
+# The Android SDK CMake package ships Ninja beside cmake.exe.
+if [[ -n "${WINDIR:-}" || -n "${MSYSTEM:-}" ]]; then
+    if [[ -n "$SDK_ROOT" && -d "${SDK_ROOT}/cmake" ]]; then
+        latest_sdk_cmake="$(ls -1d "${SDK_ROOT}/cmake/"* 2>/dev/null | sort -V | tail -n 1 || true)"
+        if [[ -n "$latest_sdk_cmake" && -d "${latest_sdk_cmake}/bin" ]]; then
+            export PATH="${latest_sdk_cmake}/bin:${PATH}"
+        fi
+    fi
+fi
+
+CMAKE_ARGS=()
+if [[ -n "${WINDIR:-}" || -n "${MSYSTEM:-}" ]]; then
+    CMAKE_ARGS+=("-G" "Ninja")
+fi
+CMAKE_ARGS+=(
     "-DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE}"
     "-DANDROID_ABI=${ABI}"
     "-DANDROID_PLATFORM=android-${API_LEVEL}"
@@ -197,7 +280,9 @@ write_local_properties() {
         log_warn "Android SDK not found; Android Studio may prompt for SDK path"
         return 0
     fi
-    echo "sdk.dir=${SDK_ROOT}" >"${GRADLE_PROJECT_DIR}/local.properties"
+    local sdk_dir
+    sdk_dir="$(to_tool_path "$SDK_ROOT")"
+    echo "sdk.dir=${sdk_dir}" >"${GRADLE_PROJECT_DIR}/local.properties"
 }
 
 configure_cmake() {
@@ -224,7 +309,18 @@ build_apk() {
     variant_suffix="$(capitalize "$BUILD_TYPE")"
     build_type_lower="$(lowercase "$BUILD_TYPE")"
 
-    (cd "$GRADLE_PROJECT_DIR" && JAVA_HOME="$java_home" PATH="$java_home/bin:$PATH" "$gradle" "assemble${variant_suffix}")
+    (
+        cd "$GRADLE_PROJECT_DIR"
+        export JAVA_HOME="$java_home"
+        export PATH="$java_home/bin:$PATH"
+        # Git Bash drops arguments when it launches a Windows .bat directly.
+        if [[ "$gradle" == *.bat || "$gradle" == *.cmd ]]; then
+            gradle_win="$(cygpath -w "$gradle")"
+            cmd //c "${gradle_win} assemble${variant_suffix}"
+        else
+            "$gradle" "assemble${variant_suffix}"
+        fi
+    )
     load_sample_entries
     local line flavor
     while IFS= read -r line; do

@@ -94,6 +94,86 @@ python scripts\build_windows.py -t Debug -a run --sample stereo_cube
 
 Options: `-t` / `-BuildType` build type, `-a` / `-Action` action, `-l` / `-LibType` lib type (`static` | `shared`, default `shared`), `-clean` / `-Clean`, `-j N` / `-Jobs N`. macOS script also supports `-xcode` for Xcode project.
 
+The Quest 3 walkthrough is in [Windows laptop setup](#windows-laptop-setup) below.
+
+## Windows laptop setup
+
+Two ways to see `stereo_cube` on a Quest 3. Do them in this order: the PC sample through Meta Quest Link, then the on-headset APK. The desktop build does not need Android Studio.
+
+### 1. Tools
+
+Install these before the first compile:
+
+- **Visual Studio 2022** with the Desktop development with C++ workload. `cl` is not on the normal PATH. Use a **Visual Studio Developer Command Prompt**, or call `VsDevCmd.bat` first (`Common7\Tools\VsDevCmd.bat -arch=x64 -host_arch=x64`).
+- **CMake** 3.26 or newer, **Python 3**, and **Git for Windows** (the APK script is bash, so Git Bash is required).
+- **LunarG Vulkan SDK**, which sets `VULKAN_SDK`. The run step puts `%VULKAN_SDK%\Bin` on `PATH` so the loader DLLs resolve.
+- SSH access to the private `vnerhi` repository, then from the repo root: `git submodule update --init --recursive`.
+
+### 2. Desktop OpenXR build
+
+From that Visual Studio prompt, in the repo:
+
+```bat
+python scripts\build_windows.py -t Debug -a configure_and_build --with-openxr
+python scripts\build_windows.py -t Debug -a run --sample null_simulator
+```
+
+`--with-openxr` turns on the OpenXR backend, Vulkan, and the samples. The launcher is `build\shared\Debug\build-windows-cl-*\bin\samples\Debug\vnexr_samples.exe`. Shared DLLs land in `bin\Debug`. `run` prepends that folder and the Vulkan SDK `Bin` directory to `PATH`.
+
+`null_simulator` needs no headset. Success is five `Null simulator frame N` lines and exit code 0. `vnexr_samples.exe --list` includes `stereo_cube`.
+
+### 3. Quest Link (PC sample in the headset)
+
+1. Install the **Meta Quest Link** PC app. A data-capable USB-C cable is the reliable first connection.
+2. Put on the Quest 3, accept the Link connection, and stay in the Link home.
+3. In the Link app: Settings, General, **Set Meta Quest Link as active OpenXR runtime**.
+4. Rerun the sample that is already built:
+
+```bat
+python scripts\build_windows.py -t Debug -a run --with-openxr --sample stereo_cube
+```
+
+A good log, in order, is `OpenXR Vulkan context ready`, then `OpenXR session initialized`, then frames in the headset. The sample stops itself after 3600 frames (about a minute). If the log says the registry has no active runtime, Link is not the active OpenXR runtime. If it says `XR_ERROR_FORM_FACTOR_UNAVAILABLE`, the headset is not in the Link session.
+
+### 4. Android Studio SDK (needed only for the APK)
+
+Install Android Studio, then in SDK Manager install:
+
+- Android SDK Platform **36** and Build-Tools **36.0.0** (the sample compiles against API 36)
+- Android SDK Platform-Tools (`adb`)
+- NDK (Side by side). Quest 3 is `arm64-v8a`
+- CMake (the package includes `ninja.exe`). The Android script uses Ninja. The Visual Studio CMake generator cannot drive the NDK toolchain
+
+The default SDK location is `%LOCALAPPDATA%\Android\Sdk`. The JDK is Android Studio's JBR at `C:\Program Files\Android\Android Studio\jbr`. `scripts/build_android.sh` looks in those places, and also accepts `adb.exe`.
+
+The generated project uses Android Gradle Plugin 9.0.1, which needs **Gradle 9.1 or newer**. Android Studio drops that distribution under `%USERPROFILE%\.gradle\wrapper\dists` the first time it syncs a project. The script uses the newest `gradle.bat` there when `gradle` is not on `PATH`.
+
+### 5. Developer mode
+
+1. In the **Meta Horizon** phone app: the Quest 3, headset settings, turn on **Developer mode**. The headset reboots.
+2. Connect USB-C, put on the headset, and allow USB debugging.
+3. Confirm the PC sees it: `adb devices` shows the headset as `device`, not `unauthorized`.
+
+### 6. Build and install the APK
+
+From **Git Bash** in the repo:
+
+```bash
+export ANDROID_HOME="$LOCALAPPDATA/Android/Sdk"
+export ANDROID_NDK_ROOT="$(ls -d "$ANDROID_HOME"/ndk/* | sort -V | tail -1)"
+./scripts/build_android.sh -t Debug -a run -sample stereo_cube -abi arm64-v8a
+```
+
+The two exports are optional when the SDK is in the default Windows location. The script picks the newest installed NDK, configures with Ninja, and on Windows writes the build to `build/android/arm64-v8a` so native object paths stay short enough for Windows. `-a run` installs `com.vertexnova.vnexr.samples` and launches `stereo_cube`. Expect the app in the headset library and the same cubes, with hand pinch/grasp when `XR_EXT_hand_interaction` is available.
+
+If no headset is connected yet, build the APK without installing:
+
+```bash
+./scripts/build_android.sh -t Debug -a apk -sample stereo_cube -abi arm64-v8a
+```
+
+The APK is `build/android/arm64-v8a/android-studio/app/build/outputs/apk/samples/debug/app-samples-debug.apk`. If the view is black, capture `adb logcat -s vne.xr:* OpenXR:*` and stop there.
+
 ## Test
 
 ```bash

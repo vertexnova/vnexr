@@ -4,6 +4,14 @@ set(ANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES ON)
 
 project(vne_xr_android_samples LANGUAGES CXX C)
 
+# A full core-count Ninja launch of clang++.exe fails on Windows with
+# CreateProcess "Access is denied". Keep the compile pool small on that host.
+if(CMAKE_HOST_WIN32)
+    set_property(GLOBAL PROPERTY JOB_POOLS compile=4 link=2)
+    set(CMAKE_JOB_POOL_COMPILE compile)
+    set(CMAKE_JOB_POOL_LINK link)
+endif()
+
 if(NOT DEFINED VNE_XR_ANDROID_SAMPLE OR VNE_XR_ANDROID_SAMPLE STREQUAL "")
     message(FATAL_ERROR "VNE_XR_ANDROID_SAMPLE must be set by Gradle for the active product flavor")
 endif()

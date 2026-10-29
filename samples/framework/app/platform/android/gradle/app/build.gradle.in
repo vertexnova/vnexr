@@ -4,7 +4,7 @@ plugins {
 
 android {
     namespace 'com.vertexnova.vnexr.samples'
-    compileSdk 34
+    compileSdk 36
 
 @VNE_ANDROID_NDK_VERSION_LINE@
 
@@ -14,12 +14,13 @@ android {
         versionCode 1
         versionName '1.0.0'
         ndk {
-            abiFilters 'arm64-v8a', 'x86_64'
+            abiFilters @VNE_ANDROID_ABI_FILTERS@
         }
         externalNativeBuild {
             cmake {
                 arguments '-DANDROID_STL=c++_shared',
-                          '-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON'
+                          '-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON',
+                          '-DCMAKE_NINJA_FORCE_RESPONSE_FILE=ON'
                 cppFlags '-std=c++20'
             }
         }
