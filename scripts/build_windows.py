@@ -165,8 +165,11 @@ def build_cmake_command(
     tests_flag = "ON" if with_tests else "OFF"
     samples_flag = "ON" if with_examples else "OFF"
     generator = cmake_generator(compiler_version)
+    # Always pass the switch: an omitted flag would otherwise keep a cached ON from an earlier configure.
     openxr_flags = (
-        ["-DVNE_XR_WITH_OPENXR=ON", "-DVNE_XR_WITH_RHI=ON", "-DVNE_XR_BACKEND_VULKAN=ON"] if with_openxr else []
+        ["-DVNE_XR_WITH_OPENXR=ON", "-DVNE_XR_WITH_RHI=ON", "-DVNE_XR_BACKEND_VULKAN=ON"]
+        if with_openxr
+        else ["-DVNE_XR_WITH_OPENXR=OFF"]
     )
     return [
         "cmake",
@@ -284,9 +287,13 @@ def run_sample(build_dir: Path, build_type: str, sample: str, runtime_json: str)
     env = os.environ.copy()
     prepend_runtime_path(env, build_dir, build_type)
     if runtime_json:
-        # Selects the OpenXR runtime for this process only (for example the Meta XR Simulator).
-        env["XR_RUNTIME_JSON"] = runtime_json
-        print(f"XR_RUNTIME_JSON={runtime_json}")
+        # Selects the OpenXR runtime for this process only (for example the Meta XR Simulator). The launcher runs
+        # from its own folder, so a relative path must be resolved against where this script was started.
+        resolved_json = os.path.abspath(os.path.expanduser(runtime_json))
+        if not os.path.isfile(resolved_json):
+            print(f"Warning: runtime manifest not found: {resolved_json}")
+        env["XR_RUNTIME_JSON"] = resolved_json
+        print(f"XR_RUNTIME_JSON={resolved_json}")
     command = [str(launcher)] + (["--sample", sample] if sample else [])
     print("Running: " + " ".join(command))
     return subprocess.run(command, cwd=launcher.parent, env=env).returncode == 0

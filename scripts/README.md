@@ -96,8 +96,8 @@ Python, PowerShell, and Bash share `build/<lib>/<config>/build-windows-cl-<cl-ve
 
 ```bash
 python scripts/build_windows.py -t Debug -a configure_and_build --with-openxr
-python scripts/build_windows.py -t Debug -a run --sample null_simulator
-python scripts/build_windows.py -t Debug -a run --sample stereo_cube --runtime-json C:\path\to\runtime.json
+python scripts/build_windows.py -t Debug -a run --with-openxr --sample null_simulator
+python scripts/build_windows.py -t Debug -a run --with-openxr --sample stereo_cube --runtime-json C:\path\to\runtime.json
 ```
 
 **PowerShell:** `build_windows.ps1`

@@ -32,7 +32,7 @@ python scripts\build_windows.py -t Debug -a configure_and_build --with-openxr
 ## Run without a runtime first
 
 ```bat
-python scripts\build_windows.py -t Debug -a run --sample null_simulator
+python scripts\build_windows.py -t Debug -a run --with-openxr --sample null_simulator
 ```
 
 Expect five `Null simulator frame N` lines and exit code 0. `vnexr_samples.exe --list` shows every sample.
@@ -44,7 +44,7 @@ Expect five `Null simulator frame N` lines and exit code 0. `vnexr_samples.exe -
 3. Keep the headset in the Link home environment, then run:
 
 ```bat
-python scripts\build_windows.py -t Debug -a run --sample stereo_cube
+python scripts\build_windows.py -t Debug -a run --with-openxr --sample stereo_cube
 ```
 
 ## Option B: Meta XR Simulator (no headset)
@@ -53,7 +53,7 @@ Install the Meta XR Simulator, find its OpenXR manifest (`meta_openxr_simulator.
 and pass it for this run only:
 
 ```bat
-python scripts\build_windows.py -t Debug -a run --sample stereo_cube --runtime-json "C:\path\to\meta_openxr_simulator.json"
+python scripts\build_windows.py -t Debug -a run --with-openxr --sample stereo_cube --runtime-json "C:\path\to\meta_openxr_simulator.json"
 ```
 
 ## What a good run looks like

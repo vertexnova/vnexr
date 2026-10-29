@@ -88,8 +88,8 @@ Or use the platform scripts (they use `build/<lib_type>/...`):
 # Windows (Visual Studio Developer Command Prompt). Python, PowerShell, and Bash
 # share build/<lib>/<config>/build-windows-cl-<cl-version>.
 python scripts\build_windows.py -t Debug -a configure_and_build --with-openxr
-python scripts\build_windows.py -t Debug -a run --sample null_simulator
-python scripts\build_windows.py -t Debug -a run --sample stereo_cube
+python scripts\build_windows.py -t Debug -a run --with-openxr --sample null_simulator
+python scripts\build_windows.py -t Debug -a run --with-openxr --sample stereo_cube
 ```
 
 Options: `-t` / `-BuildType` build type, `-a` / `-Action` action, `-l` / `-LibType` lib type (`static` | `shared`, default `shared`), `-clean` / `-Clean`, `-j N` / `-Jobs N`. macOS script also supports `-xcode` for Xcode project.
@@ -115,7 +115,7 @@ From that Visual Studio prompt, in the repo:
 
 ```bat
 python scripts\build_windows.py -t Debug -a configure_and_build --with-openxr
-python scripts\build_windows.py -t Debug -a run --sample null_simulator
+python scripts\build_windows.py -t Debug -a run --with-openxr --sample null_simulator
 ```
 
 `--with-openxr` turns on the OpenXR backend, Vulkan, and the samples. The launcher is `build\shared\Debug\build-windows-cl-*\bin\samples\Debug\vnexr_samples.exe`. Shared DLLs land in `bin\Debug`. `run` prepends that folder and the Vulkan SDK `Bin` directory to `PATH`.

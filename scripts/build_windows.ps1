@@ -25,6 +25,11 @@ $ErrorActionPreference = "Stop"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ProjectRoot = Split-Path -Parent $ScriptDir
 
+# Resolve now, against where the script was started: the script later changes location to the project root.
+if ($RuntimeJson) {
+    $RuntimeJson = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($RuntimeJson)
+}
+
 function Get-ClVersion {
     $clCmd = Get-Command cl -ErrorAction SilentlyContinue
     if (-not $clCmd) {
@@ -69,7 +74,8 @@ if ($WithOpenXR -and -not $env:VULKAN_SDK) {
 $DevFlag = if ($Dev) { "ON" } else { "OFF" }
 $TestsFlag = if ($WithTests) { "ON" } else { "OFF" }
 $ExamplesFlag = if ($WithExamples) { "ON" } else { "OFF" }
-$OpenXrFlags = ""
+# Always pass the switch: an omitted flag would otherwise keep a cached ON from an earlier configure.
+$OpenXrFlags = "-DVNE_XR_WITH_OPENXR=OFF"
 if ($WithOpenXR) {
     $OpenXrFlags = "-DVNE_XR_WITH_OPENXR=ON -DVNE_XR_WITH_RHI=ON -DVNE_XR_BACKEND_VULKAN=ON"
 }

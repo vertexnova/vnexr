@@ -64,6 +64,12 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# Make the runtime manifest absolute (and Windows-style) now: later steps change directory, and the launcher is a
+# native Windows program that reads XR_RUNTIME_JSON.
+if [ -n "$RUNTIME_JSON" ] && command -v cygpath >/dev/null 2>&1; then
+  RUNTIME_JSON="$(cygpath -aw "$RUNTIME_JSON")"
+fi
+
 [ "$WITH_DEV" = true ] && { WITH_TESTS=true; WITH_EXAMPLES=true; }
 [ "$NO_TESTS" = true ] && WITH_TESTS=false
 [ "$NO_EXAMPLES" = true ] && WITH_EXAMPLES=false
@@ -90,7 +96,8 @@ VNE_XR_DEV_VAL=OFF
 [ "$WITH_DEV" = true ] && VNE_XR_DEV_VAL=ON
 TESTS_FLAG=$( [ "$WITH_TESTS" = true ] && echo ON || echo OFF )
 EXAMPLES_FLAG=$( [ "$WITH_EXAMPLES" = true ] && echo ON || echo OFF )
-OPENXR_FLAGS=()
+# Always pass the switch: an omitted flag would otherwise keep a cached ON from an earlier configure.
+OPENXR_FLAGS=(-DVNE_XR_WITH_OPENXR=OFF)
 if [ "$WITH_OPENXR" = true ]; then
   OPENXR_FLAGS=(-DVNE_XR_WITH_OPENXR=ON -DVNE_XR_WITH_RHI=ON -DVNE_XR_BACKEND_VULKAN=ON)
 fi
