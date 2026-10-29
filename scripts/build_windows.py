@@ -26,6 +26,9 @@ class BuildConfig:
         self.with_dev = False
         self.with_tests = False
         self.with_examples = False
+        self.with_openxr = False
+        self.sample = ""
+        self.runtime_json = ""
         self.clean_build = False
         self.interactive = False
         self.platform = "Windows"
@@ -156,11 +159,15 @@ def build_cmake_command(
     with_tests: bool,
     with_examples: bool,
     compiler_version: str,
+    with_openxr: bool = False,
 ) -> List[str]:
     dev_flag = "ON" if with_dev else "OFF"
     tests_flag = "ON" if with_tests else "OFF"
     samples_flag = "ON" if with_examples else "OFF"
     generator = cmake_generator(compiler_version)
+    openxr_flags = (
+        ["-DVNE_XR_WITH_OPENXR=ON", "-DVNE_XR_WITH_RHI=ON", "-DVNE_XR_BACKEND_VULKAN=ON"] if with_openxr else []
+    )
     return [
         "cmake",
         "-G",
@@ -174,6 +181,7 @@ def build_cmake_command(
         f"-DVNE_XR_DEV={dev_flag}",
         f"-DVNE_XR_TESTS={tests_flag}",
         f"-DVNE_XR_EXAMPLES={samples_flag}",
+        *openxr_flags,
         str(project_root),
     ]
 
@@ -207,6 +215,7 @@ def configure_project(
                 config.with_tests,
                 config.with_examples,
                 compiler_version,
+                config.with_openxr,
             ),
             cwd=build_dir,
             check=True,
@@ -241,14 +250,41 @@ def run_tests(build_dir: Path, build_type: str) -> bool:
         return False
 
 
+def find_launcher(build_dir: Path, build_type: str) -> Optional[Path]:
+    """The vnexr_samples launcher; multi-config generators put it in a per-configuration subfolder."""
+    samples_dir = build_dir / "bin" / "samples"
+    for candidate in (samples_dir / build_type / "vnexr_samples.exe", samples_dir / "vnexr_samples.exe"):
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def run_sample(build_dir: Path, build_type: str, sample: str, runtime_json: str) -> bool:
+    launcher = find_launcher(build_dir, build_type)
+    if launcher is None:
+        print(f"Error: vnexr_samples.exe not found under {build_dir / 'bin' / 'samples'}")
+        return False
+    env = os.environ.copy()
+    if runtime_json:
+        # Selects the OpenXR runtime for this process only (for example the Meta XR Simulator).
+        env["XR_RUNTIME_JSON"] = runtime_json
+        print(f"XR_RUNTIME_JSON={runtime_json}")
+    command = [str(launcher)] + (["--sample", sample] if sample else [])
+    print("Running: " + " ".join(command))
+    return subprocess.run(command, cwd=launcher.parent, env=env).returncode == 0
+
+
 def main():
     parser = argparse.ArgumentParser(description="Build VneXR for Windows")
     parser.add_argument("-t", "--build-type", choices=["Debug", "Release", "RelWithDebInfo", "MinSizeRel"], default="Debug")
-    parser.add_argument("-a", "--action", choices=["configure", "build", "configure_and_build", "test"], default="configure_and_build")
+    parser.add_argument("-a", "--action", choices=["configure", "build", "configure_and_build", "test", "run"], default="configure_and_build")
     parser.add_argument("-l", "--lib-type", choices=["shared", "static"], default="shared")
     parser.add_argument("--dev", action="store_true", help="Enable tests + examples (VNE_XR_DEV=ON)")
     parser.add_argument("--with-tests", action="store_true", help="Build vnexr_tests")
     parser.add_argument("--with-examples", "--with-samples", action="store_true", help="Build example programs")
+    parser.add_argument("--with-openxr", action="store_true", help="Build the OpenXR backend + Vulkan (implies samples)")
+    parser.add_argument("--sample", default="", help="Sample for -a run (see: vnexr_samples --list)")
+    parser.add_argument("--runtime-json", default="", help="OpenXR runtime manifest for -a run (XR_RUNTIME_JSON)")
     parser.add_argument("--no-tests", action="store_true", help="Omit tests")
     parser.add_argument("--no-examples", "--no-samples", action="store_true", help="Omit examples")
     parser.add_argument("-j", "--jobs", type=int, default=10)
@@ -263,6 +299,9 @@ def main():
     config.with_dev = args.dev
     config.with_tests = args.with_tests
     config.with_examples = args.with_examples
+    config.with_openxr = args.with_openxr
+    config.sample = args.sample
+    config.runtime_json = args.runtime_json
     config.jobs = args.jobs
     config.clean_build = args.clean
     config.interactive = args.interactive
@@ -278,6 +317,11 @@ def main():
             config.with_tests = True
         if not no_examples:
             config.with_examples = True
+
+    if config.with_openxr or config.action == "run":
+        config.with_examples = True
+    if config.with_openxr and not os.environ.get("VULKAN_SDK"):
+        print("Warning: VULKAN_SDK is not set; install the LunarG Vulkan SDK if CMake cannot find Vulkan.")
 
     if config.interactive:
         interactive_mode(config)
@@ -310,18 +354,21 @@ def main():
         print("ERROR: Tests are disabled. Reconfigure with --with-tests or --dev.")
         sys.exit(1)
 
-    if config.action in ["configure", "build", "configure_and_build", "test"]:
+    if config.action in ["configure", "build", "configure_and_build", "test", "run"]:
         if not configure_project(build_dir, project_root, config, compiler_version):
             sys.exit(1)
-    if config.action in ["build", "configure_and_build", "test"]:
+    if config.action in ["build", "configure_and_build", "test", "run"]:
         if not build_project(build_dir, config.build_type, config.jobs):
             sys.exit(1)
     if config.action == "test":
         run_tests(build_dir, config.build_type)
+    if config.action == "run":
+        if not run_sample(build_dir, config.build_type, config.sample, config.runtime_json):
+            sys.exit(1)
 
     print("\n=== Build completed successfully ===")
     print(f"Build directory: {build_dir}")
-    print(f"Tests enabled: {config.with_tests} | Examples enabled: {config.with_examples}")
+    print(f"Tests enabled: {config.with_tests} | Examples enabled: {config.with_examples} | OpenXR: {config.with_openxr}")
 
 
 if __name__ == "__main__":
