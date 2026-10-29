@@ -31,6 +31,12 @@ target_link_libraries(vne_xr_samples_framework
 
 target_compile_features(vne_xr_samples_framework PUBLIC cxx_std_20)
 
+# Android: console logging is invisible to `adb logcat`, so forward stdout/stderr to it.
+if(ANDROID)
+    target_sources(vne_xr_samples_framework PRIVATE app/platform/android/logcat_bridge.cpp)
+    target_link_libraries(vne_xr_samples_framework PUBLIC log)
+endif()
+
 # NDK native_app_glue for Android NativeActivity samples.
 if(ANDROID AND NOT TARGET native_app_glue)
     set(_vne_android_ndk_root "${ANDROID_NDK}")

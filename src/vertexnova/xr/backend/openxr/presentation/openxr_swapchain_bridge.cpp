@@ -135,16 +135,16 @@ bool createSwapchain(XrSession session,
     desc.usage = is_depth ? (vne::rhi::TextureUsage::eDepthStencil | vne::rhi::TextureUsage::eSampled)
                           : (vne::rhi::TextureUsage::eRenderTarget | vne::rhi::TextureUsage::eSampled);
 
-    if (device.getBackend() != vne::rhi::GraphicsBackend::eVulkan) {
-        VNE_LOG_ERROR << "OpenXR swapchain images require a Vulkan device";
+    auto* vulkan_device = dynamic_cast<vne::rhi::VulkanDevice*>(&device);
+    if (vulkan_device == nullptr) {
+        VNE_LOG_ERROR << "OpenXR swapchain images require an unwrapped Vulkan device";
         return false;
     }
-    auto* vulkan_device = static_cast<vne::rhi::VulkanDevice*>(&device);
-    const vk::ImageLayout layout = is_depth ? vk::ImageLayout::eDepthStencilAttachmentOptimal
-                                            : vk::ImageLayout::eColorAttachmentOptimal;
+    const vk::ImageLayout layout =
+        is_depth ? vk::ImageLayout::eDepthStencilAttachmentOptimal : vk::ImageLayout::eColorAttachmentOptimal;
 
     for (std::size_t i = 0; i < vk_images.size(); ++i) {
-        const auto image = static_cast<VkImage>(reinterpret_cast<void*>(static_cast<std::uintptr_t>(vk_images[i])));
+        const vk::Image image(static_cast<VkImage>(reinterpret_cast<void*>(static_cast<std::uintptr_t>(vk_images[i]))));
         auto texture = vulkan_device->wrapExternalImage(image, desc, layout);
         if (!texture) {
             VNE_LOG_ERROR << "Failed to wrap OpenXR swapchain image " << i;

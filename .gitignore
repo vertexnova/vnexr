@@ -89,8 +89,6 @@ CMakeLists.txt.user
 .grok/
 .grok/
 
-*.vs
-
-*.vscode
-
+.vs/
+.vscode/
 __pycache__/

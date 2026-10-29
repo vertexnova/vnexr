@@ -92,6 +92,8 @@ resolve_sdk_root() {
     if [[ -n "${ANDROID_HOME:-}" && -d "${ANDROID_HOME}" ]]; then to_tool_path "$ANDROID_HOME"; return 0; fi
     if [[ -n "${ANDROID_SDK_ROOT:-}" && -d "${ANDROID_SDK_ROOT}" ]]; then to_tool_path "$ANDROID_SDK_ROOT"; return 0; fi
     if [[ -d "$HOME/Android/Sdk" ]]; then to_tool_path "$HOME/Android/Sdk"; return 0; fi
+    # Android Studio's default SDK on macOS.
+    if [[ -d "$HOME/Library/Android/sdk" ]]; then to_tool_path "$HOME/Library/Android/sdk"; return 0; fi
     # Android Studio's default SDK on Windows.
     if [[ -n "${LOCALAPPDATA:-}" ]]; then
         candidate="$(to_tool_path "${LOCALAPPDATA}/Android/Sdk")"
@@ -145,11 +147,19 @@ resolve_java_home() {
     if [[ -n "$program_files_x86" ]]; then
         program_files_x86="$(to_tool_path "$program_files_x86")"
     fi
+    # macOS: the system picker knows installed JDKs; /usr/bin/java is only a stub without one.
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        local mac_jdk
+        mac_jdk="$(/usr/libexec/java_home -v 17 2>/dev/null || true)"
+        if [[ -n "$mac_jdk" ]] && is_exec "${mac_jdk}/bin/javac"; then echo "$mac_jdk"; return 0; fi
+    fi
     candidates=(
         /snap/android-studio/current/jbr
         "$HOME/android-studio/jbr"
         /opt/android-studio/jbr
         "/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+        /opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
+        /usr/local/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
     )
     if [[ -n "$program_files" ]]; then
         candidates+=("${program_files}/Android/Android Studio/jbr")
@@ -166,7 +176,8 @@ resolve_java_home() {
             return 0
         fi
     done
-    if command -v javac >/dev/null 2>&1; then
+    # Skip macOS's /usr/bin/javac stub: it exists even when no JDK is installed.
+    if command -v javac >/dev/null 2>&1 && [[ "$(command -v javac)" != "/usr/bin/javac" ]]; then
         to_tool_path "$(dirname "$(dirname "$(command -v javac)")")"
         return 0
     fi

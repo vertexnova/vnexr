@@ -13,6 +13,7 @@
  * The activity is singleTask: a later start arrives through onNewIntent and replaces the running sample.
  */
 
+#include "app/platform/android/logcat_bridge.h"
 #include "app/sample_launcher.h"
 #include "app/sample_registry.h"
 #include "framework/common/logging_guard.h"
@@ -49,6 +50,61 @@ class JniThreadAttach {
    private:
     JavaVM* vm_ = nullptr;
     JNIEnv* env_ = nullptr;
+};
+
+/**
+ * Answers "has the launch intent changed?" without per-call lookups: the activity class and the
+ * `getLatestGeneration` method ID are resolved once, so each frame costs a single static call.
+ */
+class GenerationProbe {
+   public:
+    GenerationProbe(JNIEnv* env, jobject activity)
+        : env_(env) {
+        if (env_ == nullptr || activity == nullptr) {
+            return;
+        }
+        jclass local_class = env_->GetObjectClass(activity);
+        if (local_class == nullptr) {
+            env_->ExceptionClear();
+            return;
+        }
+        method_ = env_->GetStaticMethodID(local_class, "getLatestGeneration", "()I");
+        if (env_->ExceptionCheck()) {
+            env_->ExceptionClear();
+            method_ = nullptr;
+        }
+        if (method_ != nullptr) {
+            class_ = static_cast<jclass>(env_->NewGlobalRef(local_class));
+        }
+        env_->DeleteLocalRef(local_class);
+    }
+
+    ~GenerationProbe() {
+        if (class_ != nullptr) {
+            env_->DeleteGlobalRef(class_);
+        }
+    }
+
+    GenerationProbe(const GenerationProbe&) = delete;
+    GenerationProbe& operator=(const GenerationProbe&) = delete;
+
+    /** The current generation, or 0 when the activity does not publish one. */
+    [[nodiscard]] int read() const {
+        if (class_ == nullptr || method_ == nullptr) {
+            return 0;
+        }
+        const int generation = env_->CallStaticIntMethod(class_, method_);
+        if (env_->ExceptionCheck()) {
+            env_->ExceptionClear();
+            return 0;
+        }
+        return generation;
+    }
+
+   private:
+    JNIEnv* env_ = nullptr;
+    jclass class_ = nullptr;  //!< Global ref, released in the destructor.
+    jmethodID method_ = nullptr;
 };
 
 /** Intent to select a sample from, plus a generation that changes on each onNewIntent. */
@@ -216,6 +272,7 @@ struct PumpState {
     android_app* app = nullptr;
     JNIEnv* env = nullptr;
     const vne::xr::samples::SampleRegistry* registry = nullptr;
+    const GenerationProbe* probe = nullptr;
     int generation = 0;
     bool switch_requested = false;
 };
@@ -225,7 +282,12 @@ bool pumpAndWatchIntent(PumpState& state, vne::xr::ISession&) {
     if (!pumpAndroidEvents(state.app)) {
         return false;
     }
-    if (state.generation == 0 || state.env == nullptr || state.registry == nullptr) {
+    if (state.generation == 0 || state.env == nullptr || state.registry == nullptr || state.probe == nullptr) {
+        return true;
+    }
+    // Cheap per-frame check; the full intent read below only happens when something changed.
+    const int current_generation = state.probe->read();
+    if (current_generation == 0 || current_generation == state.generation) {
         return true;
     }
     LaunchIntent latest = readLaunchIntent(state.app, state.env);
@@ -254,6 +316,8 @@ bool pumpAndWatchIntent(PumpState& state, vne::xr::ISession&) {
 }  // namespace
 
 void android_main(android_app* app) {
+    // First, so every log line (including the logging guard's own) reaches `adb logcat -s vne.xr:*`.
+    vne::xr::samples::LogcatBridge logcat("vne.xr");
     vne::xr::samples::LoggingGuard guard;
     vne::xr::samples::SampleRegistry registry;
     vne::xr::samples::registerAllSamples(registry);
@@ -266,6 +330,7 @@ void android_main(android_app* app) {
     platform.application_context = app->activity->clazz;
 
     if (env != nullptr) {
+        const GenerationProbe generation_probe(env, app->activity->clazz);
         while (app->destroyRequested == 0) {
             LaunchIntent launch = readLaunchIntent(app, env);
             const std::string requested = readIntentStringExtra(env, launch.intent, "sample");
@@ -284,6 +349,7 @@ void android_main(android_app* app) {
             pump_state.app = app;
             pump_state.env = env;
             pump_state.registry = &registry;
+            pump_state.probe = &generation_probe;
             pump_state.generation = generation;
             static_cast<void>(
                 vne::xr::samples::launchSample(*sample, platform, [&pump_state](vne::xr::ISession& session) {
