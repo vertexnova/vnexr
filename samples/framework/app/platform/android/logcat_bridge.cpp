@@ -8,6 +8,7 @@
 #include <android/log.h>
 #include <unistd.h>
 
+#include <cerrno>
 #include <cstdio>
 #include <string_view>
 
@@ -87,8 +88,11 @@ void LogcatBridge::readLoop() {
     };
     while (true) {
         const ssize_t count = read(read_fd_, buffer, sizeof(buffer));
+        if (count < 0 && errno == EINTR) {
+            continue;  // A signal interrupted the read; the pipe is still open.
+        }
         if (count <= 0) {
-            break;
+            break;  // EOF (the write ends were closed) or a real error.
         }
         for (ssize_t i = 0; i < count; ++i) {
             if (buffer[i] == '\n') {

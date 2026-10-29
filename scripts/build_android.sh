@@ -134,6 +134,20 @@ resolve_gradle() {
     return 1
 }
 
+# Major version of the JDK at $1 ("javac 17.0.9" -> 17, "javac 1.8.0_392" -> 8), or 0 when it cannot be read.
+jdk_major_version() {
+    local javac_out major
+    javac_out="$("$1/bin/javac" -version 2>&1 | head -n 1 | tr -d '\r' || true)"
+    major="$(sed -n 's/^javac \([0-9][0-9]*\)\(\.\([0-9][0-9]*\)\)\{0,1\}.*/\1 \3/p' <<<"$javac_out")"
+    set -- $major
+    if [[ "${1:-}" == "1" ]]; then echo "${2:-0}"; else echo "${1:-0}"; fi
+}
+
+# True for macOS's /usr/bin/javac, a stub that exists even when no JDK is installed. On Linux it is a real compiler.
+is_macos_javac_stub() {
+    [[ "$(uname -s)" == "Darwin" && "$1" == "/usr/bin/javac" ]]
+}
+
 resolve_java_home() {
     if [[ -n "${JAVA_HOME:-}" ]] && is_exec "${JAVA_HOME}/bin/javac"; then to_tool_path "$JAVA_HOME"; return 0; fi
     local studio_jbr program_files="" program_files_x86=""
@@ -150,8 +164,12 @@ resolve_java_home() {
     # macOS: the system picker knows installed JDKs; /usr/bin/java is only a stub without one.
     if [[ "$(uname -s)" == "Darwin" ]]; then
         local mac_jdk
-        mac_jdk="$(/usr/libexec/java_home -v 17 2>/dev/null || true)"
-        if [[ -n "$mac_jdk" ]] && is_exec "${mac_jdk}/bin/javac"; then echo "$mac_jdk"; return 0; fi
+        # -F makes a missing match an error: without it java_home silently returns the default JDK, whatever version.
+        mac_jdk="$(/usr/libexec/java_home -F -v 17+ 2>/dev/null || true)"
+        if [[ -n "$mac_jdk" ]] && is_exec "${mac_jdk}/bin/javac" && (( $(jdk_major_version "$mac_jdk") >= 17 )); then
+            echo "$mac_jdk"
+            return 0
+        fi
     fi
     candidates=(
         /snap/android-studio/current/jbr
@@ -176,9 +194,13 @@ resolve_java_home() {
             return 0
         fi
     done
-    # Skip macOS's /usr/bin/javac stub: it exists even when no JDK is installed.
-    if command -v javac >/dev/null 2>&1 && [[ "$(command -v javac)" != "/usr/bin/javac" ]]; then
-        to_tool_path "$(dirname "$(dirname "$(command -v javac)")")"
+    # Last resort: a javac on PATH. Resolve symlinks so /usr/bin/javac on Linux maps to the real JDK home
+    # (/usr/lib/jvm/...), not /usr; skip macOS's stub, which exists even when no JDK is installed.
+    if command -v javac >/dev/null 2>&1 && ! is_macos_javac_stub "$(command -v javac)"; then
+        local javac_path
+        javac_path="$(command -v javac)"
+        javac_path="$(readlink -f "$javac_path" 2>/dev/null || echo "$javac_path")"
+        to_tool_path "$(dirname "$(dirname "$javac_path")")"
         return 0
     fi
     return 1
