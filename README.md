@@ -94,6 +94,8 @@ python scripts\build_windows.py -t Debug -a run --with-openxr --sample stereo_cu
 
 Options: `-t` / `-BuildType` build type, `-a` / `-Action` action, `-l` / `-LibType` lib type (`static` | `shared`, default `shared`), `-clean` / `-Clean`, `-j N` / `-Jobs N`. macOS script also supports `-xcode` for Xcode project.
 
+Windows script (`build_windows.py` / `.ps1` / `.sh`) additionally takes `--with-openxr` (OpenXR backend + Vulkan, implies samples), `-a run` with `--sample <name>` (launch one sample through `vnexr_samples`), and `--runtime-json <path>` (select an OpenXR runtime for that run). Details: [scripts/README.md](scripts/README.md#windows).
+
 The Quest 3 walkthrough is in [Windows laptop setup](#windows-laptop-setup) below.
 
 ## Windows laptop setup

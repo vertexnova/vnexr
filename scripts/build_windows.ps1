@@ -85,6 +85,16 @@ $ConfigureCmd = "cmake -B `"$BuildDir`" -S `"$ProjectRoot`" -DCMAKE_BUILD_TYPE=$
 $BuildCmd = "cmake --build `"$BuildDir`" --config $BuildType --parallel $Jobs"
 $TestCmd = "ctest --test-dir `"$BuildDir`" --output-on-failure -C $BuildType"
 
+# $ErrorActionPreference does not stop on a failing native command, so check the exit code of every step.
+function Invoke-Step([string]$Command) {
+    $global:LASTEXITCODE = 0
+    Invoke-Expression $Command
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Error: step failed with exit code ${LASTEXITCODE}: $Command"
+        exit $LASTEXITCODE
+    }
+}
+
 function Clean-Build {
     if (Test-Path $BuildDir) { Remove-Item -Recurse -Force $BuildDir }
     New-Item -ItemType Directory -Path $BuildDir -Force | Out-Null
@@ -145,28 +155,28 @@ Set-Location $ProjectRoot
 switch ($Action) {
     "configure" {
         if ($Clean) { Clean-Build }; Ensure-BuildDir | Out-Null
-        Invoke-Expression $ConfigureCmd
+        Invoke-Step $ConfigureCmd
     }
     "build" {
         if ($Clean) { Clean-Build }; Ensure-BuildDir | Out-Null
-        Invoke-Expression $ConfigureCmd
-        Invoke-Expression $BuildCmd
+        Invoke-Step $ConfigureCmd
+        Invoke-Step $BuildCmd
     }
     "configure_and_build" {
         if ($Clean) { Clean-Build }; Ensure-BuildDir | Out-Null
-        Invoke-Expression $ConfigureCmd
-        Invoke-Expression $BuildCmd
+        Invoke-Step $ConfigureCmd
+        Invoke-Step $BuildCmd
     }
     "test" {
         if ($Clean) { Clean-Build }; Ensure-BuildDir | Out-Null
-        Invoke-Expression $ConfigureCmd
-        Invoke-Expression $BuildCmd
-        Invoke-Expression $TestCmd
+        Invoke-Step $ConfigureCmd
+        Invoke-Step $BuildCmd
+        Invoke-Step $TestCmd
     }
     "run" {
         if ($Clean) { Clean-Build }; Ensure-BuildDir | Out-Null
-        Invoke-Expression $ConfigureCmd
-        Invoke-Expression $BuildCmd
+        Invoke-Step $ConfigureCmd
+        Invoke-Step $BuildCmd
         Invoke-Sample
     }
     default {
