@@ -1,5 +1,5 @@
 #==============================================================================
-# vnexr samples framework (layers + XrSampleApp)
+# vnexr samples framework (layers, XrSampleApp, sample registry and launcher)
 #==============================================================================
 
 if(NOT TARGET vnexr)
@@ -9,8 +9,10 @@ endif()
 add_library(vne_xr_samples_framework STATIC
     layers/xr_layer.cpp
     layers/xr_layer_stack.cpp
+    layers/exit_after_frames_layer.cpp
     app/xr_sample_app.cpp
-    app/platform/desktop_loop.cpp
+    app/sample_registry.cpp
+    app/sample_launcher.cpp
 )
 
 add_library(vne::xr::samples::framework ALIAS vne_xr_samples_framework)

@@ -7,7 +7,7 @@
 set -Eeuo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
 
-PKG="${1:-com.vertexnova.vnexr.openxr_stereo}"
+PKG="${1:-com.vertexnova.vnexr.samples}"
 
 require_command adb "adb not found. Install Android SDK platform-tools."
 
@@ -30,5 +30,5 @@ if adb shell pm path "$PKG" >/dev/null 2>&1; then
     adb logcat -d -s vne.xr:* OpenXR:* 2>/dev/null | tail -40 || true
 else
     echo "Package $PKG not installed."
-    echo "Run: ./scripts/build_android.sh -a install -sample sample_02_openxr_stereo -abi arm64-v8a"
+    echo "Run: ./scripts/build_android.sh -a install -abi arm64-v8a"
 fi

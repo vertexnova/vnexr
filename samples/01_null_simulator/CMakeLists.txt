@@ -1,14 +1,14 @@
 #==============================================================================
-# 01_null_simulator — null backend + layer stack (XR simulator without runtime)
+# 01_null_simulator -- null backend + layer stack (XR simulator without runtime)
 #==============================================================================
 
-add_executable(sample_01_null_simulator
-    main.cpp
-    exit_after_frames_layer.cpp
+vne_xr_add_sample_library(null_simulator
+    REGISTER registerNullSimulatorSample
+    SOURCES null_simulator_sample.cpp
 )
 
-target_link_libraries(sample_01_null_simulator PRIVATE vne::xr::samples::framework)
-
+add_executable(sample_01_null_simulator main.cpp)
+target_link_libraries(sample_01_null_simulator PRIVATE vne_xr_sample_null_simulator)
 set_target_properties(sample_01_null_simulator PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/samples"
 )

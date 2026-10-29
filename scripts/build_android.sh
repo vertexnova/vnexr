@@ -4,7 +4,8 @@
 # VneXR Android Build Script
 #
 # Configure with the NDK, generate an Android Studio Gradle project from
-# registered OpenXR samples, then build / install APKs (Galaxy XR: arm64-v8a).
+# the vnexr_samples launcher, then build / install / run the APK (Quest 3, Galaxy XR: arm64-v8a).
+# One APK holds every sample; the sample to run is chosen at launch (-sample, or the "sample" intent extra).
 #==============================================================================
 
 set -Eeuo pipefail
@@ -18,23 +19,25 @@ JOBS=10
 CLEAN=false
 ABI="arm64-v8a"
 API_LEVEL="24"
-SAMPLE="all"
+SAMPLE=""
 WITH_DEV=true
 WITH_TESTS=false
 WITH_SAMPLES=true
 
 usage() {
-    echo "Usage: $0 [-t Debug|Release] [-a configure|build|configure_and_build|apk|install|studio|clean]"
-    echo "          [-abi arm64-v8a|x86_64] [-api 24] [-sample <target>|all] [-l static|shared]"
+    echo "Usage: $0 [-t Debug|Release] [-a configure|build|configure_and_build|apk|install|run|studio|clean]"
+    echo "          [-abi arm64-v8a|x86_64] [-api 24] [-sample <name>] [-l static|shared]"
     echo "          [-clean] [-j N] [--dev] [--with-tests] [--no-samples]"
     echo ""
-    echo "Defaults: OpenXR+Vulkan ON, samples ON, ABI arm64-v8a (Galaxy XR)."
+    echo "Defaults: OpenXR+Vulkan ON, samples ON, ABI arm64-v8a (Quest 3, Galaxy XR)."
+    echo "  -sample <name>   Sample to launch with -a run (see: vnexr_samples --list). Default: the first registered."
     echo ""
     echo "Environment: ANDROID_HOME / ANDROID_SDK_ROOT, ANDROID_NDK_ROOT / ANDROID_NDK_HOME"
     echo ""
     echo "Examples:"
     echo "  $0 -a studio --dev -abi arm64-v8a"
-    echo "  $0 -t Debug -a install -sample sample_02_openxr_stereo -abi arm64-v8a"
+    echo "  $0 -t Debug -a install -abi arm64-v8a"
+    echo "  $0 -t Debug -a run -sample stereo_cube -abi arm64-v8a"
     exit 1
 }
 
@@ -59,7 +62,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-if [[ "$ACTION" == studio || "$ACTION" == apk || "$ACTION" == install ]] && [[ "$WITH_SAMPLES" != true ]]; then
+if [[ "$ACTION" == studio || "$ACTION" == apk || "$ACTION" == install || "$ACTION" == run ]] && [[ "$WITH_SAMPLES" != true ]]; then
     die "action '$ACTION' requires samples (omit --no-samples)"
 fi
 if [[ "$ABI" != arm64-v8a && "$ABI" != x86_64 ]]; then
@@ -180,25 +183,13 @@ CMAKE_ARGS=(
     "-DCMAKE_CXX_STANDARD_REQUIRED=ON"
 )
 
+# The generated manifest lists one line per APK flavor (name,flavor,package,label); vnexr produces a single one.
 load_sample_entries() {
     if [[ ! -f "$SAMPLE_MANIFEST" ]]; then
         die "sample manifest not found at $SAMPLE_MANIFEST. Re-run configure so CMake can generate Android Studio files."
     fi
-    local entries line name flavor
-    entries="$(awk -F, 'NF >= 4 && $1 !~ /^#/ {print $1","$2","$3","$4}' "$SAMPLE_MANIFEST")"
-    if [[ "$SAMPLE" == all ]]; then
-        SAMPLE_ENTRIES="$entries"
-        return 0
-    fi
-    while IFS= read -r line; do
-        if [[ -z "$line" ]]; then continue; fi
-        IFS=',' read -r name flavor _ _ <<<"$line"
-        if [[ "$name" == "$SAMPLE" || "$flavor" == "$SAMPLE" ]]; then
-            SAMPLE_ENTRIES="$line"
-            return 0
-        fi
-    done <<<"$entries"
-    die "sample '$SAMPLE' not found in $SAMPLE_MANIFEST"
+    SAMPLE_ENTRIES="$(awk -F, 'NF >= 4 && $1 !~ /^#/ {print $1","$2","$3","$4}' "$SAMPLE_MANIFEST")"
+    [[ -n "$SAMPLE_ENTRIES" ]] || die "no Android flavor listed in $SAMPLE_MANIFEST"
 }
 
 write_local_properties() {
@@ -233,15 +224,14 @@ build_apk() {
     variant_suffix="$(capitalize "$BUILD_TYPE")"
     build_type_lower="$(lowercase "$BUILD_TYPE")"
 
-    if [[ "$SAMPLE" == all ]]; then
-        (cd "$GRADLE_PROJECT_DIR" && JAVA_HOME="$java_home" PATH="$java_home/bin:$PATH" "$gradle" "assemble${variant_suffix}")
-        return 0
-    fi
+    (cd "$GRADLE_PROJECT_DIR" && JAVA_HOME="$java_home" PATH="$java_home/bin:$PATH" "$gradle" "assemble${variant_suffix}")
     load_sample_entries
-    local flavor
-    IFS=',' read -r _ flavor _ _ <<<"$SAMPLE_ENTRIES"
-    (cd "$GRADLE_PROJECT_DIR" && JAVA_HOME="$java_home" PATH="$java_home/bin:$PATH" "$gradle" ":app:assemble$(capitalize "$flavor")${variant_suffix}")
-    echo "APK: ${GRADLE_PROJECT_DIR}/app/build/outputs/apk/${flavor}/${build_type_lower}/app-${flavor}-${build_type_lower}.apk"
+    local line flavor
+    while IFS= read -r line; do
+        [[ -z "$line" ]] && continue
+        IFS=',' read -r _ flavor _ _ <<<"$line"
+        echo "APK: ${GRADLE_PROJECT_DIR}/app/build/outputs/apk/${flavor}/${build_type_lower}/app-${flavor}-${build_type_lower}.apk"
+    done <<<"$SAMPLE_ENTRIES"
 }
 
 install_apk() {
@@ -249,7 +239,7 @@ install_apk() {
     adb_bin="$(resolve_adb || true)"
     [[ -n "$adb_bin" ]] || die "adb not found. Install Android SDK platform-tools."
     if ! "$adb_bin" devices | awk 'NR>1 && $2=="device" {found=1} END {exit !found}'; then
-        die "No Android device connected (Galaxy XR in developer mode)."
+        die "No Android device connected (Quest 3 or Galaxy XR in developer mode)."
     fi
     build_apk
     load_sample_entries
@@ -263,7 +253,21 @@ install_apk() {
         echo "Installing $label ($package)"
         "$adb_bin" install -r "$apk"
     done <<<"$SAMPLE_ENTRIES"
-    echo "Installed. Launch from the headset library, then: adb logcat -s vne.xr:* OpenXR:*"
+    echo "Installed. Launch from the headset library, or run: $0 -a run [-sample <name>]"
+}
+
+# Install, then start the activity with the sample name as an intent extra and show how to follow the log.
+run_apk() {
+    install_apk
+    local adb_bin line package
+    adb_bin="$(resolve_adb)"
+    IFS=',' read -r _ _ package _ <<<"$(head -n 1 <<<"$SAMPLE_ENTRIES")"
+    local start_args=(shell am start -n "${package}/com.vertexnova.vnexr.samples.VneXrNativeActivity")
+    if [[ -n "$SAMPLE" ]]; then
+        start_args+=(-e sample "$SAMPLE")
+    fi
+    "$adb_bin" "${start_args[@]}"
+    echo "Started ${package}${SAMPLE:+ with sample '$SAMPLE'}. Follow the log: adb logcat -s vne.xr:* OpenXR:*"
 }
 
 open_studio() {
@@ -284,6 +288,7 @@ case "$ACTION" in
     configure_and_build) configure_cmake; build_native ;;
     apk) configure_cmake; build_apk ;;
     install) configure_cmake; install_apk ;;
+    run) configure_cmake; run_apk ;;
     studio) open_studio ;;
     clean)
         if [[ -d "$BUILD_DIR" ]]; then

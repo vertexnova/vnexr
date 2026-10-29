@@ -5,26 +5,19 @@
 
 /**
  * @file main.cpp
- * @brief Sample 01 — null XR backend (simulator / CI, no OpenXR runtime).
- *
- * Demonstrates XrSampleApp + layer stack without a headset or Monado.
+ * @brief Standalone entry for the null_simulator sample (the launcher runs the same sample by name).
  */
 
-#include "exit_after_frames_layer.h"
-#include "app/xr_sample_app.h"
+#include "app/sample_launcher.h"
 #include "framework/common/logging_guard.h"
-#include "vertexnova/xr/session.h"
 
-#include <memory>
+namespace vne::xr::samples {
+void registerNullSimulatorSample(SampleRegistry& registry);
+}
 
 int main() {
     vne::xr::samples::LoggingGuard guard;
-
-    vne::xr::SessionConfig config;
-    config.backend = vne::xr::BackendType::eNull;
-    config.application_name = "01_null_simulator";
-
-    vne::xr::samples::XrSampleApp app(config);
-    app.pushLayer(std::make_unique<vne::xr::samples::ExitAfterFramesLayer>(5));
-    return app.run();
+    vne::xr::samples::SampleRegistry registry;
+    vne::xr::samples::registerNullSimulatorSample(registry);
+    return vne::xr::samples::launchSample(*registry.defaultSample());
 }

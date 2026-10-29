@@ -76,12 +76,15 @@ Set `ANDROID_HOME` and `ANDROID_NDK_ROOT` first. Default ABI is **arm64-v8a** (G
 
 ```bash
 ./scripts/build_android.sh -t Debug -a configure_and_build --dev -abi arm64-v8a
-./scripts/build_android.sh -t Debug -a install -sample sample_02_openxr_stereo -abi arm64-v8a
+./scripts/build_android.sh -t Debug -a install -abi arm64-v8a
+./scripts/build_android.sh -t Debug -a run -sample stereo_cube -abi arm64-v8a   # install + launch one sample
 ./scripts/build_android.sh -a studio --dev -abi arm64-v8a
-./scripts/verify_android_vulkan.sh com.vertexnova.vnexr.openxr_stereo
+./scripts/verify_android_vulkan.sh
 ```
 
-**Options:** `-t`, `-a` (configure|build|configure_and_build|apk|install|studio|clean), `-abi`, `-api`, `-sample`, `-l`, `-clean`, `-j`, `--dev`, `--with-tests`, `--with-examples`, `--no-tests`, `--no-examples`, `-h`
+There is one APK (`com.vertexnova.vnexr.samples`, the `vnexr_samples` launcher). `-a run -sample <name>` starts it with the intent extra `sample`; without `-sample` the first registered sample runs. List the names with `vnexr_samples --list` on a desktop build.
+
+**Options:** `-t`, `-a` (configure|build|configure_and_build|apk|install|run|studio|clean), `-abi`, `-api`, `-sample <name>`, `-l`, `-clean`, `-j`, `--dev`, `--with-tests`, `--with-examples`, `--no-tests`, `--no-examples`, `-h`
 
 Gradle templates: `samples/framework/app/platform/android/gradle/`. Generator: `cmake/VneXrAndroidGradle.cmake`.
 
