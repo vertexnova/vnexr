@@ -1,15 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- OpenXR immersive NativeActivity for Galaxy XR / Quest-class devices. -->
+<!-- OpenXR immersive NativeActivity for Meta Quest and Android XR (Galaxy XR) devices.
+     One manifest serves both: the vendor-specific features are optional, so the app installs on either. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Declared but not required: Horizon OS (Quest) does not advertise these, and a required feature the device
+         lacks makes the install fail with INSTALL_FAILED_MISSING_FEATURE. Android XR devices do advertise them. -->
     <uses-feature
         android:name="android.hardware.vr.headtracking"
-        android:required="true"
+        android:required="false"
         android:version="1" />
     <uses-feature
         android:name="android.software.xr.api.openxr"
-        android:required="true"
+        android:required="false"
         android:version="0x00010000" />
+    <uses-feature
+        android:name="oculus.software.handtracking"
+        android:required="false" />
     <uses-feature
         android:name="android.hardware.vulkan.level"
         android:required="true"
@@ -18,6 +24,11 @@
         android:name="android.hardware.vulkan.version"
         android:version="0x400003"
         android:required="true" />
+
+    <!-- OpenXR runtime access, and hand tracking on Quest. -->
+    <uses-permission android:name="org.khronos.openxr.permission.OPENXR" />
+    <uses-permission android:name="org.khronos.openxr.permission.OPENXR_SYSTEM" />
+    <uses-permission android:name="com.oculus.permission.HAND_TRACKING" />
 
     <!-- Discover installed OpenXR runtimes (Android XR broker / vendor runtimes). -->
     <queries>
@@ -35,6 +46,11 @@
         android:extractNativeLibs="true"
         android:hasCode="true"
         android:label="${vneAppLabel}">
+
+        <!-- Quest: the devices this app is built for. -->
+        <meta-data
+            android:name="com.oculus.supportedDevices"
+            android:value="quest2|quest3|quest3s|questpro" />
 
         <activity
             android:name="com.vertexnova.vnexr.samples.VneXrNativeActivity"
@@ -55,6 +71,8 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="org.khronos.openxr.intent.category.IMMERSIVE_HMD" />
+                <!-- Quest: launch as an immersive VR app instead of a 2D panel. -->
+                <category android:name="com.oculus.intent.category.VR" />
             </intent-filter>
         </activity>
     </application>

@@ -13,6 +13,7 @@
 
 #include <algorithm>
 
+#include "vertexnova/xr/backend/openxr/openxr_util.h"
 #include "vertexnova/xr/backend/openxr/presentation/openxr_swapchain_bridge.h"
 
 namespace vne::xr {
@@ -22,7 +23,7 @@ void OpenXrCompositionLayer::buildProjectionLayer(XrSpace space,
                                                   std::uint32_t view_count,
                                                   XrCompositionLayerProjection& out_layer,
                                                   std::array<XrCompositionLayerProjectionView, 2>& out_views) const {
-    out_layer = {XR_TYPE_COMPOSITION_LAYER_PROJECTION};
+    out_layer = OpenXrUtil::makeXrStruct<XrCompositionLayerProjection>(XR_TYPE_COMPOSITION_LAYER_PROJECTION);
     out_layer.layerFlags =
         XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT | XR_COMPOSITION_LAYER_CORRECT_CHROMATIC_ABERRATION_BIT;
     out_layer.space = space;
@@ -30,7 +31,8 @@ void OpenXrCompositionLayer::buildProjectionLayer(XrSpace space,
     const std::uint32_t count = std::min(view_count, static_cast<std::uint32_t>(out_views.size()));
     const auto& cached = bridge.cachedViews();
     for (std::uint32_t i = 0; i < count; ++i) {
-        out_views[i] = {XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW};
+        out_views[i] =
+            OpenXrUtil::makeXrStruct<XrCompositionLayerProjectionView>(XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW);
         out_views[i].pose = cached[i].pose;
         out_views[i].fov = cached[i].fov;
         out_views[i].subImage.swapchain = bridge.getColorSwapchain(i);
