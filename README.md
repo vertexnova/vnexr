@@ -94,7 +94,13 @@ python scripts\build_windows.py -t Debug -a run --with-openxr --sample stereo_cu
 
 Options: `-t` / `-BuildType` build type, `-a` / `-Action` action, `-l` / `-LibType` lib type (`static` | `shared`, default `shared`), `-clean` / `-Clean`, `-j N` / `-Jobs N`. macOS script also supports `-xcode` for Xcode project.
 
-Windows script (`build_windows.py` / `.ps1` / `.sh`) additionally takes `--with-openxr` (OpenXR backend + Vulkan, implies samples), `-a run` with `--sample <name>` (launch one sample through `vnexr_samples`), and `--runtime-json <path>` (select an OpenXR runtime for that run). Details: [scripts/README.md](scripts/README.md#windows).
+The Windows scripts additionally build the OpenXR backend with Vulkan (implies samples), run one sample through `vnexr_samples` with `-a run`, and select an OpenXR runtime for that run. Option spelling differs per script. Details: [scripts/README.md](scripts/README.md#windows).
+
+| Purpose | `build_windows.py` / `build_windows.sh` | `build_windows.ps1` |
+|---------|-----------------------------------------|---------------------|
+| OpenXR backend + Vulkan | `--with-openxr` | `-WithOpenXR` |
+| Sample for `-a run` | `--sample <name>` | `-Sample <name>` |
+| OpenXR runtime manifest | `--runtime-json <path>` | `-RuntimeJson <path>` |
 
 The Quest 3 walkthrough is in [Windows laptop setup](#windows-laptop-setup) below.
 
@@ -148,7 +154,7 @@ Install Android Studio, then in SDK Manager install:
 
 The default SDK location is `%LOCALAPPDATA%\Android\Sdk`. The JDK is Android Studio's JBR at `C:\Program Files\Android\Android Studio\jbr`. `scripts/build_android.sh` looks in those places, and also accepts `adb.exe`.
 
-The generated project uses Android Gradle Plugin 9.0.1, which needs **Gradle 9.1 or newer**. Android Studio drops that distribution under `%USERPROFILE%\.gradle\wrapper\dists` the first time it syncs a project. The script uses the newest `gradle.bat` there when `gradle` is not on `PATH`.
+The generated project uses Android Gradle Plugin 9.0.1, which needs **Gradle 9.1 or newer**. The script uses `gradle` from `PATH` (or `GRADLE_DIR`, a project that contains a newer `gradlew`) and stops with a message if it is older. Otherwise it falls back to the newest `gradle.bat` that Android Studio has already downloaded under `%USERPROFILE%\.gradle\wrapper\dists`. On a clean machine install Gradle 9.1 or newer (`brew install gradle` on macOS) and put it on `PATH` so the build does not depend on Android Studio having synced a project.
 
 ### 5. Developer mode
 
@@ -166,7 +172,7 @@ export ANDROID_NDK_ROOT="$(ls -d "$ANDROID_HOME"/ndk/* | sort -V | tail -1)"
 ./scripts/build_android.sh -t Debug -a run -sample stereo_cube -abi arm64-v8a
 ```
 
-The two exports are optional when the SDK is in the default Windows location. The script picks the newest installed NDK, configures with Ninja, and on Windows writes the build to `build/android/arm64-v8a` so native object paths stay short enough for Windows. `-a run` installs `com.vertexnova.vnexr.samples` and launches `stereo_cube`. Expect the app in the headset library and the same cubes, with hand pinch/grasp when `XR_EXT_hand_interaction` is available.
+The two exports are optional when the SDK is in the default Windows location. The script picks the newest installed NDK, configures with Ninja, and on Windows writes the build under `build/android/` (a short folder such as `arm64-v8a-debug-shared-ndk27`, so native object paths stay short enough for Windows). The script prints the exact build folder and APK path. `-a run` installs `com.vertexnova.vnexr.samples` and launches `stereo_cube`. Expect the app in the headset library and the same cubes, with hand pinch/grasp when `XR_EXT_hand_interaction` is available.
 
 If no headset is connected yet, build the APK without installing:
 
@@ -174,7 +180,7 @@ If no headset is connected yet, build the APK without installing:
 ./scripts/build_android.sh -t Debug -a apk -sample stereo_cube -abi arm64-v8a
 ```
 
-The APK is `build/android/arm64-v8a/android-studio/app/build/outputs/apk/samples/debug/app-samples-debug.apk`. If the view is black, capture `adb logcat -s vne.xr:* OpenXR:*` and stop there.
+The script prints the APK path. It is `app-samples-debug.apk` under `<build folder>/android-studio/app/build/outputs/apk/samples/debug/`. If the view is black, capture `adb logcat -s vne.xr:* OpenXR:*` and stop there.
 
 ## Test
 

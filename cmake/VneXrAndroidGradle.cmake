@@ -201,11 +201,32 @@ function(vne_xr_generate_android_gradle_project)
 
     set(VNE_ANDROID_CMAKE_VERSION_LINE "")
     # vnexr needs CMake 3.26 or newer (native/CMakeLists.txt); pick the newest SDK CMake that satisfies it, since
-    # Android Studio's default 3.22.1 would fail the configure.
+    # Android Studio's default 3.22.1 would fail the configure. Only the one SDK Gradle will use is searched
+    # (ANDROID_HOME, then ANDROID_SDK_ROOT, then the default install folders), so the pinned version always exists
+    # there. A cmake.dir entry in local.properties already selects an installation, so no version is pinned then.
+    set(_vne_sdk_root "")
     foreach(_sdk_root IN ITEMS "$ENV{ANDROID_HOME}" "$ENV{ANDROID_SDK_ROOT}" "$ENV{HOME}/Android/Sdk"
                                "$ENV{HOME}/Library/Android/sdk")
-        if(_sdk_root AND EXISTS "${_sdk_root}/cmake")
-            file(GLOB _cmake_dirs "${_sdk_root}/cmake/*")
+        if(_sdk_root AND IS_DIRECTORY "${_sdk_root}")
+            set(_vne_sdk_root "${_sdk_root}")
+            break()
+        endif()
+    endforeach()
+
+    set(_vne_cmake_dir_set FALSE)
+    if(EXISTS "${_gradle_root}/local.properties")
+        file(STRINGS "${_gradle_root}/local.properties" _vne_local_props REGEX "^[ \t]*cmake\\.dir[ \t]*=")
+        if(_vne_local_props)
+            set(_vne_cmake_dir_set TRUE)
+        endif()
+    endif()
+
+    if(_vne_cmake_dir_set)
+        message(STATUS "vne_xr_generate_android_gradle_project: cmake.dir set in local.properties; "
+                       "not pinning a CMake version")
+    else()
+        if(_vne_sdk_root AND EXISTS "${_vne_sdk_root}/cmake")
+            file(GLOB _cmake_dirs "${_vne_sdk_root}/cmake/*")
             list(SORT _cmake_dirs COMPARE NATURAL)
             list(REVERSE _cmake_dirs)
             foreach(_cmake_dir IN LISTS _cmake_dirs)
@@ -215,14 +236,11 @@ function(vne_xr_generate_android_gradle_project)
                     break()
                 endif()
             endforeach()
-            if(NOT VNE_ANDROID_CMAKE_VERSION_LINE STREQUAL "")
-                break()
-            endif()
         endif()
-    endforeach()
-    if(VNE_ANDROID_CMAKE_VERSION_LINE STREQUAL "")
-        message(WARNING "No Android SDK CMake 3.26 or newer found; Gradle would use its default (3.22.1). "
-                        "Install one: sdkmanager \"cmake;3.31.6\"")
+        if(VNE_ANDROID_CMAKE_VERSION_LINE STREQUAL "")
+            message(WARNING "No CMake 3.26 or newer found in the Android SDK (${_vne_sdk_root}); Gradle would use "
+                            "its default (3.22.1). Install one: sdkmanager \"cmake;3.31.6\"")
+        endif()
     endif()
 
     configure_file(

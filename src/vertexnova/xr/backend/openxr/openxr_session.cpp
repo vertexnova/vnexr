@@ -161,7 +161,7 @@ bool OpenXrSession::initOpenXr() {
         enabled_ptrs.push_back(ext.c_str());
     }
 
-    XrInstanceCreateInfo create_info{XR_TYPE_INSTANCE_CREATE_INFO};
+    XrInstanceCreateInfo create_info = OpenXrUtil::makeXrStruct<XrInstanceCreateInfo>(XR_TYPE_INSTANCE_CREATE_INFO);
     create_info.applicationInfo.apiVersion = XR_CURRENT_API_VERSION;
     OpenXrUtil::copyXrFixedString(create_info.applicationInfo.applicationName,
                                   XR_MAX_APPLICATION_NAME_SIZE,
@@ -171,7 +171,8 @@ bool OpenXrSession::initOpenXr() {
 
 #if defined(__ANDROID__)
     // XR_KHR_android_create_instance: runtimes on Android need the VM and activity at instance creation.
-    XrInstanceCreateInfoAndroidKHR android_info{XR_TYPE_INSTANCE_CREATE_INFO_ANDROID_KHR};
+    XrInstanceCreateInfoAndroidKHR android_info =
+        OpenXrUtil::makeXrStruct<XrInstanceCreateInfoAndroidKHR>(XR_TYPE_INSTANCE_CREATE_INFO_ANDROID_KHR);
     const bool is_android_create_enabled = std::any_of(enabled_ptrs.begin(), enabled_ptrs.end(), [](const char* name) {
         return std::strcmp(name, XR_KHR_ANDROID_CREATE_INSTANCE_EXTENSION_NAME) == 0;
     });
@@ -194,7 +195,7 @@ bool OpenXrSession::initOpenXr() {
         VNE_LOG_WARN << "OpenXR debug messenger not available";
     }
 
-    XrSystemGetInfo system_info{XR_TYPE_SYSTEM_GET_INFO};
+    XrSystemGetInfo system_info = OpenXrUtil::makeXrStruct<XrSystemGetInfo>(XR_TYPE_SYSTEM_GET_INFO);
     system_info.formFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
     OPENXR_CHECK_BOOL(xrGetSystem(instance_, &system_info, &system_id_));
 
@@ -218,7 +219,8 @@ bool OpenXrSession::initOpenXr() {
     std::uint32_t view_count = 0;
     OPENXR_CHECK_BOOL(
         xrEnumerateViewConfigurationViews(instance_, system_id_, view_configuration_, 0, &view_count, nullptr));
-    view_configs_.resize(view_count, {XR_TYPE_VIEW_CONFIGURATION_VIEW});
+    view_configs_.resize(view_count,
+                         OpenXrUtil::makeXrStruct<XrViewConfigurationView>(XR_TYPE_VIEW_CONFIGURATION_VIEW));
     OPENXR_CHECK_BOOL(xrEnumerateViewConfigurationViews(instance_,
                                                         system_id_,
                                                         view_configuration_,
@@ -251,7 +253,7 @@ bool OpenXrSession::initOpenXr() {
     VNE_XR_CHECK_BOOL(graphics_.initialize(gfx_attribs));
     VNE_XR_CHECK_BOOL(graphics_.createDevice());
 
-    XrSessionCreateInfo session_info{XR_TYPE_SESSION_CREATE_INFO};
+    XrSessionCreateInfo session_info = OpenXrUtil::makeXrStruct<XrSessionCreateInfo>(XR_TYPE_SESSION_CREATE_INFO);
     session_info.systemId = system_id_;
 #if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
     XrGraphicsBindingVulkanKHR vulkan_binding = graphics_.getGraphicsBinding();
@@ -260,7 +262,8 @@ bool OpenXrSession::initOpenXr() {
     OPENXR_CHECK_BOOL(xrCreateSession(instance_, &session_info, &session_));
 
     reference_space_type_ = chooseReferenceSpaceType();
-    XrReferenceSpaceCreateInfo space_info{XR_TYPE_REFERENCE_SPACE_CREATE_INFO};
+    XrReferenceSpaceCreateInfo space_info =
+        OpenXrUtil::makeXrStruct<XrReferenceSpaceCreateInfo>(XR_TYPE_REFERENCE_SPACE_CREATE_INFO);
     space_info.referenceSpaceType = reference_space_type_;
     space_info.poseInReferenceSpace = identityPose();
     OPENXR_CHECK_BOOL(xrCreateReferenceSpace(session_, &space_info, &reference_space_));
@@ -403,7 +406,7 @@ void OpenXrSession::handleSessionStateChanged(XrSessionState xr_state) {
     session_running_ = transition.is_frame_loop_active;
 
     if (transition.should_begin_session) {
-        XrSessionBeginInfo begin{XR_TYPE_SESSION_BEGIN_INFO};
+        XrSessionBeginInfo begin = OpenXrUtil::makeXrStruct<XrSessionBeginInfo>(XR_TYPE_SESSION_BEGIN_INFO);
         begin.primaryViewConfigurationType = view_configuration_;
         if (XR_SUCCEEDED(xrBeginSession(session_, &begin))) {
             session_begun_ = true;
@@ -455,7 +458,7 @@ void OpenXrSession::flushGpu() {
 }
 
 void OpenXrSession::processPendingEvents() {
-    XrEventDataBuffer event{XR_TYPE_EVENT_DATA_BUFFER};
+    XrEventDataBuffer event = OpenXrUtil::makeXrStruct<XrEventDataBuffer>(XR_TYPE_EVENT_DATA_BUFFER);
     while (xrPollEvent(instance_, &event) == XR_SUCCESS) {
         switch (event.type) {
             case XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED: {
@@ -484,7 +487,7 @@ void OpenXrSession::processPendingEvents() {
             default:
                 break;
         }
-        event = {XR_TYPE_EVENT_DATA_BUFFER};
+        event = OpenXrUtil::makeXrStruct<XrEventDataBuffer>(XR_TYPE_EVENT_DATA_BUFFER);
     }
 }
 
@@ -517,12 +520,12 @@ bool OpenXrSession::beginFrame(Frame& out_frame) {
         return false;
     }
 
-    XrFrameWaitInfo wait_info{XR_TYPE_FRAME_WAIT_INFO};
-    XrFrameState frame_state{XR_TYPE_FRAME_STATE};
+    XrFrameWaitInfo wait_info = OpenXrUtil::makeXrStruct<XrFrameWaitInfo>(XR_TYPE_FRAME_WAIT_INFO);
+    XrFrameState frame_state = OpenXrUtil::makeXrStruct<XrFrameState>(XR_TYPE_FRAME_STATE);
     if (XR_FAILED(xrWaitFrame(session_, &wait_info, &frame_state))) {
         return false;
     }
-    XrFrameBeginInfo begin_info{XR_TYPE_FRAME_BEGIN_INFO};
+    XrFrameBeginInfo begin_info = OpenXrUtil::makeXrStruct<XrFrameBeginInfo>(XR_TYPE_FRAME_BEGIN_INFO);
     if (XR_FAILED(xrBeginFrame(session_, &begin_info))) {
         return false;
     }
@@ -537,15 +540,15 @@ bool OpenXrSession::beginFrame(Frame& out_frame) {
         return true;
     }
 
-    XrViewLocateInfo locate_info{XR_TYPE_VIEW_LOCATE_INFO};
+    XrViewLocateInfo locate_info = OpenXrUtil::makeXrStruct<XrViewLocateInfo>(XR_TYPE_VIEW_LOCATE_INFO);
     locate_info.viewConfigurationType = view_configuration_;
     locate_info.displayTime = frame_state.predictedDisplayTime;
     locate_info.space = reference_space_;
 
-    XrViewState view_state{XR_TYPE_VIEW_STATE};
+    XrViewState view_state = OpenXrUtil::makeXrStruct<XrViewState>(XR_TYPE_VIEW_STATE);
     constexpr std::uint32_t kCapacity = 2;
     std::array<XrView, kCapacity> xr_views{};
-    xr_views.fill(XrView{XR_TYPE_VIEW});
+    xr_views.fill(OpenXrUtil::makeXrStruct<XrView>(XR_TYPE_VIEW));
     std::uint32_t view_count = kCapacity;
     if (XR_SUCCEEDED(xrLocateViews(session_, &locate_info, &view_state, view_count, &view_count, xr_views.data()))
         && (view_state.viewStateFlags & kViewPoseValidFlags) == kViewPoseValidFlags) {
@@ -608,11 +611,12 @@ void OpenXrSession::endFrame(const Frame& frame, const LayerParams& layers) {
     }
 
     // These must outlive xrEndFrame, so they live at function scope rather than inside the branch below.
-    XrCompositionLayerProjection layer{XR_TYPE_COMPOSITION_LAYER_PROJECTION};
+    XrCompositionLayerProjection layer =
+        OpenXrUtil::makeXrStruct<XrCompositionLayerProjection>(XR_TYPE_COMPOSITION_LAYER_PROJECTION);
     std::array<XrCompositionLayerProjectionView, 2> projection_views{};
     const XrCompositionLayerBaseHeader* layer_headers[1] = {nullptr};
 
-    XrFrameEndInfo end_info{XR_TYPE_FRAME_END_INFO};
+    XrFrameEndInfo end_info = OpenXrUtil::makeXrStruct<XrFrameEndInfo>(XR_TYPE_FRAME_END_INFO);
     end_info.displayTime = predicted_display_time_;
     end_info.environmentBlendMode = blend_mode_;
     if (has_images && frame.should_render && frame.view_count > 0 && layers.submit_projection) {

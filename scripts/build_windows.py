@@ -165,11 +165,11 @@ def build_cmake_command(
     tests_flag = "ON" if with_tests else "OFF"
     samples_flag = "ON" if with_examples else "OFF"
     generator = cmake_generator(compiler_version)
-    # Always pass the switch: an omitted flag would otherwise keep a cached ON from an earlier configure.
+    # Always pass both switches: omitted flags would otherwise keep a cached ON from an earlier OpenXR configure.
     openxr_flags = (
         ["-DVNE_XR_WITH_OPENXR=ON", "-DVNE_XR_WITH_RHI=ON", "-DVNE_XR_BACKEND_VULKAN=ON"]
         if with_openxr
-        else ["-DVNE_XR_WITH_OPENXR=OFF"]
+        else ["-DVNE_XR_WITH_OPENXR=OFF", "-DVNE_XR_BACKEND_VULKAN=OFF"]
     )
     return [
         "cmake",
@@ -360,7 +360,7 @@ def main():
     compiler_version = get_compiler_version()
     print(f"{config.platform} :: {config.compiler}-{compiler_version}")
 
-    script_dir = Path(__file__).parent
+    script_dir = Path(__file__).resolve().parent
     project_root = script_dir.parent
     build_dir = (
         project_root

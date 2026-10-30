@@ -16,6 +16,7 @@
 #include "vertexnova/xr/xr_error.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <string>
 #include <string_view>
@@ -121,12 +122,31 @@ namespace vne::xr::OpenXrUtil {
     return Result::eErrorOpenXrFailed;
 }
 
+/** @brief Zero an OpenXR structure and set @p type. A type-only brace initializer warns on the unnamed `next` field. */
+template<typename T>
+[[nodiscard]] constexpr T makeXrStruct(XrStructureType type) noexcept {
+    T value{};
+    value.type = type;
+    return value;
+}
+
+/** @brief Major component of a packed OpenXR version. */
+[[nodiscard]] constexpr std::uint32_t xrVersionMajor(XrVersion version) noexcept {
+    return static_cast<std::uint32_t>((static_cast<std::uint64_t>(version) >> 48) & 0xffffu);
+}
+
+/** @brief Minor component of a packed OpenXR version. */
+[[nodiscard]] constexpr std::uint32_t xrVersionMinor(XrVersion version) noexcept {
+    return static_cast<std::uint32_t>((static_cast<std::uint64_t>(version) >> 32) & 0xffffu);
+}
+
 [[nodiscard]] inline std::vector<XrExtensionProperties> enumerateInstanceExtensions() {
     std::uint32_t count = 0;
     if (XR_FAILED(xrEnumerateInstanceExtensionProperties(nullptr, 0, &count, nullptr))) {
         return {};
     }
-    std::vector<XrExtensionProperties> extensions(count, {XR_TYPE_EXTENSION_PROPERTIES});
+    std::vector<XrExtensionProperties> extensions(count,
+                                                  makeXrStruct<XrExtensionProperties>(XR_TYPE_EXTENSION_PROPERTIES));
     if (XR_FAILED(xrEnumerateInstanceExtensionProperties(nullptr, count, &count, extensions.data()))) {
         return {};
     }

@@ -94,8 +94,8 @@ Result OpenXrVulkanContextProvider::prepare(XrInstance instance,
     }
 
     // The specification requires this query before any Vulkan object is created for the session.
-    XrGraphicsRequirementsVulkanKHR requirements{use_enable2 ? XR_TYPE_GRAPHICS_REQUIREMENTS_VULKAN2_KHR
-                                                             : XR_TYPE_GRAPHICS_REQUIREMENTS_VULKAN_KHR};
+    XrGraphicsRequirementsVulkanKHR requirements = OpenXrUtil::makeXrStruct<XrGraphicsRequirementsVulkanKHR>(
+        use_enable2 ? XR_TYPE_GRAPHICS_REQUIREMENTS_VULKAN2_KHR : XR_TYPE_GRAPHICS_REQUIREMENTS_VULKAN_KHR);
     XrResult requirements_result = XR_ERROR_FUNCTION_UNSUPPORTED;
     if (use_enable2) {
         auto pfn =
@@ -114,12 +114,12 @@ Result OpenXrVulkanContextProvider::prepare(XrInstance instance,
         return Result::eErrorInitializationFailed;
     }
 
-    min_api_version_ = vne::rhi::ApiVersion{XR_VERSION_MAJOR(requirements.minApiVersionSupported),
-                                            XR_VERSION_MINOR(requirements.minApiVersionSupported),
+    min_api_version_ = vne::rhi::ApiVersion{OpenXrUtil::xrVersionMajor(requirements.minApiVersionSupported),
+                                            OpenXrUtil::xrVersionMinor(requirements.minApiVersionSupported),
                                             0};
     // maxApiVersionSupported is the newest version the runtime was tested with, not a limit; warn only.
-    const vne::rhi::ApiVersion tested_max{XR_VERSION_MAJOR(requirements.maxApiVersionSupported),
-                                          XR_VERSION_MINOR(requirements.maxApiVersionSupported),
+    const vne::rhi::ApiVersion tested_max{OpenXrUtil::xrVersionMajor(requirements.maxApiVersionSupported),
+                                          OpenXrUtil::xrVersionMinor(requirements.maxApiVersionSupported),
                                           0};
     if (vne::rhi::kVulkanVersionMajorDefault > tested_max.major
         || (vne::rhi::kVulkanVersionMajorDefault == tested_max.major
@@ -169,7 +169,8 @@ std::int32_t OpenXrVulkanContextProvider::createInstance(const VkInstanceCreateI
     if (pfn == nullptr) {
         return toInt(VK_ERROR_EXTENSION_NOT_PRESENT);
     }
-    XrVulkanInstanceCreateInfoKHR xr_info{XR_TYPE_VULKAN_INSTANCE_CREATE_INFO_KHR};
+    XrVulkanInstanceCreateInfoKHR xr_info =
+        OpenXrUtil::makeXrStruct<XrVulkanInstanceCreateInfoKHR>(XR_TYPE_VULKAN_INSTANCE_CREATE_INFO_KHR);
     xr_info.systemId = system_id_;
     xr_info.pfnGetInstanceProcAddr = &vkGetInstanceProcAddr;
     xr_info.vulkanCreateInfo = &create_info;
@@ -193,7 +194,8 @@ std::int32_t OpenXrVulkanContextProvider::selectPhysicalDevice(VkInstance_T* ins
         if (pfn == nullptr) {
             return toInt(VK_ERROR_EXTENSION_NOT_PRESENT);
         }
-        XrVulkanGraphicsDeviceGetInfoKHR get_info{XR_TYPE_VULKAN_GRAPHICS_DEVICE_GET_INFO_KHR};
+        XrVulkanGraphicsDeviceGetInfoKHR get_info =
+            OpenXrUtil::makeXrStruct<XrVulkanGraphicsDeviceGetInfoKHR>(XR_TYPE_VULKAN_GRAPHICS_DEVICE_GET_INFO_KHR);
         get_info.systemId = system_id_;
         get_info.vulkanInstance = instance;
         return XR_FAILED(pfn(xr_instance_, &get_info, out_physical_device)) ? toInt(VK_ERROR_INITIALIZATION_FAILED)
@@ -225,7 +227,8 @@ std::int32_t OpenXrVulkanContextProvider::createDevice(VkPhysicalDevice_T* physi
     if (pfn == nullptr) {
         return toInt(VK_ERROR_EXTENSION_NOT_PRESENT);
     }
-    XrVulkanDeviceCreateInfoKHR xr_info{XR_TYPE_VULKAN_DEVICE_CREATE_INFO_KHR};
+    XrVulkanDeviceCreateInfoKHR xr_info =
+        OpenXrUtil::makeXrStruct<XrVulkanDeviceCreateInfoKHR>(XR_TYPE_VULKAN_DEVICE_CREATE_INFO_KHR);
     xr_info.systemId = system_id_;
     xr_info.pfnGetInstanceProcAddr = &vkGetInstanceProcAddr;
     xr_info.vulkanPhysicalDevice = physical_device;

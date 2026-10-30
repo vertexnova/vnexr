@@ -40,7 +40,8 @@ Result initializeOpenXrLoaderAndroid(void* application_vm, void* application_con
         return Result::eSuccess;
     }
 
-    XrLoaderInitInfoAndroidKHR loader_info{XR_TYPE_LOADER_INIT_INFO_ANDROID_KHR};
+    XrLoaderInitInfoAndroidKHR loader_info =
+        OpenXrUtil::makeXrStruct<XrLoaderInitInfoAndroidKHR>(XR_TYPE_LOADER_INIT_INFO_ANDROID_KHR);
     loader_info.applicationVM = application_vm;
     loader_info.applicationContext = application_context;
 

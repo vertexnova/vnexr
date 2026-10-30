@@ -51,7 +51,8 @@ bool OpenXrDebugMessenger::create(XrInstance instance, PFN_xrGetInstanceProcAddr
     if (pfn_create == nullptr) {
         return false;
     }
-    XrDebugUtilsMessengerCreateInfoEXT info{XR_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT};
+    XrDebugUtilsMessengerCreateInfoEXT info =
+        OpenXrUtil::makeXrStruct<XrDebugUtilsMessengerCreateInfoEXT>(XR_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT);
     info.messageSeverities =
         XR_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | XR_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
     info.messageTypes = XR_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | XR_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT

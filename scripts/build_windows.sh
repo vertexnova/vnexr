@@ -96,8 +96,8 @@ VNE_XR_DEV_VAL=OFF
 [ "$WITH_DEV" = true ] && VNE_XR_DEV_VAL=ON
 TESTS_FLAG=$( [ "$WITH_TESTS" = true ] && echo ON || echo OFF )
 EXAMPLES_FLAG=$( [ "$WITH_EXAMPLES" = true ] && echo ON || echo OFF )
-# Always pass the switch: an omitted flag would otherwise keep a cached ON from an earlier configure.
-OPENXR_FLAGS=(-DVNE_XR_WITH_OPENXR=OFF)
+# Always pass both switches: omitted flags would otherwise keep a cached ON from an earlier OpenXR configure.
+OPENXR_FLAGS=(-DVNE_XR_WITH_OPENXR=OFF -DVNE_XR_BACKEND_VULKAN=OFF)
 if [ "$WITH_OPENXR" = true ]; then
   OPENXR_FLAGS=(-DVNE_XR_WITH_OPENXR=ON -DVNE_XR_WITH_RHI=ON -DVNE_XR_BACKEND_VULKAN=ON)
 fi

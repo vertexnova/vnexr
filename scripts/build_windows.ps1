@@ -74,8 +74,8 @@ if ($WithOpenXR -and -not $env:VULKAN_SDK) {
 $DevFlag = if ($Dev) { "ON" } else { "OFF" }
 $TestsFlag = if ($WithTests) { "ON" } else { "OFF" }
 $ExamplesFlag = if ($WithExamples) { "ON" } else { "OFF" }
-# Always pass the switch: an omitted flag would otherwise keep a cached ON from an earlier configure.
-$OpenXrFlags = "-DVNE_XR_WITH_OPENXR=OFF"
+# Always pass both switches: omitted flags would otherwise keep a cached ON from an earlier OpenXR configure.
+$OpenXrFlags = "-DVNE_XR_WITH_OPENXR=OFF -DVNE_XR_BACKEND_VULKAN=OFF"
 if ($WithOpenXR) {
     $OpenXrFlags = "-DVNE_XR_WITH_OPENXR=ON -DVNE_XR_WITH_RHI=ON -DVNE_XR_BACKEND_VULKAN=ON"
 }

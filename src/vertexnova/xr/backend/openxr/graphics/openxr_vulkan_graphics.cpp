@@ -74,7 +74,8 @@ Result OpenXrVulkanGraphics::createDevice() {
 }
 
 XrGraphicsBindingVulkanKHR OpenXrVulkanGraphics::getGraphicsBinding() const {
-    XrGraphicsBindingVulkanKHR binding{XR_TYPE_GRAPHICS_BINDING_VULKAN_KHR};
+    XrGraphicsBindingVulkanKHR binding =
+        OpenXrUtil::makeXrStruct<XrGraphicsBindingVulkanKHR>(XR_TYPE_GRAPHICS_BINDING_VULKAN_KHR);
     // dynamic_cast, not static_cast: a wrapped (for example validation) device also reports the Vulkan backend.
     const auto* vulkan_device = device_ ? dynamic_cast<const vne::rhi::VulkanDevice*>(device_.get()) : nullptr;
     if (vulkan_device == nullptr || !vulkan_device->getVulkanDevice()) {

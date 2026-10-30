@@ -13,6 +13,7 @@
 
 #include "vertexnova/logging/logging.h"
 #include "vertexnova/xr/backend/openxr/openxr_platform_prelude.h"
+#include "vertexnova/xr/backend/openxr/openxr_util.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -40,7 +41,7 @@ bool createSwapchain(XrSession session,
                      XrSwapchainUsageFlags usage,
                      XrSwapchain& out_swapchain,
                      std::vector<std::uint64_t>& out_vk_images) {
-    XrSwapchainCreateInfo create_info{XR_TYPE_SWAPCHAIN_CREATE_INFO};
+    XrSwapchainCreateInfo create_info = OpenXrUtil::makeXrStruct<XrSwapchainCreateInfo>(XR_TYPE_SWAPCHAIN_CREATE_INFO);
     create_info.usageFlags = usage;
     create_info.format = format;
     create_info.sampleCount = sample_count;
@@ -60,7 +61,9 @@ bool createSwapchain(XrSession session,
     }
 
 #if defined(VNE_XR_OPENXR_GRAPHICS_VULKAN)
-    std::vector<XrSwapchainImageVulkanKHR> images(image_count, {XR_TYPE_SWAPCHAIN_IMAGE_VULKAN_KHR});
+    std::vector<XrSwapchainImageVulkanKHR> images(
+        image_count,
+        OpenXrUtil::makeXrStruct<XrSwapchainImageVulkanKHR>(XR_TYPE_SWAPCHAIN_IMAGE_VULKAN_KHR));
     if (XR_FAILED(xrEnumerateSwapchainImages(out_swapchain,
                                              image_count,
                                              &image_count,
@@ -291,14 +294,16 @@ bool OpenXrSwapchainBridge::acquireForFrame(Frame& in_out_frame) {
     for (std::uint32_t i = 0; i < count; ++i) {
         auto& view = views_[i];
         std::uint32_t index = 0;
-        XrSwapchainImageAcquireInfo acquire_info{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
+        XrSwapchainImageAcquireInfo acquire_info =
+            OpenXrUtil::makeXrStruct<XrSwapchainImageAcquireInfo>(XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO);
         if (XR_FAILED(xrAcquireSwapchainImage(view.color_swapchain, &acquire_info, &index))) {
             return false;
         }
         view.is_color_acquired = true;
         view.acquired_index = index;
 
-        XrSwapchainImageWaitInfo wait_info{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO};
+        XrSwapchainImageWaitInfo wait_info =
+            OpenXrUtil::makeXrStruct<XrSwapchainImageWaitInfo>(XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO);
         wait_info.timeout = XR_INFINITE_DURATION;
         if (XR_FAILED(xrWaitSwapchainImage(view.color_swapchain, &wait_info))) {
             return false;
@@ -332,7 +337,8 @@ bool OpenXrSwapchainBridge::acquireForFrame(Frame& in_out_frame) {
 bool OpenXrSwapchainBridge::releaseForFrame() {
     bool is_all_released = true;
     for (auto& view : views_) {
-        XrSwapchainImageReleaseInfo release_info{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
+        XrSwapchainImageReleaseInfo release_info =
+            OpenXrUtil::makeXrStruct<XrSwapchainImageReleaseInfo>(XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO);
         if (view.is_depth_acquired && view.depth_swapchain != XR_NULL_HANDLE) {
             if (XR_SUCCEEDED(xrReleaseSwapchainImage(view.depth_swapchain, &release_info))) {
                 view.is_depth_acquired = false;
