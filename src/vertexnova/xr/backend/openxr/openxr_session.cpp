@@ -468,6 +468,9 @@ void OpenXrSession::handleSessionStateChanged(XrSessionState xr_state) {
             VNE_LOG_WARN << "xrEndSession failed";
         }
         session_begun_ = false;
+        // The next session starts with a new tracking state: poses from this one must not be reused.
+        has_located_views_ = false;
+        last_located_view_count_ = 0;
     }
     if (transition.should_leave_loop) {
         running_ = false;
@@ -672,6 +675,7 @@ bool OpenXrSession::beginFrame(Frame& out_frame) {
         ++reference_space_epoch_;
         // Poses remembered in the old coordinates are meaningless now.
         has_located_views_ = false;
+        last_located_view_count_ = 0;
         VNE_LOG_INFO << "OpenXR reference space changed (epoch " << reference_space_epoch_ << ")";
     }
     out_frame = {};
