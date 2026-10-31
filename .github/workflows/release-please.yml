@@ -75,11 +75,11 @@ jobs:
   # Skipped on most pushes — release_created is true only when the Release PR
   # was merged in this run (release-please then creates the tag + GitHub Release).
   #
-  # Produces 3 tarballs per release (Release build only):
+  # Produces one tarball per release (Release build only; Windows for now, Linux and macOS disabled):
   #   vnexr-vX.Y.Z-{platform}.tar.gz
   #
-  # Contents: one library per build in lib/ (static or shared via VNE_XR_LIB_TYPE;
-  #           e.g. libvnexr.so or libvnexr.a on Unix), include/vertexnova/xr/
+  # Contents: one library per build in lib/ (static or shared via VNE_XR_LIB_TYPE),
+  #           include/vertexnova/xr/
   # --------------------------------------------------------------------
   publish:
     name: "Release / publish (${{ matrix.platform }})"
@@ -92,14 +92,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: linux-gcc
-            runner:   ubuntu-latest
-            c:        gcc
-            cpp:      g++
-          - platform: macos
-            runner:   macos-latest
-            c:        ""
-            cpp:      ""
+          # Temporarily only Windows (OpenXR): Linux and macOS release builds are disabled. To bring one back, add
+          # its entry here (platform, runner, c, cpp) and restore its dependency step.
           - platform: windows
             runner:   windows-latest
             c:        ""
@@ -107,19 +101,22 @@ jobs:
 
     runs-on: ${{ matrix.runner }}
     steps:
-      - name: Use HTTPS for GitHub (CI runners have no SSH key)
-        run: git config --global url."https://github.com/".insteadOf "git@github.com:"
-
       - uses: actions/checkout@v4
         with:
           # Check out the exact release tag — not HEAD — so artifacts are
           # built from the same tree that release-please tagged.
           ref: ${{ needs.release-please.outputs.tag_name }}
-          submodules: recursive
+          submodules: false
+          token: ${{ secrets.REPO_ACCESS_TOKEN || github.token }}
+          persist-credentials: false
 
-      - name: Install Linux build dependencies
-        if: runner.os == 'Linux'
-        run: sudo apt-get update -qq && sudo apt-get install -y build-essential cmake
+      # The private deps/internal/vnerhi needs REPO_ACCESS_TOKEN, as in build-reusable.yml.
+      - name: Init submodules (full — includes private vnerhi)
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN || github.token }}
+          REPO_ACCESS_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
+        run: bash scripts/init_submodules.sh full
 
       - name: Configure CMake
         shell: bash
