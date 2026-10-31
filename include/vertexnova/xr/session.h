@@ -41,6 +41,21 @@ struct SessionConfig {
     BackendType backend = BackendType::eNull;
     std::string application_name = "VneXR";
     SessionPlatformHandle platform{};
+    /** @brief MSAA samples for the eye buffers (1, 2 or 4). The backend falls back to 1 when unsupported. */
+    std::uint32_t color_sample_count = 4;
+    /**
+     * @brief Wait for the GPU to finish the frame before releasing its image to the compositor.
+     * @details On by default: without it the headset showed random pixel blocks while the scene was being moved,
+     * the signature of the compositor reading an image the GPU had not finished. Costs a little latency.
+     */
+    bool is_gpu_sync_every_frame = true;
+    /** @brief Eye buffer size relative to the runtime's recommendation, clamped to its maximum. */
+    float resolution_scale = 1.25f;
+    /**
+     * @brief Ask the compositor to filter the eye images (XR_FB_composition_layer_settings) when available.
+     * @details Off by default until it has been compared on the headset with a correctly rendered image.
+     */
+    bool use_compositor_supersampling = false;
 };
 
 /**

@@ -62,6 +62,29 @@ XrPosef identityPose() {
     return pose;
 }
 
+[[nodiscard]] const char* sessionStateName(XrSessionState xr_state) {
+    switch (xr_state) {
+        case XR_SESSION_STATE_IDLE:
+            return "IDLE";
+        case XR_SESSION_STATE_READY:
+            return "READY";
+        case XR_SESSION_STATE_SYNCHRONIZED:
+            return "SYNCHRONIZED";
+        case XR_SESSION_STATE_VISIBLE:
+            return "VISIBLE";
+        case XR_SESSION_STATE_FOCUSED:
+            return "FOCUSED";
+        case XR_SESSION_STATE_STOPPING:
+            return "STOPPING";
+        case XR_SESSION_STATE_LOSS_PENDING:
+            return "LOSS_PENDING";
+        case XR_SESSION_STATE_EXITING:
+            return "EXITING";
+        default:
+            return "UNKNOWN";
+    }
+}
+
 [[nodiscard]] SessionState toSessionState(XrSessionState xr_state) {
     switch (xr_state) {
         case XR_SESSION_STATE_IDLE:
@@ -85,7 +108,8 @@ XrPosef identityPose() {
     }
 }
 
-constexpr XrViewStateFlags kViewPoseValidFlags = XR_VIEW_STATE_POSITION_VALID_BIT | XR_VIEW_STATE_ORIENTATION_VALID_BIT;
+constexpr auto kFrameRetryInterval = std::chrono::milliseconds(5);
+constexpr auto kHealthLogInterval = std::chrono::seconds(5);
 constexpr int kShutdownDrainAttempts = 100;
 constexpr auto kShutdownDrainInterval = std::chrono::milliseconds(10);
 
@@ -144,6 +168,11 @@ bool OpenXrSession::initOpenXr() {
     if (OpenXrUtil::isExtensionAvailable(XR_EXT_HAND_INTERACTION_EXTENSION_NAME, available)) {
         requested.emplace_back(XR_EXT_HAND_INTERACTION_EXTENSION_NAME);
     }
+    if (config_.use_compositor_supersampling
+        && OpenXrUtil::isExtensionAvailable(XR_FB_COMPOSITION_LAYER_SETTINGS_EXTENSION_NAME, available)) {
+        requested.emplace_back(XR_FB_COMPOSITION_LAYER_SETTINGS_EXTENSION_NAME);
+        has_layer_settings_ = true;
+    }
     if (OpenXrUtil::isExtensionAvailable(XR_EXT_LOCAL_FLOOR_EXTENSION_NAME, available)) {
         requested.emplace_back(XR_EXT_LOCAL_FLOOR_EXTENSION_NAME);
     }
@@ -190,9 +219,17 @@ bool OpenXrSession::initOpenXr() {
     OPENXR_CHECK_BOOL(xrCreateInstance(&create_info, &instance_));
     OpenXrInstanceLifetime::registerInstanceUser(instance_);
 
-    OpenXrDebugMessenger debug;
-    if (!debug.create(instance_, &xrGetInstanceProcAddr)) {
+    // Kept for the whole session so the runtime's validation messages during frames reach the log.
+    if (!debug_messenger_.create(instance_, &xrGetInstanceProcAddr)) {
         VNE_LOG_WARN << "OpenXR debug messenger not available";
+    }
+
+    XrInstanceProperties instance_properties =
+        OpenXrUtil::makeXrStruct<XrInstanceProperties>(XR_TYPE_INSTANCE_PROPERTIES);
+    if (XR_SUCCEEDED(xrGetInstanceProperties(instance_, &instance_properties))) {
+        const std::uint64_t version = instance_properties.runtimeVersion;
+        VNE_LOG_INFO << "OpenXR runtime: " << instance_properties.runtimeName << " " << ((version >> 48) & 0xffffU)
+                     << "." << ((version >> 32) & 0xffffU) << "." << (version & 0xffffffffU);
     }
 
     XrSystemGetInfo system_info = OpenXrUtil::makeXrStruct<XrSystemGetInfo>(XR_TYPE_SYSTEM_GET_INFO);
@@ -268,6 +305,12 @@ bool OpenXrSession::initOpenXr() {
     space_info.poseInReferenceSpace = identityPose();
     OPENXR_CHECK_BOOL(xrCreateReferenceSpace(session_, &space_info, &reference_space_));
 
+    XrReferenceSpaceCreateInfo view_space_info =
+        OpenXrUtil::makeXrStruct<XrReferenceSpaceCreateInfo>(XR_TYPE_REFERENCE_SPACE_CREATE_INFO);
+    view_space_info.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_VIEW;
+    view_space_info.poseInReferenceSpace = identityPose();
+    OPENXR_CHECK_BOOL(xrCreateReferenceSpace(session_, &view_space_info, &view_space_));
+
     if (isError(input_.create(instance_, session_, reference_space_))) {
         VNE_LOG_WARN << "OpenXR input setup failed; continuing without actions";
     }
@@ -306,23 +349,18 @@ bool OpenXrSession::initOpenXr() {
                           << " runtime formats";
             return false;
         }
-        for (const auto format : formats) {
-            if (format == static_cast<int64_t>(VK_FORMAT_D32_SFLOAT)
-                || format == static_cast<int64_t>(VK_FORMAT_D24_UNORM_S8_UINT)
-                || format == static_cast<int64_t>(VK_FORMAT_D32_SFLOAT_S8_UINT)
-                || format == static_cast<int64_t>(VK_FORMAT_D16_UNORM)) {
-                depth_format_ = format;
-                break;
-            }
-        }
 #else
         color_format_ = formats.front();
 #endif
     }
 
-    debug.destroy(instance_);
     state_ = SessionState::eIdle;
-    VNE_LOG_INFO << "OpenXR session initialized (enable2=" << use_vulkan_enable2_ << ")";
+    VNE_LOG_INFO << "OpenXR session initialized (MSAA request=" << config_.color_sample_count
+                 << ", resolution scale=" << config_.resolution_scale
+                 << ", compositor super sampling=" << (has_layer_settings_ ? "on" : "off")
+                 << ", gpu sync every frame=" << config_.is_gpu_sync_every_frame << ", enable2=" << use_vulkan_enable2_
+                 << ", reference space=" << static_cast<int>(reference_space_type_)
+                 << ", color format=" << color_format_ << ", views=" << view_configs_.size() << ")";
     return true;
 }
 
@@ -345,6 +383,10 @@ void OpenXrSession::shutdownOpenXr() {
     input_.destroy();
     releaseSwapchains();
 
+    if (view_space_ != XR_NULL_HANDLE) {
+        xrDestroySpace(view_space_);
+        view_space_ = XR_NULL_HANDLE;
+    }
     if (reference_space_ != XR_NULL_HANDLE) {
         xrDestroySpace(reference_space_);
         reference_space_ = XR_NULL_HANDLE;
@@ -357,6 +399,7 @@ void OpenXrSession::shutdownOpenXr() {
     graphics_.shutdown();
 
     if (instance_ != XR_NULL_HANDLE) {
+        debug_messenger_.destroy(instance_);
         OpenXrInstanceLifetime::unregisterInstanceUser(instance_);
         xrDestroyInstance(instance_);
         instance_ = XR_NULL_HANDLE;
@@ -401,6 +444,7 @@ void OpenXrSession::handleSessionStateChanged(XrSessionState xr_state) {
     if (next == SessionState::eUnknown) {
         return;
     }
+    VNE_LOG_INFO << "OpenXR session state: " << sessionStateName(xr_state);
     const SessionTransition transition = evaluateSessionTransition(next, session_begun_);
     state_ = transition.state;
     session_running_ = transition.is_frame_loop_active;
@@ -437,7 +481,8 @@ bool OpenXrSession::ensureSwapchains() {
     if (view_configs_.empty() || color_format_ == 0) {
         return false;
     }
-    if (!swapchain_bridge_.create(session_, view_configs_, color_format_, depth_format_, graphics_.getDevice())) {
+    if (!swapchain_bridge_
+             .create(session_, scaledViewConfigs(), color_format_, config_.color_sample_count, graphics_.getDevice())) {
         return false;
     }
     swapchains_ready_ = true;
@@ -478,11 +523,19 @@ void OpenXrSession::processPendingEvents() {
                 VNE_LOG_WARN << "OpenXR event queue overflowed; "
                              << reinterpret_cast<XrEventDataEventsLost*>(&event)->lostEventCount << " events lost";
                 break;
-            case XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING:
-                VNE_LOG_INFO << "OpenXR reference space change pending (recenter or boundary change)";
+            case XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING: {
+                const auto* change = reinterpret_cast<XrEventDataReferenceSpaceChangePending*>(&event);
+                if (change->session == session_ && change->referenceSpaceType == reference_space_type_) {
+                    // Content placed in the old coordinates would now sit somewhere else in the room.
+                    has_space_change_pending_ = true;
+                    space_change_time_ = change->changeTime;
+                    VNE_LOG_INFO << "OpenXR reference space changes at " << change->changeTime
+                                 << " (recenter or floor origin update)";
+                }
                 break;
+            }
             case XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED:
-                VNE_LOG_INFO << "OpenXR interaction profile changed";
+                input_.logCurrentProfiles();
                 break;
             default:
                 break;
@@ -515,68 +568,160 @@ bool OpenXrSession::requestExit() {
     return true;
 }
 
+bool OpenXrSession::locateViews(XrTime display_time, ViewArray& out_views, std::uint32_t& out_count) {
+    XrViewLocateInfo locate_info = OpenXrUtil::makeXrStruct<XrViewLocateInfo>(XR_TYPE_VIEW_LOCATE_INFO);
+    locate_info.viewConfigurationType = view_configuration_;
+    locate_info.displayTime = display_time;
+    locate_info.space = reference_space_;
+
+    XrViewState view_state = OpenXrUtil::makeXrStruct<XrViewState>(XR_TYPE_VIEW_STATE);
+    out_views.fill(OpenXrUtil::makeXrStruct<XrView>(XR_TYPE_VIEW));
+    out_count = kViewCapacity;
+    const bool is_located =
+        XR_SUCCEEDED(xrLocateViews(session_, &locate_info, &view_state, out_count, &out_count, out_views.data()));
+    const bool is_orientation_valid =
+        is_located && (view_state.viewStateFlags & XR_VIEW_STATE_ORIENTATION_VALID_BIT) != 0;
+    const bool is_position_valid = is_located && (view_state.viewStateFlags & XR_VIEW_STATE_POSITION_VALID_BIT) != 0;
+
+    // A tracking hiccup (often position only) must not blank the display: draw with the last good pose instead.
+    if (is_orientation_valid && out_count > 0) {
+        if (!is_position_valid && has_good_views_) {
+            for (std::uint32_t i = 0; i < out_count; ++i) {
+                out_views[i].pose.position = last_good_views_[i].pose.position;
+            }
+            ++health_.stale_pose_frames;
+        }
+        if (is_position_valid || has_good_views_) {
+            last_good_views_ = out_views;
+            has_good_views_ = true;
+            return true;
+        }
+    } else if (has_good_views_) {
+        out_views = last_good_views_;
+        out_count = kViewCapacity;
+        ++health_.stale_pose_frames;
+        return true;
+    }
+    return false;
+}
+
+bool OpenXrSession::locateHead(XrTime display_time, Pose& out_pose) const {
+    if (view_space_ == XR_NULL_HANDLE) {
+        return false;
+    }
+    XrSpaceLocation head = OpenXrUtil::makeXrStruct<XrSpaceLocation>(XR_TYPE_SPACE_LOCATION);
+    if (XR_FAILED(xrLocateSpace(view_space_, reference_space_, display_time, &head))) {
+        return false;
+    }
+    constexpr XrSpaceLocationFlags kHeadValid =
+        XR_SPACE_LOCATION_POSITION_VALID_BIT | XR_SPACE_LOCATION_ORIENTATION_VALID_BIT;
+    if ((head.locationFlags & kHeadValid) != kHeadValid) {
+        return false;
+    }
+    storePose(head.pose, out_pose);
+    return true;
+}
+
 bool OpenXrSession::beginFrame(Frame& out_frame) {
     if (!running_ || session_ == XR_NULL_HANDLE || !session_running_) {
         return false;
     }
 
+    if (swapchain_bridge_.needsRecreate()) {
+        VNE_LOG_WARN << "OpenXR swapchains are stuck; recreating them";
+        flushGpu();
+        releaseSwapchains();
+        ++health_.swapchain_recreations;
+    }
+
     XrFrameWaitInfo wait_info = OpenXrUtil::makeXrStruct<XrFrameWaitInfo>(XR_TYPE_FRAME_WAIT_INFO);
     XrFrameState frame_state = OpenXrUtil::makeXrStruct<XrFrameState>(XR_TYPE_FRAME_STATE);
-    if (XR_FAILED(xrWaitFrame(session_, &wait_info, &frame_state))) {
+    const XrResult wait_result = xrWaitFrame(session_, &wait_info, &frame_state);
+    if (XR_FAILED(wait_result)) {
+        ++health_.wait_frame_failures;
+        if (wait_result == XR_ERROR_SESSION_LOST) {
+            VNE_LOG_ERROR << "OpenXR session lost; leaving the loop";
+            state_ = SessionState::eLossPending;
+            session_running_ = false;
+            running_ = false;
+        } else {
+            // Transient around state changes: do not spin while the runtime settles.
+            std::this_thread::sleep_for(kFrameRetryInterval);
+        }
         return false;
     }
+
+    // The previous frame's GPU work has had a whole frame period to finish, so this wait is normally free. It makes
+    // the next two steps safe: resources queued for destruction are reclaimed and the descriptor pools rotate.
+    flushGpu();
+    if (auto device = graphics_.getDevice()) {
+        device->beginFrame();
+    }
+
     XrFrameBeginInfo begin_info = OpenXrUtil::makeXrStruct<XrFrameBeginInfo>(XR_TYPE_FRAME_BEGIN_INFO);
     if (XR_FAILED(xrBeginFrame(session_, &begin_info))) {
+        ++health_.wait_frame_failures;
+        std::this_thread::sleep_for(kFrameRetryInterval);
         return false;
     }
 
     predicted_display_time_ = frame_state.predictedDisplayTime;
+    if (has_space_change_pending_ && frame_state.predictedDisplayTime >= space_change_time_) {
+        has_space_change_pending_ = false;
+        ++reference_space_epoch_;
+        // Poses remembered in the old coordinates are meaningless now.
+        has_good_views_ = false;
+        VNE_LOG_INFO << "OpenXR reference space changed (epoch " << reference_space_epoch_ << ")";
+    }
     out_frame = {};
+    out_frame.reference_space_epoch = reference_space_epoch_;
     out_frame.frame_index = frame_index_++;
     out_frame.predicted_display_time = static_cast<double>(frame_state.predictedDisplayTime);
     out_frame.should_render = frame_state.shouldRender == XR_TRUE;
+    ++health_.frames;
+    logHealth();
 
     if (!out_frame.should_render) {
         return true;
     }
 
-    XrViewLocateInfo locate_info = OpenXrUtil::makeXrStruct<XrViewLocateInfo>(XR_TYPE_VIEW_LOCATE_INFO);
-    locate_info.viewConfigurationType = view_configuration_;
-    locate_info.displayTime = frame_state.predictedDisplayTime;
-    locate_info.space = reference_space_;
-
-    XrViewState view_state = OpenXrUtil::makeXrStruct<XrViewState>(XR_TYPE_VIEW_STATE);
-    constexpr std::uint32_t kCapacity = 2;
-    std::array<XrView, kCapacity> xr_views{};
-    xr_views.fill(OpenXrUtil::makeXrStruct<XrView>(XR_TYPE_VIEW));
-    std::uint32_t view_count = kCapacity;
-    if (XR_SUCCEEDED(xrLocateViews(session_, &locate_info, &view_state, view_count, &view_count, xr_views.data()))
-        && (view_state.viewStateFlags & kViewPoseValidFlags) == kViewPoseValidFlags) {
-        out_frame.view_count = view_count;
-        out_frame.surfaces.view_count = view_count;
-        swapchain_bridge_.setCachedViews(xr_views.data(), view_count);
-        for (std::uint32_t i = 0; i < view_count && i < Frame::kMaxViews; ++i) {
-            out_frame.views[i].view_index = i;
-            OpenXrMath::populateViewMatrices(xr_views[i], near_z_, far_z_, out_frame.views[i]);
-            storePose(xr_views[i].pose, out_frame.views[i].pose);
-            storeFov(xr_views[i].fov, out_frame.views[i].fov);
-            out_frame.surfaces.views[i].view_index = i;
-        }
-        if (ensureSwapchains()) {
-            are_images_acquired_ = true;
-            if (!swapchain_bridge_.acquireForFrame(out_frame)) {
-                // Give back what was acquired and submit no layer for this frame.
-                // If a release fails here the bridge keeps the image marked, and the next frame retries it.
-                static_cast<void>(swapchain_bridge_.releaseForFrame());
-                are_images_acquired_ = false;
-                out_frame.should_render = false;
-                out_frame.view_count = 0;
-                out_frame.surfaces.view_count = 0;
-            }
-        }
-    } else {
-        // The runtime has no valid head pose yet (or lost tracking): the frame is still ended, with no layers.
+    ViewArray xr_views{};
+    std::uint32_t view_count = 0;
+    if (!locateViews(frame_state.predictedDisplayTime, xr_views, view_count)) {
+        // Nothing has ever been tracked: the frame is still ended, with no layers.
+        ++health_.skipped_no_pose;
         out_frame.should_render = false;
+        return true;
+    }
+    out_frame.is_head_pose_valid = locateHead(frame_state.predictedDisplayTime, out_frame.head_pose);
+
+    out_frame.view_count = view_count;
+    out_frame.surfaces.view_count = view_count;
+    swapchain_bridge_.setCachedViews(xr_views.data(), view_count);
+    for (std::uint32_t i = 0; i < view_count && i < Frame::kMaxViews; ++i) {
+        out_frame.views[i].view_index = i;
+        OpenXrMath::populateViewMatrices(xr_views[i], near_z_, far_z_, out_frame.views[i]);
+        storePose(xr_views[i].pose, out_frame.views[i].pose);
+        storeFov(xr_views[i].fov, out_frame.views[i].fov);
+        out_frame.surfaces.views[i].view_index = i;
+    }
+
+    if (!ensureSwapchains()) {
+        ++health_.acquire_failures;
+        out_frame.should_render = false;
+        out_frame.view_count = 0;
+        out_frame.surfaces.view_count = 0;
+        return true;
+    }
+    are_images_acquired_ = true;
+    if (!swapchain_bridge_.acquireForFrame(out_frame)) {
+        // Give back what was acquired and submit no layer for this frame; a stuck image triggers a rebuild.
+        ++health_.acquire_failures;
+        static_cast<void>(swapchain_bridge_.releaseForFrame());
+        are_images_acquired_ = false;
+        out_frame.should_render = false;
+        out_frame.view_count = 0;
+        out_frame.surfaces.view_count = 0;
     }
     return true;
 }
@@ -599,13 +744,17 @@ void OpenXrSession::endFrame(const Frame& frame, const LayerParams& layers) {
         return;
     }
 
-    flushGpu();
-
+    // The app's work was submitted to the queue bound in the graphics binding before this call, and the runtime
+    // orders its use of the image after that submission. The CPU does not wait here; beginFrame() waits for the GPU.
+    // `is_gpu_sync_every_frame` (default on) waits anyway: the headset showed random pixel blocks without it.
+    if (config_.is_gpu_sync_every_frame) {
+        flushGpu();
+    }
     // Release exactly what beginFrame() acquired: releasing without an acquire is a call-order error.
     const bool has_images = are_images_acquired_;
     if (has_images) {
         if (!swapchain_bridge_.releaseForFrame()) {
-            VNE_LOG_WARN << "Some swapchain images were not released; they are retried next frame";
+            VNE_LOG_WARN << "Some swapchain images were not released; the swapchains will be recreated";
         }
         are_images_acquired_ = false;
     }
@@ -615,16 +764,28 @@ void OpenXrSession::endFrame(const Frame& frame, const LayerParams& layers) {
         OpenXrUtil::makeXrStruct<XrCompositionLayerProjection>(XR_TYPE_COMPOSITION_LAYER_PROJECTION);
     std::array<XrCompositionLayerProjectionView, 2> projection_views{};
     const XrCompositionLayerBaseHeader* layer_headers[1] = {nullptr};
+    XrCompositionLayerSettingsFB layer_settings =
+        OpenXrUtil::makeXrStruct<XrCompositionLayerSettingsFB>(XR_TYPE_COMPOSITION_LAYER_SETTINGS_FB);
+    layer_settings.layerFlags = XR_COMPOSITION_LAYER_SETTINGS_NORMAL_SUPER_SAMPLING_BIT_FB;
 
     XrFrameEndInfo end_info = OpenXrUtil::makeXrStruct<XrFrameEndInfo>(XR_TYPE_FRAME_END_INFO);
     end_info.displayTime = predicted_display_time_;
     end_info.environmentBlendMode = blend_mode_;
-    if (has_images && frame.should_render && frame.view_count > 0 && layers.submit_projection) {
+    // Only an image the app fully drew may reach the compositor: anything else would show leftover GPU memory.
+    const bool is_drawn = has_images && frame.should_render && frame.view_count > 0 && layers.submit_projection;
+    if (has_images && frame.should_render && !is_drawn) {
+        ++health_.unrendered_frames;
+    }
+    if (is_drawn) {
         composition_layer_.buildProjectionLayer(reference_space_,
                                                 swapchain_bridge_,
                                                 frame.view_count,
                                                 layer,
                                                 projection_views);
+        if (has_layer_settings_) {
+            // The compositor filters the eye image when resampling it for the lenses: less shimmer on edges.
+            layer.next = &layer_settings;
+        }
         layer_headers[0] = reinterpret_cast<const XrCompositionLayerBaseHeader*>(&layer);
         end_info.layerCount = 1;
         end_info.layers = layer_headers;
@@ -632,8 +793,50 @@ void OpenXrSession::endFrame(const Frame& frame, const LayerParams& layers) {
 
     const XrResult end_result = xrEndFrame(session_, &end_info);
     if (XR_FAILED(end_result)) {
+        ++health_.end_frame_failures;
         VNE_LOG_WARN << "xrEndFrame failed (XrResult=" << end_result << ")";
     }
+}
+
+std::vector<XrViewConfigurationView> OpenXrSession::scaledViewConfigs() const {
+    std::vector<XrViewConfigurationView> scaled = view_configs_;
+    const float scale = std::clamp(config_.resolution_scale, 0.5f, 2.f);
+    for (auto& view : scaled) {
+        const auto resize = [scale](std::uint32_t recommended, std::uint32_t maximum) {
+            // Even sizes keep the two eyes and any later downsampling aligned.
+            auto size = static_cast<std::uint32_t>(static_cast<float>(recommended) * scale + 0.5f) & ~1u;
+            if (maximum > 0) {
+                size = std::min(size, maximum);
+            }
+            return std::max(size, 2u);
+        };
+        view.recommendedImageRectWidth = resize(view.recommendedImageRectWidth, view.maxImageRectWidth);
+        view.recommendedImageRectHeight = resize(view.recommendedImageRectHeight, view.maxImageRectHeight);
+    }
+    return scaled;
+}
+
+void OpenXrSession::logHealth() {
+    const auto now = std::chrono::steady_clock::now();
+    if (now - health_log_time_ < kHealthLogInterval) {
+        return;
+    }
+    const double seconds = std::chrono::duration<double>(now - health_log_time_).count();
+    const FrameHealth& h = health_;
+    const bool has_problem = h.skipped_no_pose + h.stale_pose_frames + h.unrendered_frames + h.acquire_failures
+                                 + h.swapchain_recreations + h.wait_frame_failures + h.end_frame_failures
+                             > 0;
+    if (has_problem) {
+        VNE_LOG_WARN << "XR frame health: " << h.frames << " frames in " << seconds
+                     << "s; no-pose=" << h.skipped_no_pose << " stale-pose=" << h.stale_pose_frames
+                     << " not-drawn=" << h.unrendered_frames << " acquire-fail=" << h.acquire_failures
+                     << " swapchain-rebuilds=" << h.swapchain_recreations << " wait-fail=" << h.wait_frame_failures
+                     << " end-fail=" << h.end_frame_failures;
+    } else {
+        VNE_LOG_INFO << "XR frame health: " << h.frames << " frames in " << seconds << "s, no problems";
+    }
+    health_ = {};
+    health_log_time_ = now;
 }
 
 }  // namespace vne::xr

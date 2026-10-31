@@ -30,6 +30,14 @@ struct Frame {
     std::uint32_t view_count = 0;
     static constexpr std::uint32_t kMaxViews = 2;
     View views[kMaxViews]{};
+    /** @brief Head (VIEW space) pose in the app reference space; meaningful when `is_head_pose_valid`. */
+    Pose head_pose{};
+    bool is_head_pose_valid = false;
+    /**
+     * @brief Increases each time the reference space moves under the app (recenter, or the runtime settling the
+     * floor origin after start). World-locked content placed in front of the user should be placed again.
+     */
+    std::uint32_t reference_space_epoch = 0;
     SurfaceTextures surfaces{};
 };
 
@@ -45,8 +53,13 @@ struct LayerParams {
     float far_z = kDefaultFarZ;
     bool enable_passthrough = false;
     bool request_exit = false;
-    /** @brief When false, endFrame submits zero projection layers (acquired images not presented). */
-    bool submit_projection = true;
+    /**
+     * @brief True only when every eye of this frame was fully drawn. When false, endFrame submits zero layers, so
+     * the compositor never shows an image nobody rendered. Starts false each frame; the renderer sets it.
+     */
+    bool submit_projection = false;
+    /** @brief Background colour (linear RGB) the eye buffers are cleared to before layers draw. */
+    float clear_color[3]{0.02f, 0.02f, 0.04f};
 };
 
 }  // namespace vne::xr
