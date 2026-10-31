@@ -5,19 +5,11 @@
  * ---------------------------------------------------------------------- */
 
 #include "layers/xr_layer.h"
+#include "render/flat_color_renderer.h"
+
 #include "vertexnova/xr/input.h"
 #include "vertexnova/xr/types.h"
 
-#include "vertexnova/rhi/buffer.h"
-#include "vertexnova/rhi/command_queue.h"
-#include "vertexnova/rhi/device.h"
-#include "vertexnova/rhi/render_pipeline.h"
-#include "vertexnova/rhi/render_target.h"
-#include "vertexnova/rhi/resource_ref.h"
-#include "vertexnova/rhi/shader_library.h"
-#include "vertexnova/rhi/texture_view.h"
-
-#include <array>
 #include <cstdint>
 #include <memory>
 #include <vector>
@@ -26,25 +18,44 @@ namespace vne::xr::samples {
 
 struct Block {
     Pose pose{};
+    float half_extent[3]{0.05f, 0.05f, 0.05f};
     float color[3]{1.f, 0.5f, 0.2f};
-    bool grabbed = false;
+    bool is_static = false;
+    /** Hand holding the block (0 left, 1 right), or -1. */
+    int held_by = -1;
+    /** Block pose in the holding hand's frame, captured when it was picked up. */
+    Pose offset_in_hand{};
 };
 
-/** @brief Khronos Ch.4 block interaction (grab / spawn / recolor). */
+/**
+ * @brief Blocks on a table: grab with the trigger, spawn by pulling the trigger in empty space, recolor with A/X.
+ * A released block turns upright and drops onto the table, another block, or the floor.
+ */
 class StereoCubeScene {
    public:
+    static constexpr std::size_t kMaxBlocks = 150;
+
     void reset();
-    void update(const InputState& input, float delta_seconds);
+    void update(const InputState& input);
     [[nodiscard]] const std::vector<Block>& blocks() const { return blocks_; }
+    /** @brief Index of the block a trigger pull would pick up right now, or -1. */
+    [[nodiscard]] int hoveredBlock() const { return hovered_block_; }
 
    private:
+    void addBlock(const Pose& pose);
+    void tryPickOrSpawn(std::uint32_t hand, const Pose& hand_pose);
+    void release(std::uint32_t hand);
+    void settle(Block& block) const;
+    [[nodiscard]] int pickCandidate(const Pose& hand_pose) const;
+
     std::vector<Block> blocks_;
     std::uint32_t next_color_index_ = 0;
-    bool prev_spawn_pressed_[InputState::kMaxControllers]{};
-    bool prev_grab_pressed_[InputState::kMaxControllers]{};
+    int hovered_block_ = -1;
+    bool prev_trigger_[InputState::kMaxControllers]{};
+    bool prev_color_[InputState::kMaxControllers]{};
 };
 
-/** @brief Scene + per-eye stereo cube renderer for OpenXR. */
+/** @brief Stereo cube scene for OpenXR: all drawing goes through the framework's per-eye render hook. */
 class StereoCubeSceneLayer final : public IXrLayer {
    public:
     StereoCubeSceneLayer();
@@ -53,25 +64,12 @@ class StereoCubeSceneLayer final : public IXrLayer {
     void onAttach(ISession* session) override;
     void onDetach() override;
     void onUpdate(const FrameParams& params, LayerParams& out_layers) override;
+    void onRenderEye(const EyeRenderContext& context) override;
 
    private:
-    [[nodiscard]] bool ensureGraphics(const ViewSurface& surface);
-    void destroyGraphics();
-    void renderEye(const Frame& frame, std::uint32_t eye_index, float clear_r, float clear_g, float clear_b);
-
-    std::shared_ptr<vne::rhi::IDevice> device_;
-    std::shared_ptr<vne::rhi::ICommandQueue> queue_;
-    vne::rhi::ResourceRef<vne::rhi::IBuffer> vertex_buffer_;
-    vne::rhi::ResourceRef<vne::rhi::IBuffer> index_buffer_;
-    vne::rhi::ResourceRef<vne::rhi::IShaderLibrary> shader_library_;
-    vne::rhi::ResourceRef<vne::rhi::IRenderPipeline> render_pipeline_;
-    vne::rhi::TextureFormat pipeline_color_format_ = vne::rhi::TextureFormat::eUnknown;
-    vne::rhi::TextureFormat pipeline_depth_format_ = vne::rhi::TextureFormat::eUnknown;
-    std::uint32_t index_count_ = 0;
-    bool graphics_ready_ = false;
-
+    FlatColorRenderer renderer_;
     StereoCubeScene scene_;
-    std::uint64_t frames_rendered_ = 0;
+    bool is_ready_ = false;
 };
 
 }  // namespace vne::xr::samples

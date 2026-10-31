@@ -4,8 +4,10 @@
  * Licensed under the Apache License, Version 2.0 (the "License")
  * ---------------------------------------------------------------------- */
 
+#include "layers/xr_layer_stack.h"
 #include "vertexnova/xr/types.h"
 
+#include <array>
 #include <functional>
 #include <string>
 #include <string_view>
@@ -13,14 +15,13 @@
 
 namespace vne::xr::samples {
 
-class XrSampleApp;
-
 /** @brief One runnable sample: how to open its session and which layers to push. */
 struct SampleInfo {
     std::string name;         //!< Selection key, e.g. "stereo_cube" (command line `--sample`, Android intent extra).
     std::string description;  //!< One line shown by `--list`.
     BackendType backend = BackendType::eNull;
-    std::function<void(XrSampleApp&)> setup;  //!< Pushes the sample's layers onto the app.
+    std::function<void(XrLayerStack&)> setup;                //!< Pushes the sample's layers onto a fresh layer stack.
+    std::array<float, 3> accent_color{0.30f, 0.60f, 1.00f};  //!< Stripe color of the sample's card in the launcher.
 };
 
 /**

@@ -5,6 +5,7 @@
  * ---------------------------------------------------------------------- */
 
 #include "layers/xr_layer_stack.h"
+#include "render/xr_frame_renderer.h"
 #include "vertexnova/xr/session.h"
 
 #include <functional>
@@ -32,6 +33,9 @@ class XrSampleApp final : public IRenderSession {
     explicit XrSampleApp(SessionConfig config);
     ~XrSampleApp() override;
 
+    /** @brief The layer stack, for `SampleInfo::setup`. */
+    [[nodiscard]] XrLayerStack& stack() { return stack_; }
+
     void pushLayer(std::unique_ptr<IXrLayer> layer);
     void pushOverlay(std::unique_ptr<IXrLayer> overlay);
 
@@ -51,6 +55,8 @@ class XrSampleApp final : public IRenderSession {
     SessionConfig config_;
     std::unique_ptr<ISession> session_;
     XrLayerStack stack_;
+    XrFrameRenderer renderer_;
+    bool is_renderer_attached_ = false;
     std::function<void()> on_ready_;
     FramePump frame_pump_;
 };

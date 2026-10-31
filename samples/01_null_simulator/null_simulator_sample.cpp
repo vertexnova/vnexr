@@ -21,7 +21,7 @@ void registerNullSimulatorSample(SampleRegistry& registry) {
         .name = "null_simulator",
         .description = "Null session and layer stack: five simulated frames, no headset or runtime",
         .backend = BackendType::eNull,
-        .setup = [](XrSampleApp& app) { app.pushLayer(std::make_unique<ExitAfterFramesLayer>(5)); },
+        .setup = [](XrLayerStack& app) { app.pushLayer(std::make_unique<ExitAfterFramesLayer>(5)); },
     });
 }
 

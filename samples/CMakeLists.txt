@@ -34,6 +34,7 @@ add_subdirectory(01_null_simulator)
 # OpenXR (Linux Monado, Windows, Android)
 if(VNE_XR_WITH_OPENXR)
     add_subdirectory(02_openxr_stereo)
+    add_subdirectory(04_xr_diagnostics)
 endif()
 
 # OpenXR + vnegfx CSG (stretch; requires VNE_XR_WITH_GFX_SAMPLE)
