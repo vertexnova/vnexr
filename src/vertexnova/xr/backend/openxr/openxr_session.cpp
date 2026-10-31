@@ -583,22 +583,23 @@ bool OpenXrSession::locateViews(XrTime display_time, ViewArray& out_views, std::
         is_located && (view_state.viewStateFlags & XR_VIEW_STATE_ORIENTATION_VALID_BIT) != 0;
     const bool is_position_valid = is_located && (view_state.viewStateFlags & XR_VIEW_STATE_POSITION_VALID_BIT) != 0;
 
-    // A tracking hiccup (often position only) must not blank the display: draw with the last good pose instead.
+    // A tracking hiccup (often position only) must not blank the display: draw with the last located pose instead.
     if (is_orientation_valid && out_count > 0) {
-        if (!is_position_valid && has_good_views_) {
+        if (!is_position_valid && has_located_views_) {
             for (std::uint32_t i = 0; i < out_count; ++i) {
-                out_views[i].pose.position = last_good_views_[i].pose.position;
+                out_views[i].pose.position = last_located_views_[i].pose.position;
             }
             ++health_.stale_pose_frames;
         }
-        if (is_position_valid || has_good_views_) {
-            last_good_views_ = out_views;
-            has_good_views_ = true;
+        if (is_position_valid || has_located_views_) {
+            last_located_views_ = out_views;
+            last_located_view_count_ = out_count;
+            has_located_views_ = true;
             return true;
         }
-    } else if (has_good_views_) {
-        out_views = last_good_views_;
-        out_count = kViewCapacity;
+    } else if (has_located_views_) {
+        out_views = last_located_views_;
+        out_count = last_located_view_count_;
         ++health_.stale_pose_frames;
         return true;
     }
@@ -670,7 +671,7 @@ bool OpenXrSession::beginFrame(Frame& out_frame) {
         has_space_change_pending_ = false;
         ++reference_space_epoch_;
         // Poses remembered in the old coordinates are meaningless now.
-        has_good_views_ = false;
+        has_located_views_ = false;
         VNE_LOG_INFO << "OpenXR reference space changed (epoch " << reference_space_epoch_ << ")";
     }
     out_frame = {};

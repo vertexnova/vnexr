@@ -20,7 +20,7 @@ Backends may differ in handedness, depth range, and NDC Z. Applications should u
 | Reference space | `LOCAL_FLOOR` (`XR_EXT_local_floor`) when the runtime offers it, else `STAGE`, else `LOCAL`; origin on the floor for the first two |
 | Graphics | Vulkan via `XR_KHR_vulkan_enable2` (preferred) or `XR_KHR_vulkan_enable` |
 | Swapchain images | Per-eye color, compositor-owned, 1 sample, imported via `vne::rhi::vulkan::importImage`; the app renders into its own (MSAA) color and depth and resolves into them |
-| Depth | Depth swapchain for rendering; composition layer depth deferred |
+| Depth | App-owned per-eye depth attachment (not a swapchain), created next to the MSAA color by `OpenXrSwapchainBridge`; composition layer depth submission is deferred |
 | Module layout | See [openxr_design.md](openxr_design.md) |
 | Samsung Galaxy XR | Same path as Quest: Android + OpenXR + Vulkan |
 

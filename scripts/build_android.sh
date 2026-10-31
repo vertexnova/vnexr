@@ -410,8 +410,13 @@ stage_validation_layer() {
     fi
     local unpacked="${cache_dir}/unpacked"
     if [[ ! -d "$unpacked" ]]; then
-        mkdir -p "$unpacked"
-        unzip -q "$archive" -d "$unpacked" || die "Could not unpack $archive"
+        # Unpack beside the final folder and rename on success, so an interrupted unzip cannot leave a half-filled
+        # "unpacked" that makes later runs skip the extraction.
+        local unpacking="${unpacked}.part"
+        rm -rf "$unpacking"
+        mkdir -p "$unpacking"
+        unzip -q "$archive" -d "$unpacking" || { rm -rf "$unpacking"; die "Could not unpack $archive"; }
+        mv "$unpacking" "$unpacked"
     fi
     local source
     source="$(find "$unpacked" -path "*/${ABI}/libVkLayer_khronos_validation.so" | head -n 1)"

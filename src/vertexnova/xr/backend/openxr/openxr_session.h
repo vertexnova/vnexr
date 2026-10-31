@@ -75,8 +75,9 @@ class OpenXrSession final : public ISession {
     std::int64_t color_format_ = 0;
     bool swapchains_ready_ = false;
     /** Last tracked eye views: reused for a frame or two when the runtime briefly reports no valid pose. */
-    ViewArray last_good_views_{};
-    bool has_good_views_ = false;
+    ViewArray last_located_views_{};
+    std::uint32_t last_located_view_count_ = 0;
+    bool has_located_views_ = false;
 
     /** Set by REFERENCE_SPACE_CHANGE_PENDING; applied when a frame's display time reaches `space_change_time_`. */
     bool has_space_change_pending_ = false;
@@ -108,7 +109,7 @@ class OpenXrSession final : public ISession {
     bool ensureSwapchains();
     void flushGpu();
     /**
-     * Locate both eyes for @p display_time. A frame with a lost position (or no fix at all) reuses the last good
+     * Locate both eyes for @p display_time. A frame with a lost position (or no fix at all) reuses the last located
      * views so the display never blanks. @return False only when nothing has ever been tracked.
      */
     [[nodiscard]] bool locateViews(XrTime display_time, ViewArray& out_views, std::uint32_t& out_count);

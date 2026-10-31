@@ -250,8 +250,8 @@ The log buffer is small and is cleared by a reboot, so save it right after the p
 |---|---|
 | `OpenXR runtime: Oculus ...` | The runtime was found |
 | `OpenXR Vulkan device ready` | Vulkan device created through OpenXR |
-| `OpenXR session initialized (... reference space=..., color format=..., views=2)` | Session created |
-| `OpenXR swapchains ready: 2 views ... MSAA x4` | Eye buffers exist; `MSAA x1` means the 4x fallback was used |
+| `OpenXR session initialized (MSAA request=4, ... reference space=..., color format=..., views=2)` | Session created; this line shows the MSAA you asked for |
+| `OpenXR swapchains ready: 2 views ... MSAA x4` | Eye buffers exist; this line shows the MSAA actually in use. `MSAA x1` is expected when `debug.vnexr.msaa` is 1; with a request of 4 it means the 4x allocation failed and the 1x fallback was used |
 | `Starting sample '...'` | The sample was attached |
 | `XR frame health: N frames in 5s, no problems` | Every 5 seconds while rendering |
 

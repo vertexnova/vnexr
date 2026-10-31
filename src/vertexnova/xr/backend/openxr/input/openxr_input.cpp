@@ -63,6 +63,8 @@ Result OpenXrInput::suggestBindings(XrInstance instance) {
     const XrActionSuggestedBinding khr_bindings[] = {
         {spawn_action_, path("/user/hand/left/input/select/click")},
         {spawn_action_, path("/user/hand/right/input/select/click")},
+        {trigger_action_, path("/user/hand/left/input/select/click")},
+        {trigger_action_, path("/user/hand/right/input/select/click")},
         {menu_action_, path("/user/hand/left/input/menu/click")},
         {menu_action_, path("/user/hand/right/input/menu/click")},
         {palm_pose_action_, path("/user/hand/left/input/grip/pose")},

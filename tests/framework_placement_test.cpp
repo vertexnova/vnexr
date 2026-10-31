@@ -58,8 +58,14 @@ TEST(PlacementTest, BlocksStack) {
 }
 
 TEST(PlacementTest, ABlockHangingMostlyOffAnEdgeFalls) {
-    // Center 6 cm past the table's edge: more than half the block is over empty space.
-    EXPECT_FLOAT_EQ(restingHeight({0.41f, 1.2f, -0.5f}, kHalf, kHalf, {kTable}), 0.f);
+    // Center 3 cm past the table's edge (0.35 m): the block still touches the table, but only 2 of its 10 cm are over
+    // it.
+    EXPECT_FLOAT_EQ(restingHeight({0.38f, 1.2f, -0.5f}, kHalf, kHalf, {kTable}), 0.f);
+}
+
+TEST(PlacementTest, ABlockJustInsideTheEdgeReachStillLandsOnTheTable) {
+    // The reach is the table's half extent plus half the block's footprint (0.375 m): 0.37 m is just inside it.
+    EXPECT_FLOAT_EQ(restingHeight({0.37f, 1.2f, -0.5f}, kHalf, kHalf, {kTable}), kTable.top());
 }
 
 TEST(PlacementTest, UprightYawKeepsTheHeadingAndDropsTheTilt) {

@@ -65,14 +65,14 @@ A sample is a stack of layers (`SampleInfo::setup` receives an `XrLayerStack`). 
 ### Adding a sample
 
 1. In the sample's `CMakeLists.txt` call `vne_xr_add_sample_library(<name> REGISTER register<Name>Sample SOURCES ... [LIBRARIES ...])`.
-2. In its sources define `void vne::xr::samples::register<Name>Sample(SampleRegistry&)`, which calls `registry.add` with an explicit initializer for each field. `setup` pushes the sample's layers onto the `XrSampleApp`.
+2. In its sources define `void vne::xr::samples::register<Name>Sample(SampleRegistry&)`, which calls `registry.add` with an explicit initializer for each field. `setup` receives the sample's `XrLayerStack` and pushes its layers onto it.
 
    ```cpp
    registry.add({
        .name = "my_sample",
        .description = "What the sample shows",
        .backend = BackendType::eOpenXr,
-       .setup = [](XrSampleApp& app) { app.pushLayer(std::make_unique<MyLayer>()); },
+       .setup = [](XrLayerStack& stack) { stack.pushLayer(std::make_unique<MyLayer>()); },
    });
    ```
 

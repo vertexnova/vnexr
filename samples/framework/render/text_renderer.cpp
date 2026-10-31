@@ -214,11 +214,11 @@ bool TextRenderer::buildPipeline(vne::rhi::TextureFormat color,
     desc.name = "text_sdf_pipeline";
     desc.shader = shader_library_.get();
     desc.vertex_layout = layout;
-    desc.formats.color_formats[0] = color;
-    desc.formats.depth_stencil_format = depth;
-    desc.formats.sample_count = samples;
-    desc.pipeline_state.sample_count = samples;
-    desc.pipeline_state.multisample_enabled = samples != SampleCount::e1;
+    EyeRenderContext target{};
+    target.color_format = color;
+    target.depth_format = depth;
+    target.sample_count = samples;
+    setEyeTargetFormats(target, desc);
     desc.pipeline_state.cull_mode = CullMode::eNone;
     desc.pipeline_state.depth_test_enabled = depth != TextureFormat::eUnknown;
     // Text lies on a panel: it must be hidden by nearer things but never hide anything itself.
