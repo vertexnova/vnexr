@@ -14,7 +14,7 @@
 	path = deps/internal/vnerhi
 	# Private repo — local: SSH or VNE_VNERHI_PATH; CI: REPO_ACCESS_TOKEN + HTTPS rewrite
 	url = git@github.com:vertexnova/vnerhi.git
-	branch = vnerhi-openxr
+	branch = main
 [submodule "deps/internal/vnemath"]
 	path = deps/internal/vnemath
 	url = https://github.com/vertexnova/vnemath.git

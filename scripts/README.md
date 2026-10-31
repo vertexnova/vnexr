@@ -9,6 +9,13 @@ chmod +x scripts/*.sh
 ./scripts/init_submodules.sh
 ```
 
+`./scripts/init_submodules.sh full` also needs the private `vnerhi`. It is pinned to one commit, and `.gitmodules`
+names the branch that commit lives on (`main`). The pinned commit must be pushed to that branch (or
+merged), or the fetch fails with `not our ref`; the script then fetches the branch and prints the exact
+`git push` to run. Other ways in: SSH, `REPO_ACCESS_TOKEN` (HTTPS), or `VNE_VNERHI_PATH=../vnerhi` for a local
+checkout. `VNE_VNERHI_FOLLOW_BRANCH=1` uses the branch tip instead of the pinned commit (for testing; not
+reproducible).
+
 ## Build Scripts
 
 ### Linux (`build_linux.sh`)

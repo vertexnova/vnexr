@@ -123,7 +123,8 @@ EOF
   echo "Initializing private submodule deps/internal/vnerhi (requires org access)..."
   git submodule sync deps/internal/vnerhi
   if ! git submodule update --init deps/internal/vnerhi; then
-    cat <<'EOF' >&2
+    resolve_vnerhi_pinned_commit || {
+      cat <<'EOF' >&2
 ERROR: failed to init deps/internal/vnerhi (private repo).
 
 Options:
@@ -131,8 +132,50 @@ Options:
   2. HTTPS + PAT: export REPO_ACCESS_TOKEN=<token> && ./scripts/init_submodules.sh full
   3. Local path:  export VNE_VNERHI_PATH=../vnerhi && ./scripts/init_submodules.sh full
 EOF
-    exit 1
+      exit 1
+    }
   fi
+}
+
+# vnerhi is pinned to one commit (the gitlink), and .gitmodules names the branch that commit lives on. A clone only
+# has that commit when it is reachable from a pushed branch, so a pointer to a commit that exists only on a laptop
+# fails with "not our ref". Try the named branch explicitly, then say exactly what to push.
+#
+#   VNE_VNERHI_FOLLOW_BRANCH=1   use the tip of the .gitmodules branch instead of the pinned commit (testing only;
+#                                the build is then not reproducible from this commit alone)
+resolve_vnerhi_pinned_commit() {
+  local dest="deps/internal/vnerhi"
+  local pinned branch
+  pinned="$(git rev-parse "HEAD:${dest}" 2>/dev/null || true)"
+  branch="$(git config -f .gitmodules "submodule.${dest}.branch" 2>/dev/null || true)"
+  # The clone step may have failed before creating the checkout: nothing to work with then.
+  [[ -e "$dest/.git" ]] || return 1
+
+  if [[ -n "$branch" ]]; then
+    echo ">> vnerhi: fetching branch '$branch'"
+    git -C "$dest" fetch --quiet origin "$branch" 2>/dev/null || true
+  fi
+  if [[ -n "$pinned" ]] && git -C "$dest" cat-file -e "${pinned}^{commit}" 2>/dev/null; then
+    git -C "$dest" checkout --quiet --detach "$pinned"
+    echo ">> vnerhi: checked out pinned commit ${pinned:0:7}"
+    return 0
+  fi
+  if [[ "${VNE_VNERHI_FOLLOW_BRANCH:-}" == "1" && -n "$branch" ]] \
+     && git -C "$dest" rev-parse --verify --quiet "origin/${branch}^{commit}" >/dev/null; then
+    git -C "$dest" checkout --quiet --detach "origin/${branch}"
+    echo ">> vnerhi: VNE_VNERHI_FOLLOW_BRANCH=1, using the tip of '$branch' ($(git -C "$dest" rev-parse --short HEAD))"
+    return 0
+  fi
+
+  cat <<EOF >&2
+ERROR: vnerhi commit ${pinned:0:7} is not on the remote${branch:+ (branch '$branch')}.
+
+This commit is recorded in the submodule pointer but was never pushed. From a machine that has it:
+  cd deps/internal/vnerhi && git push origin ${branch:-<branch>}
+Then re-run this job. To test against the current branch tip meanwhile (not reproducible):
+  VNE_VNERHI_FOLLOW_BRANCH=1 ./scripts/init_submodules.sh full
+EOF
+  return 1
 }
 
 init_paths() {
