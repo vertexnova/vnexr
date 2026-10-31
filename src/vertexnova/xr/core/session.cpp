@@ -49,6 +49,8 @@ void ISession::run(IRenderSession& app_session) {
         pollInput(input);
         FrameParams params{frame};
         params.input = input;
+        // Fresh hints each frame: a previous frame's submit_projection must not carry over.
+        layers = LayerParams{};
         app_session.update(params, layers);
         endFrame(frame, layers);
         if (layers.request_exit && !requestExit()) {
