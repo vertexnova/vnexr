@@ -134,44 +134,76 @@ Options:
 EOF
       exit 1
     }
+  elif [[ "${VNE_VNERHI_FOLLOW_BRANCH:-}" == "1" ]]; then
+    follow_vnerhi_branch_tip || exit 1
   fi
+}
+
+# vnerhi branch named by .gitmodules (empty when none).
+vnerhi_branch() {
+  git config -f .gitmodules "submodule.deps/internal/vnerhi.branch" 2>/dev/null || true
+}
+
+# Check out the tip of the .gitmodules branch instead of the pinned commit (VNE_VNERHI_FOLLOW_BRANCH=1; testing only,
+# the build is then not reproducible from this commit alone). Fails unless the fetch and the checkout both succeed,
+# so a stale origin/<branch> from an earlier fetch is never used.
+follow_vnerhi_branch_tip() {
+  local dest="deps/internal/vnerhi"
+  local branch
+  branch="$(vnerhi_branch)"
+  if [[ -z "$branch" ]]; then
+    echo "ERROR: VNE_VNERHI_FOLLOW_BRANCH=1 but .gitmodules names no branch for $dest" >&2
+    return 1
+  fi
+  echo ">> vnerhi: fetching branch '$branch'"
+  if ! git -C "$dest" fetch --quiet origin "$branch"; then
+    echo "ERROR: could not fetch branch '$branch' of vnerhi" >&2
+    return 1
+  fi
+  if ! git -C "$dest" checkout --quiet --detach FETCH_HEAD; then
+    echo "ERROR: could not check out the tip of vnerhi branch '$branch'" >&2
+    return 1
+  fi
+  echo ">> vnerhi: VNE_VNERHI_FOLLOW_BRANCH=1, using the tip of '$branch' ($(git -C "$dest" rev-parse --short HEAD))"
 }
 
 # vnerhi is pinned to one commit (the gitlink), and .gitmodules names the branch that commit lives on. A clone only
 # has that commit when it is reachable from a pushed branch, so a pointer to a commit that exists only on a laptop
-# fails with "not our ref". Try the named branch explicitly, then say exactly what to push.
+# fails with "not our ref". Fetch the named branch (best effort: the pinned commit may already be present), check
+# out the pinned commit, and otherwise say what to merge and push.
 #
-#   VNE_VNERHI_FOLLOW_BRANCH=1   use the tip of the .gitmodules branch instead of the pinned commit (testing only;
-#                                the build is then not reproducible from this commit alone)
+#   VNE_VNERHI_FOLLOW_BRANCH=1   see follow_vnerhi_branch_tip
 resolve_vnerhi_pinned_commit() {
   local dest="deps/internal/vnerhi"
   local pinned branch
   pinned="$(git rev-parse "HEAD:${dest}" 2>/dev/null || true)"
-  branch="$(git config -f .gitmodules "submodule.${dest}.branch" 2>/dev/null || true)"
+  branch="$(vnerhi_branch)"
   # The clone step may have failed before creating the checkout: nothing to work with then.
   [[ -e "$dest/.git" ]] || return 1
 
+  if [[ "${VNE_VNERHI_FOLLOW_BRANCH:-}" == "1" ]]; then
+    follow_vnerhi_branch_tip
+    return
+  fi
   if [[ -n "$branch" ]]; then
     echo ">> vnerhi: fetching branch '$branch'"
     git -C "$dest" fetch --quiet origin "$branch" 2>/dev/null || true
   fi
   if [[ -n "$pinned" ]] && git -C "$dest" cat-file -e "${pinned}^{commit}" 2>/dev/null; then
-    git -C "$dest" checkout --quiet --detach "$pinned"
+    if ! git -C "$dest" checkout --quiet --detach "$pinned"; then
+      echo "ERROR: could not check out vnerhi commit ${pinned:0:7}" >&2
+      return 1
+    fi
     echo ">> vnerhi: checked out pinned commit ${pinned:0:7}"
-    return 0
-  fi
-  if [[ "${VNE_VNERHI_FOLLOW_BRANCH:-}" == "1" && -n "$branch" ]] \
-     && git -C "$dest" rev-parse --verify --quiet "origin/${branch}^{commit}" >/dev/null; then
-    git -C "$dest" checkout --quiet --detach "origin/${branch}"
-    echo ">> vnerhi: VNE_VNERHI_FOLLOW_BRANCH=1, using the tip of '$branch' ($(git -C "$dest" rev-parse --short HEAD))"
     return 0
   fi
 
   cat <<EOF >&2
 ERROR: vnerhi commit ${pinned:0:7} is not on the remote${branch:+ (branch '$branch')}.
 
-This commit is recorded in the submodule pointer but was never pushed. From a machine that has it:
-  cd deps/internal/vnerhi && git push origin ${branch:-<branch>}
+This commit is recorded in the submodule pointer but was never pushed. From a machine that has it, merge it into
+'${branch:-<branch>}' and push that branch:
+  cd deps/internal/vnerhi && git switch ${branch:-<branch>} && git merge ${pinned:0:7} && git push origin ${branch:-<branch>}
 Then re-run this job. To test against the current branch tip meanwhile (not reproducible):
   VNE_VNERHI_FOLLOW_BRANCH=1 ./scripts/init_submodules.sh full
 EOF

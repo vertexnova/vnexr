@@ -48,7 +48,7 @@ struct ViewSurface {
 struct SurfaceTextures {
     std::uint32_t view_count = 0;
     static constexpr std::uint32_t kMaxViews = 2;
-    ViewSurface views[kMaxViews]{};
+    ViewSurface views[kMaxViews];
 };
 
 }  // namespace vne::xr

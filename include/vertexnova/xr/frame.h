@@ -29,7 +29,7 @@ struct Frame {
     bool should_render = false;
     std::uint32_t view_count = 0;
     static constexpr std::uint32_t kMaxViews = 2;
-    View views[kMaxViews]{};
+    View views[kMaxViews];
     /** @brief Head (VIEW space) pose in the app reference space; meaningful when `is_head_pose_valid`. */
     Pose head_pose{};
     bool is_head_pose_valid = false;
