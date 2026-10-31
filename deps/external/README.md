@@ -16,3 +16,9 @@ cd deps/external/googletest && git checkout v1.17.0
 ```
 
 If this directory is empty, the build will use CMake FetchContent to download googletest when tests are enabled.
+
+## stb_truetype
+
+- **Path:** `stb_truetype/` (single header, v1.26, unmodified; MIT / public domain)
+- **Purpose:** bakes the signed distance field font atlas for the sample launcher text.
+- **Planned:** move to vneio (see `stb_truetype/README.md`).

@@ -10,7 +10,7 @@
 
 #define STB_TRUETYPE_IMPLEMENTATION
 #define STBTT_STATIC
-#include "third_party/stb/stb_truetype.h"
+#include "stb_truetype.h"
 
 namespace vne::xr::samples {
 

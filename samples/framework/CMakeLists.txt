@@ -29,13 +29,16 @@ add_library(vne_xr_samples_framework STATIC
 
 add_library(vne::xr::samples::framework ALIAS vne_xr_samples_framework)
 
-# stb_truetype is third-party code: compile its translation unit without our warning set.
+# stb_truetype (deps/external/stb_truetype) is third-party code: compile its translation unit without our warning set.
+# TODO: take it from vneio's stb_image module once vneio ships stb_truetype (see deps/external/stb_truetype/README.md).
 set_source_files_properties(render/font_atlas.cpp PROPERTIES COMPILE_FLAGS "-w")
 
 target_include_directories(vne_xr_samples_framework
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/..
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/deps/external/stb_truetype
 )
 
 target_link_libraries(vne_xr_samples_framework
