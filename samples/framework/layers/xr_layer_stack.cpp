@@ -54,6 +54,19 @@ void XrLayerStack::onUpdate(const FrameParams& params, LayerParams& out_layers) 
     }
 }
 
+void XrLayerStack::onRenderEye(const EyeRenderContext& context) {
+    for (auto& layer : layers_) {
+        if (layer && layer->isEnabled()) {
+            layer->onRenderEye(context);
+        }
+    }
+    for (auto& overlay : overlays_) {
+        if (overlay && overlay->isEnabled()) {
+            overlay->onRenderEye(context);
+        }
+    }
+}
+
 std::size_t XrLayerStack::layerCount() const {
     return layers_.size() + overlays_.size();
 }

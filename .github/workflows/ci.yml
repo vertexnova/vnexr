@@ -7,12 +7,12 @@
 #
 # Description: CI pipeline — staged, gated, with concurrency cancellation.
 # Stage 1 — Pre-checks  : clang-format (fail-fast gate), commit-lint (warning only)
-# Stage 2+3 — Build+Test: Windows OpenXR only (Linux / Android / clang-tidy temporarily skipped)
+# Stage 2+3 — Build+Test: Windows OpenXR and Android OpenXR (Linux / clang-tidy temporarily skipped)
 # Stage 4 — Analysis    : clang-tidy (skipped while Linux Clang is off)
 # Stage 5 — CI Gate     : single required status check for branch protection
 # Branch protection: require only "CI Gate" — not individual job names.
 #
-# Temporary: only build-windows-openxr runs among platform builds.
+# Temporary: only build-windows-openxr and build-android run among platform builds.
 # Private deps/internal/vnerhi requires REPO_ACCESS_TOKEN (see init_submodules.sh).
 #
 # Autodoc:   yes
@@ -189,7 +189,7 @@ jobs:
 
   # ====================================================================
   # STAGE 2+3: BUILD + TEST
-  # Temporary: only Windows OpenXR is enabled; other platforms use if: false.
+  # Temporary: only Windows OpenXR and Android OpenXR are enabled; other platforms use if: false.
   # ====================================================================
 
   build-linux-gcc:
@@ -326,7 +326,7 @@ jobs:
   build-android:
     name: "Build / Android OpenXR (arm64-v8a)"
     needs: [detect-release, pre-checks-gate]
-    if: false
+    if: needs.pre-checks-gate.result == 'success' && needs.detect-release.outputs.is_release != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -343,22 +343,10 @@ jobs:
           REPO_ACCESS_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
         run: bash scripts/init_submodules.sh full
 
-      - name: Configure CMake (Android OpenXR)
-        run: |
-          cmake -B build/shared -S . \
-            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK/build/cmake/android.toolchain.cmake" \
-            -DANDROID_ABI=arm64-v8a \
-            -DANDROID_PLATFORM=android-24 \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DVNE_XR_CI=ON \
-            -DVNE_XR_LIB_TYPE=shared \
-            -DVNE_XR_WITH_RHI=ON \
-            -DVNE_XR_WITH_OPENXR=ON \
-            -DVNE_XR_BACKEND_VULKAN=ON \
-            -DVNE_XR_TESTS=OFF   # Android binaries cannot run on the host runner; build-only check
-
-      - name: Build
-        run: cmake --build build/shared --parallel
+      # The same script developers use: OpenXR + Vulkan + all samples with the NDK that the runner provides
+      # (ANDROID_NDK_ROOT). Native build only; the APK needs Gradle and is not produced in CI.
+      - name: Build (Android arm64-v8a, OpenXR + Vulkan + samples)
+        run: ./scripts/build_android.sh -t Release -abi arm64-v8a -a configure_and_build
 
   build-linux-asan:
     name: "Build+Test / Linux ASan+UBSan"

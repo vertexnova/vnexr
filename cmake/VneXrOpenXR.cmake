@@ -4,6 +4,8 @@
 
 include_guard(GLOBAL)
 
+set(_VNE_XR_OPENXR_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}")
+
 function(xr_configure_openxr)
     if(NOT VNE_XR_WITH_OPENXR)
         return()
@@ -25,7 +27,14 @@ function(xr_configure_openxr)
     set(BUILD_CONFORMANCE_TESTS OFF CACHE BOOL "" FORCE)
     set(BUILD_API_LAYERS OFF CACHE BOOL "" FORCE)
     set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    # The pinned OpenXR SDK still calls find_package(PythonInterp), a module CMake removed (CMP0148). Give it a small
+    # replacement for that subproject only.
+    set(_vne_xr_saved_module_path "${CMAKE_MODULE_PATH}")
+    list(PREPEND CMAKE_MODULE_PATH "${_VNE_XR_OPENXR_CMAKE_DIR}/openxr_shims")
+    set(CMAKE_POLICY_DEFAULT_CMP0148 NEW)
     FetchContent_MakeAvailable(openxr-sdk)
+    unset(CMAKE_POLICY_DEFAULT_CMP0148)
+    set(CMAKE_MODULE_PATH "${_vne_xr_saved_module_path}")
 
     if(NOT TARGET openxr_loader)
         message(FATAL_ERROR "OpenXR FetchContent did not provide openxr_loader")

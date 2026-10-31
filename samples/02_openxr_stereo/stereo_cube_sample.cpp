@@ -20,9 +20,10 @@ namespace vne::xr::samples {
 void registerStereoCubeSample(SampleRegistry& registry) {
     registry.add({
         .name = "stereo_cube",
-        .description = "OpenXR stereo cubes with controller and hand grab/spawn interaction",
+        .description = "OpenXR stereo cubes grab and spawn blocks with the trigger, A/X recolors",
         .backend = BackendType::eOpenXr,
-        .setup = [](XrSampleApp& app) { app.pushLayer(std::make_unique<StereoCubeSceneLayer>()); },
+        .setup = [](XrLayerStack& app) { app.pushLayer(std::make_unique<StereoCubeSceneLayer>()); },
+        .accent_color = {1.00f, 0.55f, 0.20f},
     });
 }
 

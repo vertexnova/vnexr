@@ -20,7 +20,7 @@ int launchSample(const SampleInfo& sample, const SessionPlatformHandle& platform
     config.platform = platform;
 
     XrSampleApp app(std::move(config));
-    sample.setup(app);
+    sample.setup(app.stack());
     app.setFramePump(std::move(pump));
     return app.run();
 }

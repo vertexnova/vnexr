@@ -52,6 +52,16 @@ set(TEST_SOURCES
     session_state_test.cpp
 )
 
+# Framework tests exercise the sample framework (navigation, launcher layout); they need the samples build.
+if(VNE_XR_SAMPLES)
+    list(APPEND TEST_SOURCES
+        framework_navigation_test.cpp
+        framework_launcher_test.cpp
+        framework_placement_test.cpp
+        framework_eye_pipeline_test.cpp
+        framework_text_test.cpp)
+endif()
+
 #==============================================================================
 # Build test executable
 #==============================================================================
@@ -69,5 +79,9 @@ target_link_libraries(vnexr_tests
         ${GTEST_LIBRARIES}
         vne::xr
 )
+
+if(VNE_XR_SAMPLES)
+    target_link_libraries(vnexr_tests PRIVATE vne::xr::samples::framework)
+endif()
 
 add_test(NAME vnexr_tests COMMAND vnexr_tests)

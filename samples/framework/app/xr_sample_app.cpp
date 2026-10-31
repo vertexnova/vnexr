@@ -20,6 +20,7 @@ XrSampleApp::XrSampleApp(SessionConfig config)
 
 XrSampleApp::~XrSampleApp() {
     // Layers release GPU resources on the session's device, so detach them before the session is destroyed.
+    renderer_.detach();
     stack_.onDetach();
     session_.reset();
 }
@@ -51,11 +52,12 @@ int XrSampleApp::run() {
     LayerParams layers{};
     InputState input{};
     bool is_exit_requested = false;
+    bool is_quit_asked = false;
 
     while (true) {
         // Ask once; the loop then runs on until the backend reports the session has ended (pollEvents() == false),
         // or stops at once when the backend cannot exit gracefully.
-        const bool wants_quit = (frame_pump_ && !frame_pump_(*session_)) || layers.request_exit;
+        const bool wants_quit = (frame_pump_ && !frame_pump_(*session_)) || is_quit_asked;
         if (wants_quit && !is_exit_requested) {
             is_exit_requested = true;
             if (!session_->requestExit()) {
@@ -76,13 +78,22 @@ int XrSampleApp::run() {
         session_->pollInput(input);
         FrameParams params{frame};
         params.input = input;
+        // Fresh every frame: a layer must say again that this frame is drawn, and with which settings.
+        layers = LayerParams{};
         update(params, layers);
+        is_quit_asked = is_quit_asked || layers.request_exit;
+        if (is_renderer_attached_ && frame.should_render && frame.view_count > 0) {
+            const std::vector<RenderPart> parts = {RenderPart{&stack_, xrmath::identity()}};
+            layers.submit_projection = renderer_.render(frame, parts, layers.clear_color);
+        }
         session_->endFrame(frame, layers);
     }
     return 0;
 }
 
 void XrSampleApp::onSessionReady() {
+    // The Null backend has no device: its samples draw nothing.
+    is_renderer_attached_ = session_->backendType() == BackendType::eOpenXr && renderer_.attach(*session_);
     stack_.onAttach(session_.get());
     if (on_ready_) {
         on_ready_();

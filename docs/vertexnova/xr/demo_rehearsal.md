@@ -7,7 +7,7 @@ Target length: **3 minutes** live, with a recorded fallback.
 - [ ] Ubuntu 24.04 laptop charged; Monado starts (`systemctl --user start monado.service`)
 - [ ] `sample_02_openxr_stereo` runs on Monado without adb
 - [ ] Galaxy XR charged; developer mode on; `adb devices` lists the headset
-- [ ] APK installed: `com.vertexnova.vnexr.samples` (one APK; pick the sample with `-a run -sample <name>`)
+- [ ] APK installed: `com.vertexnova.vnexr.samples` (one APK; the in-headset launcher picks the sample, or use `-a run -sample <name>`)
 - [ ] Hand pinch/grasp works in the headset
 - [ ] `scrcpy` mirrors to the meeting display
 - [ ] Fallback MP4 of a clean run copied to the laptop
@@ -25,7 +25,7 @@ Target length: **3 minutes** live, with a recorded fallback.
 | Symptom | Action |
 |---------|--------|
 | Headset not in `adb devices` | Switch to Monado immediately; fix USB later |
-| Black view in HMD | `adb logcat -s vne.xr:* OpenXR:*`; play fallback video |
+| Black view in HMD | `./scripts/build_android.sh -a logcat`; look for the `XR frame health` warnings; play fallback video |
 | No hand input | Controllers still work if paired; mention hand_interaction extension |
 | scrcpy fails | Pass the headset around or show the recording |
 

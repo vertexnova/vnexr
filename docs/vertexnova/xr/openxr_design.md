@@ -8,7 +8,7 @@ Canonical architecture for the OpenXR session/compositor backend on **Android, W
 
 - Production OpenXR on Android (Quest, Samsung Galaxy XR), Windows (Monado, Meta Link), and **Linux** (Monado / desktop VR dev) via **vnerhi Vulkan**.
 - Thin `OpenXrSession` orchestrator delegating to focused modules (vnerhi backend layout).
-- Per-eye color + depth swapchains, real composition layers, view/projection matrices, Khronos Ch.4 input.
+- Per-eye color swapchains with app-owned (MSAA) color and depth targets, real composition layers, view/projection matrices, Khronos Ch.4 input.
 - `Result` + `VNE_XR_CHECK` error model aligned with vnerhi.
 
 **Non-goals**
@@ -82,7 +82,7 @@ sequenceDiagram
   Sess->>XR: xrCreateReferenceSpace LOCAL
   Note over Sess: On SESSION_STATE_READY
   Sess->>XR: xrBeginSession primaryViewConfigurationType
-  Sess->>Sess: create per-eye color+depth swapchains
+  Sess->>Sess: create per-eye color swapchains + app-owned MSAA color/depth targets
   Sess->>RHI: vulkan::importImage for each swapchain VkImage
 ```
 
@@ -107,9 +107,9 @@ Application exit: an app sets `LayerParams::request_exit`; `ISession::run` calls
 
 - Swapchain images are compositor-owned `VkImage` handles imported through `vne::rhi::vulkan::importImage` (`isWrappedImage() == true`).
 - Apps must use `ISession::graphicsDevice()` — the same device that owns the binding and wrapped textures.
-- Apps render via `Frame::surfaces.views[i].color_texture` / `depth_texture`.
-- Before `xrReleaseSwapchainImage`, call `OpenXrSession::flushGpu()` (queue wait idle / finish frame).
-- Depth swapchains are created for rendering; depth composition layer submission is deferred.
+- Apps render through `Frame::surfaces.views[i].render_target` (the bridge's MSAA color + depth target that resolves into the swapchain image). `color_format`, `depth_format` and `sample_count` describe it; pipelines must match all three.
+- Synchronization: `beginFrame` waits for the previous frame's GPU work; `endFrame` waits only when `SessionConfig::is_gpu_sync_every_frame` is on (the default), before `xrReleaseSwapchainImage`.
+- Depth is an app-owned attachment, not a swapchain; depth composition layer submission is deferred.
 
 ## Error model
 
@@ -127,7 +127,7 @@ flowchart LR
   begin --> matrices[view/proj matrices]
   begin --> input[pollInput actions]
   begin --> app[IRenderSession update]
-  app --> flush[flushGpu]
+  app --> flush[flushGpu if is_gpu_sync_every_frame]
   flush --> compose[build composition layer]
   compose --> release[release swapchains]
   release --> end[xrEndFrame]
@@ -135,7 +135,7 @@ flowchart LR
 
 Lifecycle rules live in `core/session_state.h` (`evaluateSessionTransition`): READY begins the session; STOPPING first waits for the GPU and releases the swapchains, then calls `xrEndSession`; and LOSS_PENDING / EXITING (and `XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING`) leave the loop. Events for another session handle are ignored.
 
-Per-frame rules: every `xrWaitFrame` is followed by `xrBeginFrame` and `xrEndFrame`. When `shouldRender` is false, or the located views do not have both position and orientation valid, no swapchain image is acquired and the frame is ended with zero layers. Swapchain images are released only if they were acquired in that frame, always before `xrEndFrame`. The display time passed to `xrEndFrame` is the exact `XrTime` from `xrWaitFrame`. The reference space is LOCAL_FLOOR (`XR_EXT_local_floor`) when the runtime offers it, else STAGE, else LOCAL.
+Per-frame rules: every `xrWaitFrame` is followed by `xrBeginFrame` and `xrEndFrame`. When `shouldRender` is false, or no pose has ever been valid, no swapchain image is acquired and the frame is ended with zero layers. A view with a valid orientation but no valid position is drawn with the last located position. A projection layer is submitted only when the app reports (`LayerParams::submit_projection`) that every eye was fully drawn, so the compositor never shows an image nobody rendered. `beginFrame` waits for the previous frame's GPU work and then ticks the device (`IDevice::beginFrame`) so deferred resource destruction is reclaimed; `endFrame` waits only when `is_gpu_sync_every_frame` is enabled (the default). Swapchain images are released only if they were acquired in that frame, always before `xrEndFrame`. The display time passed to `xrEndFrame` is the exact `XrTime` from `xrWaitFrame`. The reference space is LOCAL_FLOOR (`XR_EXT_local_floor`) when the runtime offers it, else STAGE, else LOCAL.
 
 `beginFrame` only runs `xrWaitFrame` / `xrBeginFrame` when `session_running_` is true. That flag is set immediately after a successful `xrBeginSession()` in `XR_SESSION_STATE_READY`, and stays set through `SYNCHRONIZED`, `VISIBLE`, and `FOCUSED`. `running_` stays true on `STOPPING` so the run loop can still observe `IDLE` and ends on `EXITING`.
 

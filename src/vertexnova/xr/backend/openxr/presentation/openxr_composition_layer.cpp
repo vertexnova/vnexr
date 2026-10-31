@@ -24,8 +24,8 @@ void OpenXrCompositionLayer::buildProjectionLayer(XrSpace space,
                                                   XrCompositionLayerProjection& out_layer,
                                                   std::array<XrCompositionLayerProjectionView, 2>& out_views) const {
     out_layer = OpenXrUtil::makeXrStruct<XrCompositionLayerProjection>(XR_TYPE_COMPOSITION_LAYER_PROJECTION);
-    out_layer.layerFlags =
-        XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT | XR_COMPOSITION_LAYER_CORRECT_CHROMATIC_ABERRATION_BIT;
+    // Opaque content: alpha is not blended, so a stray alpha value can never dim or discolor the image.
+    out_layer.layerFlags = 0;
     out_layer.space = space;
 
     const std::uint32_t count = std::min(view_count, static_cast<std::uint32_t>(out_views.size()));

@@ -22,15 +22,20 @@ API_LEVEL="24"
 SAMPLE=""
 WITH_DEV=true
 WITH_TESTS=false
+WITH_VALIDATION=false
+# Khronos validation layer release packaged by -validation (Android binaries are attached to every SDK release).
+VVL_VERSION="${VNE_VVL_VERSION:-1.4.363.0}"
 WITH_SAMPLES=true
 
 usage() {
-    echo "Usage: $0 [-t Debug|Release] [-a configure|build|configure_and_build|apk|install|run|studio|clean]"
+    echo "Usage: $0 [-t Debug|Release] [-a configure|build|configure_and_build|apk|install|run|logcat|studio|clean]"
     echo "          [-abi arm64-v8a|x86_64] [-api 24] [-sample <name>] [-l static|shared]"
-    echo "          [-clean] [-j N] [--dev] [--with-tests] [--no-samples]"
+    echo "          [-clean] [-j N] [--dev] [--with-tests] [--no-samples] [-validation]"
     echo ""
     echo "Defaults: OpenXR+Vulkan ON, samples ON, ABI arm64-v8a (Quest 3, Galaxy XR)."
-    echo "  -sample <name>   Sample to launch with -a run (see: vnexr_samples --list). Default: the first registered."
+    echo "  -sample <name>   Sample to launch with -a run (see: vnexr_samples --list). Default: the in-headset launcher."
+    echo "  -a logcat        Stream the app, OpenXR runtime and crash log from the headset (Ctrl-C prints the crash buffer)."
+    echo "  -validation      Debug APK only: package the Khronos Vulkan validation layer (downloaded once; see README)."
     echo ""
     echo "Environment: ANDROID_HOME / ANDROID_SDK_ROOT, ANDROID_NDK_ROOT / ANDROID_NDK_HOME"
     echo ""
@@ -52,6 +57,7 @@ while [[ $# -gt 0 ]]; do
         -api | --api) require_value "$1" "${2:-}"; API_LEVEL="$2"; shift 2 ;;
         -sample | --sample) require_value "$1" "${2:-}"; SAMPLE="$2"; shift 2 ;;
         -clean | --clean) CLEAN=true; shift ;;
+        -validation | --validation) WITH_VALIDATION=true; shift ;;
         --dev) WITH_DEV=true; WITH_SAMPLES=true; shift ;;
         --with-samples | --with-examples) WITH_SAMPLES=true; shift ;;
         --with-tests) WITH_TESTS=true; shift ;;
@@ -297,6 +303,8 @@ if [[ -n "${WINDIR:-}" || -n "${MSYSTEM:-}" ]]; then
     CMAKE_ARGS+=("-G" "Ninja")
 fi
 CMAKE_ARGS+=(
+    # The NDK's own toolchain files still ask for CMake < 3.10; that notice is not ours to fix.
+    "-Wno-deprecated"
     "-DCMAKE_TOOLCHAIN_FILE=${TOOLCHAIN_FILE}"
     "-DANDROID_ABI=${ABI}"
     "-DANDROID_PLATFORM=android-${API_LEVEL}"
@@ -377,7 +385,49 @@ require_gradle_version() {
     fi
 }
 
+# Copy (or remove) the Vulkan validation layer in the debug source set's jniLibs, which Gradle packages into debug APKs
+# only. The release archive is downloaded once into the build tree and unpacked in a folder of its own.
+stage_validation_layer() {
+    local jni_dir="${GRADLE_PROJECT_DIR}/app/src/debug/jniLibs/${ABI}"
+    local layer="${jni_dir}/libVkLayer_khronos_validation.so"
+    if [[ "$WITH_VALIDATION" != true ]]; then
+        if [[ -f "$layer" ]]; then
+            rm -f "$layer"
+            echo "Removed the Vulkan validation layer from the debug APK"
+        fi
+        return 0
+    fi
+    [[ "$(lowercase "$BUILD_TYPE")" == debug ]] || die "-validation needs a Debug build (-t Debug)"
+
+    local cache_dir="${PROJECT_ROOT}/build/cache/vulkan-validation-layers/${VVL_VERSION}"
+    local archive="${cache_dir}/android-binaries-${VVL_VERSION}.zip"
+    local url="https://github.com/KhronosGroup/Vulkan-ValidationLayers/releases/download/vulkan-sdk-${VVL_VERSION}/android-binaries-${VVL_VERSION}.zip"
+    mkdir -p "$cache_dir"
+    if [[ ! -f "$archive" ]]; then
+        echo "Downloading Vulkan validation layers ${VVL_VERSION}"
+        curl -fL --retry 2 -o "${archive}.part" "$url" || die "Download failed: $url"
+        mv "${archive}.part" "$archive"
+    fi
+    local unpacked="${cache_dir}/unpacked"
+    if [[ ! -d "$unpacked" ]]; then
+        # Unpack beside the final folder and rename on success, so an interrupted unzip cannot leave a half-filled
+        # "unpacked" that makes later runs skip the extraction.
+        local unpacking="${unpacked}.part"
+        rm -rf "$unpacking"
+        mkdir -p "$unpacking"
+        unzip -q "$archive" -d "$unpacking" || { rm -rf "$unpacking"; die "Could not unpack $archive"; }
+        mv "$unpacking" "$unpacked"
+    fi
+    local source
+    source="$(find "$unpacked" -path "*/${ABI}/libVkLayer_khronos_validation.so" | head -n 1)"
+    [[ -n "$source" ]] || die "No ${ABI} validation layer in $archive"
+    mkdir -p "$jni_dir"
+    cp "$source" "$layer"
+    echo "Packaged the Vulkan validation layer ${VVL_VERSION} into the debug APK. Enable it on the headset (README: Vulkan validation)."
+}
+
 build_apk() {
+    stage_validation_layer
     local gradle java_home
     gradle="$(resolve_gradle || true)"
     [[ -n "$gradle" ]] || die "Gradle not found. Use -a studio or install Gradle."
@@ -438,7 +488,24 @@ run_apk() {
         start_args+=(-e sample "$SAMPLE")
     fi
     "$adb_bin" "${start_args[@]}"
-    echo "Started ${package}${SAMPLE:+ with sample '$SAMPLE'}. Follow the log: adb logcat -s vne.xr:* OpenXR:*"
+    local started="the launcher"
+    [[ -n "$SAMPLE" ]] && started="sample '$SAMPLE'"
+    echo "Started ${package} with ${started}. Follow the log: $0 -a logcat"
+}
+
+# Stream what matters when something goes wrong on the headset: this app, the OpenXR runtime, the Vulkan driver, and
+# native crashes. Ctrl-C ends the stream and prints the crash buffer, which holds the last tombstone summary.
+stream_logcat() {
+    local adb_bin
+    adb_bin="$(resolve_adb || true)"
+    [[ -n "$adb_bin" ]] || die "adb not found. Install Android SDK platform-tools."
+    if ! "$adb_bin" devices | awk 'NR>1 && $2=="device" {found=1} END {exit !found}'; then
+        die "No Android device connected (Quest 3 or Galaxy XR in developer mode)."
+    fi
+    "$adb_bin" logcat -c
+    echo "Streaming the vnexr log. Ctrl-C to stop; the crash buffer is printed afterwards."
+    trap '"$adb_bin" logcat -b crash -d -v time; exit 0' INT
+    "$adb_bin" logcat -v time vne.xr:V OpenXR:V VrApi:V vulkan:V VALIDATION:V AndroidRuntime:E DEBUG:V libc:F '*:S'
 }
 
 open_studio() {
@@ -460,6 +527,7 @@ case "$ACTION" in
     apk) configure_cmake; build_apk ;;
     install) configure_cmake; install_apk ;;
     run) configure_cmake; run_apk ;;
+    logcat) stream_logcat ;;
     studio) open_studio ;;
     clean)
         if [[ -d "$BUILD_DIR" ]]; then

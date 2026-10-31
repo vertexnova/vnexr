@@ -5,22 +5,28 @@
 
 /**
  * @file android_main.cpp
- * @brief NativeActivity entry: runs the sample named by the launch intent extra "sample".
+ * @brief NativeActivity entry: one XR session that runs whichever sample is picked.
+ *
+ * Without a launch extra the in-headset launcher panel opens. To jump straight into a sample:
  *
  *   adb shell am start -n <package>/com.vertexnova.vnexr.samples.VneXrNativeActivity -e sample stereo_cube
  *
- * Without the extra, the first OpenXR sample runs so a headset-library launch is immersive.
- * The activity is singleTask: a later start arrives through onNewIntent and replaces the running sample.
+ * The activity is singleTask: a later start arrives through onNewIntent and switches the running app to that sample
+ * (or back to the launcher) without restarting the XR session.
  */
 
 #include "app/platform/android/logcat_bridge.h"
-#include "app/sample_launcher.h"
 #include "app/sample_registry.h"
+#include "app/xr_sample_host.h"
 #include "framework/common/logging_guard.h"
 
+#include <android/api-level.h>
 #include <android_native_app_glue.h>
+#include <sys/system_properties.h>
 #include <jni.h>
 
+#include <algorithm>
+#include <cstdlib>
 #include <string>
 #include <string_view>
 
@@ -240,49 +246,78 @@ std::string readIntentStringExtra(JNIEnv* env, jobject intent, const char* key) 
 }
 
 /**
- * Explicit names go through find(). An empty request picks the first OpenXR sample so a headset
- * launch does not run the null-backend sample registered first.
+ * Debug override from `adb shell setprop <name> <value>` (survives until the headset reboots). Lets one APK test
+ * MSAA and GPU synchronization on the headset without a rebuild.
  */
-const vne::xr::samples::SampleInfo* selectSample(const vne::xr::samples::SampleRegistry& registry,
-                                                 std::string_view requested) {
-    if (!requested.empty()) {
-        return registry.find(requested);
+int readDebugInt(const char* name, int fallback) {
+    char value[PROP_VALUE_MAX] = {};
+    if (__system_property_get(name, value) <= 0) {
+        return fallback;
     }
-    for (const vne::xr::samples::SampleInfo& info : registry.samples()) {
-        if (info.backend == vne::xr::BackendType::eOpenXr) {
-            return &info;
-        }
-    }
-    return registry.defaultSample();
+    return std::atoi(value);
 }
 
-/** Drain the Android looper without blocking: the session loop supplies its own idle wait. */
-bool pumpAndroidEvents(android_app* app) {
+float readDebugFloat(const char* name, float fallback) {
+    char value[PROP_VALUE_MAX] = {};
+    if (__system_property_get(name, value) <= 0) {
+        return fallback;
+    }
+    return std::strtof(value, nullptr);
+}
+
+/** State the looper callback and the per-frame pump share. */
+struct PumpState {
+    android_app* app = nullptr;
+    JNIEnv* env = nullptr;
+    const GenerationProbe* probe = nullptr;
+    vne::xr::samples::XrSampleHost* host = nullptr;
+    int generation = 0;
+    /** Tracks APP_CMD_RESUME / APP_CMD_PAUSE. The activity is resumed when android_main starts. */
+    bool is_resumed = true;
+};
+
+void handleAppCmd(android_app* app, int32_t command) {
+    auto* state = static_cast<PumpState*>(app->userData);
+    if (state == nullptr) {
+        return;
+    }
+    switch (command) {
+        case APP_CMD_RESUME:
+            state->is_resumed = true;
+            break;
+        case APP_CMD_PAUSE:
+            state->is_resumed = false;
+            break;
+        default:
+            break;
+    }
+}
+
+/**
+ * Drain the Android looper. While the activity is paused and the XR session is not running there is nothing to
+ * render, so wait (bounded) for the next event instead of spinning.
+ */
+bool pumpAndroidEvents(android_app* app, bool is_idle) {
+    constexpr int kIdleWaitMs = 100;
+    int timeout = is_idle ? kIdleWaitMs : 0;
     int events = 0;
     android_poll_source* source = nullptr;
-    while (ALooper_pollOnce(0, nullptr, &events, reinterpret_cast<void**>(&source)) >= 0) {
+    while (ALooper_pollOnce(timeout, nullptr, &events, reinterpret_cast<void**>(&source)) >= 0) {
         if (source != nullptr) {
             source->process(app, source);
         }
+        timeout = 0;
     }
     return app->destroyRequested == 0;
 }
 
-struct PumpState {
-    android_app* app = nullptr;
-    JNIEnv* env = nullptr;
-    const vne::xr::samples::SampleRegistry* registry = nullptr;
-    const GenerationProbe* probe = nullptr;
-    int generation = 0;
-    bool switch_requested = false;
-};
-
-/** Pumps events and stops the session when onNewIntent names a sample to run instead. */
-bool pumpAndWatchIntent(PumpState& state, vne::xr::ISession&) {
-    if (!pumpAndroidEvents(state.app)) {
+/** Pumps events and forwards a new launch intent to the host as a sample switch. */
+bool pumpAndWatchIntent(PumpState& state, vne::xr::ISession& session) {
+    const bool is_idle = !state.is_resumed && !session.isSessionRunning();
+    if (!pumpAndroidEvents(state.app, is_idle)) {
         return false;
     }
-    if (state.generation == 0 || state.env == nullptr || state.registry == nullptr || state.probe == nullptr) {
+    if (state.generation == 0 || state.env == nullptr || state.probe == nullptr || state.host == nullptr) {
         return true;
     }
     // Cheap per-frame check; the full intent read below only happens when something changed.
@@ -292,25 +327,16 @@ bool pumpAndWatchIntent(PumpState& state, vne::xr::ISession&) {
     }
     LaunchIntent latest = readLaunchIntent(state.app, state.env);
     const bool changed = latest.generation != 0 && latest.generation != state.generation;
-    if (!changed) {
-        if (latest.intent != nullptr) {
-            state.env->DeleteLocalRef(latest.intent);
-        }
-        return true;
+    if (changed) {
+        const std::string requested = readIntentStringExtra(state.env, latest.intent, "sample");
+        VNE_LOG_INFO << "Launch intent requests '" << (requested.empty() ? "launcher" : requested) << "'";
+        state.host->requestSample(requested);
+        state.generation = latest.generation;
     }
-    const std::string requested = readIntentStringExtra(state.env, latest.intent, "sample");
-    const vne::xr::samples::SampleInfo* next = selectSample(*state.registry, requested);
     if (latest.intent != nullptr) {
         state.env->DeleteLocalRef(latest.intent);
     }
-    if (next == nullptr) {
-        VNE_LOG_ERROR << "No sample named '" << requested << "'; keeping the current sample";
-        state.generation = latest.generation;
-        return true;
-    }
-    VNE_LOG_INFO << "Launch intent now requests '" << (requested.empty() ? next->name : requested) << "'";
-    state.switch_requested = true;
-    return false;
+    return true;
 }
 
 }  // namespace
@@ -325,42 +351,46 @@ void android_main(android_app* app) {
     JniThreadAttach jni(app->activity->vm);
     JNIEnv* env = jni.env();
 
-    vne::xr::SessionPlatformHandle platform;
-    platform.application_vm = app->activity->vm;
-    platform.application_context = app->activity->clazz;
+    PumpState pump_state;
+    pump_state.app = app;
+    pump_state.env = env;
+    app->userData = &pump_state;
+    app->onAppCmd = handleAppCmd;
 
     if (env != nullptr) {
         const GenerationProbe generation_probe(env, app->activity->clazz);
-        while (app->destroyRequested == 0) {
-            LaunchIntent launch = readLaunchIntent(app, env);
-            const std::string requested = readIntentStringExtra(env, launch.intent, "sample");
-            const int generation = launch.generation;
-            if (launch.intent != nullptr) {
-                env->DeleteLocalRef(launch.intent);
-            }
-
-            const vne::xr::samples::SampleInfo* sample = selectSample(registry, requested);
-            if (sample == nullptr) {
-                VNE_LOG_ERROR << "No sample named '" << requested << "'; nothing to run";
-                break;
-            }
-
-            PumpState pump_state;
-            pump_state.app = app;
-            pump_state.env = env;
-            pump_state.registry = &registry;
-            pump_state.probe = &generation_probe;
-            pump_state.generation = generation;
-            static_cast<void>(
-                vne::xr::samples::launchSample(*sample, platform, [&pump_state](vne::xr::ISession& session) {
-                    return pumpAndWatchIntent(pump_state, session);
-                }));
-            if (app->destroyRequested != 0 || !pump_state.switch_requested) {
-                break;
-            }
+        LaunchIntent launch = readLaunchIntent(app, env);
+        const std::string requested = readIntentStringExtra(env, launch.intent, "sample");
+        if (launch.intent != nullptr) {
+            env->DeleteLocalRef(launch.intent);
         }
+
+        vne::xr::SessionConfig config;
+        config.backend = vne::xr::BackendType::eOpenXr;
+        config.application_name = "vnexr";
+        config.platform.application_vm = app->activity->vm;
+        config.platform.application_context = app->activity->clazz;
+        // adb shell setprop debug.vnexr.msaa 1     -> no multisampling (default 4)
+        // adb shell setprop debug.vnexr.sync 0     -> do not wait for the GPU before every image release (default 1)
+        config.color_sample_count = static_cast<std::uint32_t>(std::max(1, readDebugInt("debug.vnexr.msaa", 4)));
+        config.is_gpu_sync_every_frame = readDebugInt("debug.vnexr.sync", 1) != 0;
+        // adb shell setprop debug.vnexr.scale 1.0       -> eye buffers at the runtime's recommended size (default 1.25)
+        // adb shell setprop debug.vnexr.layerfilter 1   -> compositor super sampling (default 0)
+        config.resolution_scale = readDebugFloat("debug.vnexr.scale", config.resolution_scale);
+        config.use_compositor_supersampling = readDebugInt("debug.vnexr.layerfilter", 0) != 0;
+
+        vne::xr::samples::XrSampleHost host(registry, config);
+        host.setInitialSample(requested);
+        pump_state.probe = &generation_probe;
+        pump_state.host = &host;
+        pump_state.generation = launch.generation;
+        host.setFramePump(
+            [&pump_state](vne::xr::ISession& session) { return pumpAndWatchIntent(pump_state, session); });
+        static_cast<void>(host.run());
+        pump_state.host = nullptr;
     } else {
         VNE_LOG_ERROR << "Could not attach the sample thread to the Java VM";
     }
+    app->userData = nullptr;
     ANativeActivity_finish(app->activity);
 }

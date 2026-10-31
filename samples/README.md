@@ -51,25 +51,28 @@ export XR_RUNTIME_JSON=/usr/share/openxr/1/openxr_monado.json
 | `hello_xr` | `00_hello_xr` | Null |
 | `null_simulator` | `01_null_simulator` | Null |
 | `stereo_cube` | `02_openxr_stereo` | OpenXR |
+| `xr_diagnostics` | `04_xr_diagnostics` | OpenXR |
 
 ```bash
 vnexr_samples --list
 vnexr_samples --sample null_simulator
 ```
 
-On Android the same library is the only NativeActivity. The sample comes from the launch intent: `adb shell am start -n com.vertexnova.vnexr.samples/com.vertexnova.vnexr.samples.VneXrNativeActivity -e sample stereo_cube`, or `./scripts/build_android.sh -a run -sample stereo_cube`.
+On Android the same library is the only NativeActivity and one `XrSampleHost` session runs for the whole app. With no launch extra the in-headset launcher opens; the left Menu button returns to it from any sample. To jump into a sample, use the launch intent: `adb shell am start -n com.vertexnova.vnexr.samples/com.vertexnova.vnexr.samples.VneXrNativeActivity -e sample stereo_cube`, or `./scripts/build_android.sh -a run -sample stereo_cube`. A second start while the app is running switches the sample in place. On a desktop OpenXR runtime (for example Monado) `vnexr_samples --launcher` opens the same launcher.
+
+A sample is a stack of layers (`SampleInfo::setup` receives an `XrLayerStack`). Override `onUpdate` for logic and `onRenderEye` to draw: the framework owns the render target, command buffer and submit, draws both eyes every frame, and gives the layer input and drawing already expressed in its own scene coordinates, so grip-to-move/zoom works in every sample with no sample code. `FlatColorRenderer` draws shaded boxes and meshes.
 
 ### Adding a sample
 
 1. In the sample's `CMakeLists.txt` call `vne_xr_add_sample_library(<name> REGISTER register<Name>Sample SOURCES ... [LIBRARIES ...])`.
-2. In its sources define `void vne::xr::samples::register<Name>Sample(SampleRegistry&)`, which calls `registry.add` with an explicit initializer for each field. `setup` pushes the sample's layers onto the `XrSampleApp`.
+2. In its sources define `void vne::xr::samples::register<Name>Sample(SampleRegistry&)`, which calls `registry.add` with an explicit initializer for each field. `setup` receives the sample's `XrLayerStack` and pushes its layers onto it.
 
    ```cpp
    registry.add({
        .name = "my_sample",
        .description = "What the sample shows",
        .backend = BackendType::eOpenXr,
-       .setup = [](XrSampleApp& app) { app.pushLayer(std::make_unique<MyLayer>()); },
+       .setup = [](XrLayerStack& stack) { stack.pushLayer(std::make_unique<MyLayer>()); },
    });
    ```
 

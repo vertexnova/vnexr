@@ -24,7 +24,7 @@ void registerHelloXrSample(SampleRegistry& registry) {
         .description = "Library smoke test: prints the version and runs one frame (no headset needed)",
         .backend = BackendType::eNull,
         .setup =
-            [](XrSampleApp& app) {
+            [](XrLayerStack& app) {
                 VNE_LOG_INFO << vne::xr::hello();
                 VNE_LOG_INFO << "Version: " << vne::xr::getVersion();
                 app.pushLayer(std::make_unique<ExitAfterFramesLayer>(1));
