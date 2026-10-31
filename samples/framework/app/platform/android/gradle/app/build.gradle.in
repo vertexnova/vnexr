@@ -18,9 +18,11 @@ android {
         }
         externalNativeBuild {
             cmake {
-                arguments '-DANDROID_STL=c++_shared',
+                arguments '-Wno-deprecated',
+                          '-DANDROID_STL=c++_shared',
                           '-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON',
-                          '-DCMAKE_NINJA_FORCE_RESPONSE_FILE=ON'
+                          '-DCMAKE_NINJA_FORCE_RESPONSE_FILE=ON',
+                          '--no-warn-unused-cli'
                 cppFlags '-std=c++20'
             }
         }

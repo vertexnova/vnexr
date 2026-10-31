@@ -51,10 +51,14 @@
         <meta-data
             android:name="com.oculus.supportedDevices"
             android:value="quest2|quest3|quest3s|questpro" />
+        <!-- Quest: the app handles losing and regaining input focus (system menu) itself. -->
+        <meta-data
+            android:name="com.oculus.vr.focusaware"
+            android:value="true" />
 
         <activity
             android:name="com.vertexnova.vnexr.samples.VneXrNativeActivity"
-            android:configChanges="orientation|keyboardHidden|screenSize|screenLayout|uiMode"
+            android:configChanges="orientation|keyboard|keyboardHidden|navigation|screenSize|screenLayout|uiMode|density"
             android:exported="true"
             android:launchMode="singleTask"
             android:screenOrientation="landscape"
